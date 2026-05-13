@@ -1,0 +1,135 @@
+# Roadmap: ALEKSANDRA_BRAIN
+
+## Overview
+
+ALEKSANDRA_BRAIN ships in five sequential v1 phases that move from a hardened, cost-gated foundation to a confidence-gated digest the family can act on. Phase 0 establishes the trust boundary (privacy import-lint, RLS, kill-switch, spend cap, MCP allowlist, secrets vault, run ledger). Phase 1 turns on continuous ingestion from PubMed E-utilities, ClinicalTrials.gov v2, bioRxiv/medRxiv RSS, with Crawl4AI for the gaps and Firecrawl as a budget-gated fallback. Phase 2 makes provenance load-bearing: a citation tuple becomes a first-class type, a single-writer ledger atomically fans out to Graphiti and Qdrant, and LightRAG becomes the only retrieval surface agents are allowed to call. Phase 3 stands up the minimum cognition path — a deterministic verifier that round-trips every PMID/DOI/NCT/URL, an Analyzer that extracts PICO + evidence-grade under the provenance contract, and a Communicator that drafts under a fixed schema with an imperative-verb lint, a six-tier evidence ranking, and a HIGH-only confidence gate. Phase 4 closes the loop by delivering one credible lead to the family inside a 14-day window via confidence-gated Telegram pushes, a weekly Gmail digest, Notion archival, and a clinician-shareable PDF that embeds full provenance — under a $30 total-cost ceiling. v2 phases (Cognition-full, Action interactivity, Visualization viewer/segmentation/simulation, HIPAA posture) live in REQUIREMENTS.md and are explicitly out of v1 scope.
+
+## Phases
+
+**Phase Numbering:**
+- Integer phases (0, 1, 2, 3, 4): Planned milestone work
+- Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
+
+Decimal phases appear between their surrounding integers in numeric order.
+
+- [ ] **Phase 0: Foundation** - Trust boundary, cost gates, kill-switch, MCP allowlist, run ledger
+- [ ] **Phase 1: Perception** - Continuous, provenance-stamped literature ingest on a 6-hour cron
+- [ ] **Phase 2: Memory** - Citation-tuple-first ledger, atomic Graphiti+Qdrant fan-out, single retrieval surface
+- [ ] **Phase 3: Cognition (minimum)** - Verifier-gated Analyzer + Communicator drafting confidence-gated digests
+- [ ] **Phase 4: First Family Value** - Confidence-gated Telegram/Gmail/Notion delivery + clinician PDF, 14-day acceptance test
+
+## Phase Details
+
+### Phase 0: Foundation
+**Goal**: By the end of this phase, the family has a repo that cannot accidentally leak MRI data, cannot accidentally burn the monthly budget, and can be stopped from a phone — even before a single paper is ingested.
+**Depends on**: Nothing (first phase)
+**Requirements**: FND-01, FND-02, FND-03, FND-04, FND-05, FND-06, FND-07, OBS-01
+**Success Criteria** (what must be TRUE):
+  1. A test pull request that imports a `viewer/` client-side imaging module from a server route is automatically rejected by CI, and a test commit that adds a remote `fetch`/`axios.post`/`XMLHttpRequest` call from `viewer/` is automatically rejected — visible as a red check in the PR UI.
+  2. Sending `/stop` to the family Telegram bot causes every running agent to stop and the next scheduled cron tick to be cancelled within 60 seconds, observable from the Telegram acknowledgement message.
+  3. Once the day's billed Anthropic spend crosses $1.50, the family sees the n8n daily-spend gate flip to red and downstream Anthropic-calling nodes stop firing for the rest of that day.
+  4. A second (non-family) Supabase identity attempting to read any row containing patient data is denied by row-level security, observable from the Supabase logs.
+  5. An agent attempting to call an MCP server that is not listed for it in `MCP-INVENTORY.csv` fails closed, and a commit that adds a high-entropy secret to a tracked file is rejected by CI.
+**Plans**: TBD
+
+**Phase-exit gate (CATASTROPHIC):** MRI-leak countermeasure (import-lint half — FND-01 + FND-02) must be green on `main` before Phase 1 starts. The viewer half of the MRI-leak pitfall is v2 (VIS-*) and not in scope here.
+**Phase-exit gate (HIGH):** Cost-runaway countermeasure (FND-03 kill-switch + FND-04 spend cap) must be exercised at least once in a simulated runaway and observed to halt within 60 seconds before Phase 1 starts.
+
+### Phase 1: Perception
+**Goal**: By the end of this phase, every six hours the family's Supabase ledger gains new rows from PubMed, ClinicalTrials.gov, and the preprint servers — each with a verifiable source identifier, a retrieval method, a content hash, and an R2 link to the raw artifact.
+**Depends on**: Phase 0 (kill-switch, spend cap, run ledger, MCP allowlist, RLS schema)
+**Requirements**: PRC-01, PRC-02, PRC-03, PRC-04, PRC-05, PRC-06, PRC-07
+**Success Criteria** (what must be TRUE):
+  1. A family member can open the Supabase `ledger` table at any time and see new rows from the last 6-hour cron tick across PubMed, ClinicalTrials.gov, and bioRxiv/medRxiv, each carrying `{source_id, retrieval_method, retrieval_timestamp, content_hash, raw_artifact_url}`.
+  2. PubMed pulls are visibly identified to NCBI with the project user-agent + mailto + registered `api_key` (verifiable from the request log), so the family will not be IP-blocked.
+  3. When the index API does not return full text, Crawl4AI fills the gap and writes the raw payload to Cloudflare R2 under a content-hash key — observable as a present R2 object whose URL appears in the ledger row.
+  4. A Firecrawl call only ever appears in the run log after Crawl4AI failed twice on the same URL and only while monthly Firecrawl spend is under $10; the family can see this rule enforced from the run log.
+  5. The same cron tick also produces ledger rows tagged `mode=negative` (null/no-effect/retracted results) for currently-tracked candidates, so the family sees counter-evidence alongside positive evidence.
+
+### Phase 2: Memory
+**Goal**: By the end of this phase, the system cannot record a claim that lacks a citation tuple, cannot store a graph fact without naming its sources, and cannot present a paper to an agent except through one retrieval call — so by construction no agent can see ungrounded evidence.
+**Depends on**: Phase 1 (ledger schema and at least 100 ingested papers to smoke-test recall)
+**Requirements**: MEM-01, MEM-02, MEM-03, MEM-04, MEM-05, MEM-06, MEM-07, MEM-08
+**Success Criteria** (what must be TRUE):
+  1. A clinician auditing any single claim in the system can click from the claim to a populated citation tuple `{source_id, retrieval_method, retrieval_timestamp, confidence, verbatim_grounding, byte_offset}` — and a test write that omits any field is rejected with a visible error.
+  2. After ingesting a batch, a deliberately injected mid-batch failure leaves both Graphiti and Qdrant unchanged (rollback observable from the ledger run log), confirming the single-writer atomic fan-out.
+  3. An agent that tries to call Graphiti or Qdrant directly fails its lint check at commit time; the only retrieval call permitted from agent code is `retrieve(query, t_at=...)`, observable from the lint report.
+  4. A test ingest of 100 known papers followed by the query `"cord blood + HIE"` returns at least 90 of them in the top 100 results, and the morning after a daily reconciler run shows zero `graphiti↔qdrant` mismatches in the family's daily report.
+  5. The graph ontology is captured in a checked-in `graph_ontology.yaml`; a write that uses an ad-hoc node label is rejected at write time and surfaces in the run log.
+
+**Phase-exit gate (CATASTROPHIC, half-1 of fabricated-citations defense):** The citation tuple as a first-class type (MEM-01) and the `derived_from_source_ids[]` write contract (MEM-03) must be live before any cognitive agent runs in Phase 3 — i.e., the schema must make ungrounded claims structurally impossible before agents start drafting.
+
+### Phase 3: Cognition (minimum)
+**Goal**: By the end of this phase, the family has a draft digest in Notion every cron cycle that contains zero fabricated citations, zero direct instructions to the family, and only HIGH-confidence findings on top — staged but not yet pushed to Telegram.
+**Depends on**: Phase 2 (citation tuple, write contract, LightRAG retrieval surface, ontology)
+**Requirements**: CGM-01, CGM-02, CGM-03, CGM-04, CGM-05, CGM-06, CGM-07, CGM-08, CGM-09, CGM-10
+**Success Criteria** (what must be TRUE):
+  1. The family can open the staged Notion draft and see that every PMID, DOI, NCT identifier, and URL has been round-tripped against its original index API — a synthetic-fabrication smoke test confirms the verifier rejects ≥99 of 100 planted fakes before publication.
+  2. Every finding in a draft carries the fixed schema `{finding, source, evidence_strength, population_gap, clinician_question}` and the top section of every draft contains only tier-1 or tier-2 evidence — a tier-3-or-worse finding in the top section is rejected by the gate.
+  3. A draft containing any of `should`, `must`, `consider`, `try`, `ask for`, `request` directed at the family is rejected by the imperative-verb lint before staging, and the `taxonomy/tone.yaml` post-processor strips or rewrites prognostic language — confirmed by an imperative-verb count of 0 across 30 sample digests.
+  4. While the confidence gate is set to HIGH, any sub-HIGH draft is staged in Notion with an explicit missing-evidence reason — the family can see why it did not publish without reading the agent's chain of thought.
+  5. A simulated runaway agent terminates within 60 seconds: each agent run hits `max_iter=7`, `max_execution_time=30s`, or `max_tokens_per_run=80,000`, the cause is logged, and a versioned Aleksandra patient-context document is recorded alongside the run.
+
+**Phase-exit gate (CATASTROPHIC, half-2 of fabricated-citations defense):** The verifier agent (CGM-01) must reject ≥99% of 100 synthetic fabrications before the Communicator is allowed to produce any draft that will be staged.
+**Phase-exit gate (CATASTROPHIC, off-label framing defense):** The imperative-verb lint (CGM-04) + six-tier evidence ranking (CGM-05) + tone post-processor (CGM-06) must all be live and produce an imperative-verb count of 0 across 30 sample digests before Phase 4 starts. One off-label suggestion before vigabatrin washout costs the Duke EAP window — this is not deferrable.
+
+### Phase 4: First Family Value
+**Goal**: By the end of this phase, within a 14-day observation window after launch, the family receives at least one digest that surfaces a credible treatment lead they would not have found via ChatGPT + Google Scholar in the same window, with full source provenance, at total cost under $30 — and Dr. Hien can be sent a PDF of it without redaction.
+**Depends on**: Phase 3 (verifier-gated, confidence-gated drafts staged in Notion)
+**Requirements**: ACD-01, ACD-02, ACD-03, ACD-04, ACD-05, OBS-02, OBS-03
+**Success Criteria** (what must be TRUE):
+  1. Within a 14-day window after this phase ships, the family receives at least one Telegram digest containing a credible treatment lead they would not have found via ChatGPT + Google Scholar over the same window, with full source provenance, at total cost under $30 — the v1 acceptance test.
+  2. The family sees a single Telegram message for notable items, batched routine summaries, and an override for urgent items — and between 22:00 and 07:00 Boston time only urgent items can break through quiet hours.
+  3. Every Sunday a Gmail digest summarizes the previous seven days of confidence-gated findings, the Notion family knowledge base contains a new appended entry with full provenance for every finding pushed, and the Telegram message includes the Notion link.
+  4. From the Telegram bot the family can request a clinician-shareable PDF; the PDF that arrives embeds every citation tuple, the patient-context document version, and the agent run IDs — Dr. Hien can verify any cited paper himself.
+  5. Every digest sent is linked from the `runs` table back to its originating agent run within two clicks of audit, and every morning the family Telegram channel receives the previous day's spend report so cost stays visible.
+
+**v1 release gate (the project's existence test):** Phase 4 ships when criterion 1 is observed at least once and criteria 2-5 are continuously true.
+
+## Progress
+
+**Execution Order:**
+Phases execute in numeric order: 0 → 1 → 2 → 3 → 4
+
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 0. Foundation | 0/TBD | Not started | - |
+| 1. Perception | 0/TBD | Not started | - |
+| 2. Memory | 0/TBD | Not started | - |
+| 3. Cognition (minimum) | 0/TBD | Not started | - |
+| 4. First Family Value | 0/TBD | Not started | - |
+
+## Coverage
+
+- v1 requirements: 41 total
+- Mapped: 41 of 41
+- Unmapped: 0
+- Duplicates: 0
+
+| Phase | Requirement IDs | Count |
+|-------|-----------------|-------|
+| Phase 0 | FND-01, FND-02, FND-03, FND-04, FND-05, FND-06, FND-07, OBS-01 | 8 |
+| Phase 1 | PRC-01, PRC-02, PRC-03, PRC-04, PRC-05, PRC-06, PRC-07 | 7 |
+| Phase 2 | MEM-01, MEM-02, MEM-03, MEM-04, MEM-05, MEM-06, MEM-07, MEM-08 | 8 |
+| Phase 3 | CGM-01, CGM-02, CGM-03, CGM-04, CGM-05, CGM-06, CGM-07, CGM-08, CGM-09, CGM-10 | 10 |
+| Phase 4 | ACD-01, ACD-02, ACD-03, ACD-04, ACD-05, OBS-02, OBS-03 | 8 |
+| **Total** | | **41** |
+
+## Catastrophic Pitfall Gates Summary
+
+| Pitfall (severity) | Countermeasure | Lands In |
+|--------------------|----------------|----------|
+| Fabricated citations (CATASTROPHIC) | Citation tuple as first-class type + `derived_from_source_ids[]` write contract | Phase 2 (MEM-01, MEM-03) |
+| Fabricated citations (CATASTROPHIC) | Deterministic verifier round-trips every PMID/DOI/NCT/URL | Phase 3 (CGM-01) |
+| Off-label framing (CATASTROPHIC) | Imperative-verb lint + six-tier evidence ranking + tone post-processor + clinician-question schema | Phase 3 (CGM-03, CGM-04, CGM-05, CGM-06) |
+| MRI leak (CATASTROPHIC, import-lint half) | CI fails any server-side import of `viewer/` imaging code; CI fails any remote `fetch`/`axios.post`/`XMLHttpRequest` from `viewer/` | Phase 0 (FND-01, FND-02) |
+| MRI leak (CATASTROPHIC, viewer half) | Client-side-only viewer, CSP, dcm2niix.wasm, segmentation on family-local Docker | **v2 (VIS-* requirements — not in v1)** |
+| Cost runaway (HIGH) | `/stop` kill-switch + n8n daily Anthropic spend gate at $1.50/day | Phase 0 (FND-03, FND-04) |
+| Shared-memory poisoning (HIGH) | `derived_from_source_ids[]` write contract + per-`agent_id` mem0 scoping | Phase 2 (MEM-03) + Phase 3 (CGM-09) |
+
+---
+
+*Roadmap created: 2026-05-13*
+*Granularity: standard*
+*Mode: yolo*
+*v2 phases (Cognition-full, Action interactivity, Visualization, HIPAA posture) live in REQUIREMENTS.md and are explicitly out of v1 scope.*
