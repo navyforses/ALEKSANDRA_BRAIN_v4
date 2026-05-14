@@ -9,10 +9,16 @@
 
 | ველი | მნიშვნელობა |
 |------|-------------|
-| ფაზის სტატუსი | **closed** |
+| ფაზის სტატუსი | **closed (extended scope, 26/26)** |
+| ROADMAP gates | 8/8 PASS (drills 15.3s + 27.4s, both <60s) |
+| Extended audit | 26/26 PASS — Phase 0+ complete 2026-05-14 19:53 UTC |
 | Drill ჩატარდა | 2026-05-14 18:39 UTC (Telegram drill 16:02 UTC) |
 | Drill ჩატარა | shakojintcharadze-png (Shalva Jintcharadze) |
-| Git commit hash | _to be filled after commit_ |
+| Git commit (Phase 0 close) | 711f86a |
+| Git commits (Phase 0+ extended) | 45f8531, aeb45ac, 870843a, 65fc932, dcfdb83, cd64176 |
+| Vercel production URL | https://viewer-sigma-two.vercel.app (HTTP 200) |
+| R2 bucket | aleksandra-brain-storage (10GB free tier) |
+| KV namespace | aleksandra-brain-cache (id 7877a8f9...) |
 
 ---
 
@@ -176,10 +182,38 @@ Phase 0 დაიწყო ცარიელი repo + CLAUDE.md კონტ�
 - [viewer/.eslintrc.json](../viewer/.eslintrc.json) — server-route import bans (FND-01)
 - [scripts/check-no-remote-fetch.sh](../scripts/check-no-remote-fetch.sh) — viewer/ remote-fetch detector (FND-02)
 
-### ⏸ Deferred to Phase 0.1 / Phase 1 prep (non-blocking)
-- Fix n8n HTTP node `jsonBody` template interpolation (use `=JSON.stringify({…})` pattern). The Over Cap? routing logic is verified; only the WRITE step is in pending state. Workaround in place via `simulate_budget_lock.py`.
-- Neo4j AuraDB + Cloudflare R2/KV setup (Phase 1 prep)
-- N8N_API_KEY → `.env` (panic_stop.py needs it to deactivate workflows when called from outside; currently writes to runs but cannot stop n8n itself yet — acceptable because user can hit Pause in n8n dashboard)
+### ✅ Phase 0+ extended scope (completed 2026-05-14 evening)
+- **Python 3.12 venv via uv** — crewai 1.14.4, mem0ai 2.0.2, crawl4ai 0.8.6,
+  fastmcp 3.2.4, qdrant-client 1.18, neo4j 6.2, supabase 2.30, dspy-ai 2.6,
+  boto3 1.43. System Python 3.14 was incompatible with crewai; project pins
+  3.12 in `.venv/` (gitignored).
+- **Local Neo4j + Qdrant via Docker** — `docker compose up -d` brings up
+  Neo4j 5.20 + Qdrant latest, both healthy. Seeded with Patient(Aleksandra)
+  + 9 BrainRegion nodes + 3 Qdrant collections (papers / therapies /
+  hypotheses) at 384-dim cosine, fastembed BAAI/bge-small.
+- **CrewAI 5 agents build** — Spider/Analyzer/Hypothesis/Repurposing/
+  Communicator each construct cleanly with per-agent MCP allowlist.
+- **mem0 cross-agent live test** — spider writes a fact, analyzer reads
+  via mem0.search(filters={user_id}); 1 hit @ score 0.498. Cost $0.001.
+- **9 MCP servers in `.mcp.json`** — code-review-graph, qdrant, postgres,
+  context7, drawio, crawl4ai (no key); firecrawl, perplexity, tavily
+  (configured, keys empty until needed).
+- **Cloudflare R2 + KV** — bucket `aleksandra-brain-storage` (live boto3
+  upload+read round-trip PASS), KV namespace `aleksandra-brain-cache`.
+- **n8n API key wired** — JWT in `.env`, `panic_stop.py` can list +
+  deactivate workflows via REST. Production workflow active, cron every
+  30 min.
+- **Aleksandra data seeded into Supabase** — brain_regions (9), therapies
+  (6), aleksandra_timeline (9) all CHECK-constraint-compliant.
+- **Vercel deploy** — `viewer-sigma-two.vercel.app` HTTP 200 with Phase 0+
+  status page. Next.js 16 App Router scaffold preserved trust-boundary
+  lint rules.
+
+### ⏸ Deferred to Phase 1 (non-blocking)
+- Fix n8n HTTP node `jsonBody` template interpolation (use `=JSON.stringify({…})` pattern) — workaround via `simulate_budget_lock.py` is in place
+- Neo4j AuraDB Free (hosted) — local Docker is sufficient until Phase 2 scale
+- Phase 0+ planned but skipped: Prism MCP (post-MVP per research summary; npm prism-mcp is an unrelated tool)
+- Cleanup 3 inactive duplicate n8n workflows + 1 "My workflow" placeholder (needs explicit user authorization to delete)
 
 ---
 
