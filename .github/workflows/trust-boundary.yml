@@ -1,0 +1,41 @@
+name: Trust Boundary Lint
+
+# Phase 0 — FND-01, FND-02
+# Blocks any change that would let MRI data escape the browser.
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  trust-boundary:
+    name: viewer/ imaging boundary
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install deps
+        run: npm ci
+
+      - name: ESLint — no imaging imports in server routes (FND-01)
+        run: |
+          if [ -d viewer ] && find viewer -name '*.ts' -o -name '*.tsx' | grep -q .; then
+            npx eslint viewer --max-warnings 0
+          else
+            echo "viewer/ has no TS/TSX yet — skipping ESLint."
+          fi
+
+      - name: No remote fetch from viewer/ (FND-02)
+        run: bash scripts/check-no-remote-fetch.sh

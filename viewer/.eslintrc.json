@@ -1,0 +1,39 @@
+{
+  "_comment": "FND-01 — server-side code under viewer/ may not import client-side imaging libraries. MRI must never leave the browser.",
+  "extends": "next/core-web-vitals",
+  "overrides": [
+    {
+      "files": [
+        "viewer/app/api/**/*",
+        "viewer/pages/api/**/*",
+        "app/api/**/*",
+        "pages/api/**/*"
+      ],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["@niivue/*", "niivue"],
+                "message": "FND-01 — NiiVue is client-side only. MRI data must never reach a Node.js route. If you need region metadata server-side, use atlas-mcp instead."
+              },
+              {
+                "group": ["@react-three/*", "three", "three/*"],
+                "message": "FND-01 — React Three Fiber / three.js is client-side only. Server routes must not import 3D primitives."
+              },
+              {
+                "group": [
+                  "**/imaging/**",
+                  "**/dcm2niix*",
+                  "**/nifti-reader*"
+                ],
+                "message": "FND-01 — imaging modules are browser-only. Server routes must not parse DICOM or NIfTI."
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}
