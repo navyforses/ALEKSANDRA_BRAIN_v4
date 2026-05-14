@@ -29,7 +29,7 @@ def build_crew() -> Crew:
     # FND-06 — print the allowlist so misconfigurations show up in the smoke log.
     for name in ("spider", "analyzer", "hypothesis", "repurposing", "communicator"):
         mcps = allowed_mcps(name)
-        print(f"[allowlist] {name:<13} → {', '.join(mcps) if mcps else '(none yet)'}")
+        print(f"[allowlist] {name:<13} -> {', '.join(mcps) if mcps else '(none yet)'}")
 
     # Phase 0 smoke test: each agent reports status.
     status_tasks = [
