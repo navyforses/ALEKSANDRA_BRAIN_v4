@@ -1,0 +1,57 @@
+# Gitleaks configuration for ALEKSANDRA_BRAIN
+# https://github.com/gitleaks/gitleaks
+#
+# Extends the default ruleset with project-specific patterns.
+
+title = "ALEKSANDRA_BRAIN gitleaks"
+
+[extend]
+useDefault = true
+
+# Project-specific secret patterns
+[[rules]]
+id = "anthropic-admin-key"
+description = "Anthropic admin API key (Usage API)"
+regex = '''sk-ant-admin[A-Za-z0-9_-]{32,}'''
+keywords = ["sk-ant-admin"]
+
+[[rules]]
+id = "supabase-service-role"
+description = "Supabase service_role JWT (has full DB access)"
+regex = '''eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+'''
+keywords = ["service_role", "supabase"]
+
+[[rules]]
+id = "neo4j-password"
+description = "Neo4j Aura connection password"
+regex = '''neo4j\+s?://[^:]+:[A-Za-z0-9_-]{16,}@'''
+keywords = ["neo4j+s://", "neo4j://"]
+
+[[rules]]
+id = "telegram-bot-token"
+description = "Telegram bot token"
+regex = '''[0-9]{9,11}:[A-Za-z0-9_-]{35}'''
+keywords = ["TELEGRAM_BOT_TOKEN", "t.me/", "telegram"]
+
+[[rules]]
+id = "cloudflare-r2-secret"
+description = "Cloudflare R2 secret access key"
+regex = '''[A-Za-z0-9_-]{40,}'''
+keywords = ["CLOUDFLARE_R2_SECRET", "R2_SECRET_ACCESS_KEY"]
+entropy = 4.5
+
+# Allowlists — paths and patterns that are intentionally not secrets
+[allowlist]
+description = "Allowlist for example files and documentation"
+paths = [
+  '''\.env\.example$''',
+  '''\.gitleaks\.toml$''',
+  '''docs/.*\.md$''',
+  '''\.planning/.*''',
+  '''node_modules/.*''',
+]
+regexes = [
+  '''eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\.\.\.''',  # truncated example JWT in docs
+  '''sk-ant-api03-''',                                # bare prefix in .env.example
+  '''xxxx''',                                         # generic placeholder
+]
