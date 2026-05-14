@@ -24,14 +24,21 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
 
-      - name: Install deps
-        run: npm ci
+      - name: Install deps (skip ESLint when viewer/ empty)
+        run: |
+          # Phase 0 — viewer/ has only .gitkeep so far. We install only when
+          # there is something to lint to avoid requiring a package-lock.json
+          # before the Next.js app is scaffolded (Phase 7 deliverable).
+          if find viewer -maxdepth 4 \( -name '*.ts' -o -name '*.tsx' \) 2>/dev/null | grep -q .; then
+            npm install --no-audit --no-fund
+          else
+            echo "viewer/ is empty — skipping npm install (no lint targets)"
+          fi
 
       - name: ESLint — no imaging imports in server routes (FND-01)
         run: |
-          if [ -d viewer ] && find viewer -name '*.ts' -o -name '*.tsx' | grep -q .; then
+          if find viewer -maxdepth 4 \( -name '*.ts' -o -name '*.tsx' \) 2>/dev/null | grep -q .; then
             npx eslint viewer --max-warnings 0
           else
             echo "viewer/ has no TS/TSX yet — skipping ESLint."
