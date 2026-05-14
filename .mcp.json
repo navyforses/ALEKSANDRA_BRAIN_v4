@@ -15,6 +15,69 @@
         "PYTHONUTF8": "1",
         "PYTHONIOENCODING": "utf-8"
       }
+    },
+    "qdrant": {
+      "command": "uvx",
+      "args": ["mcp-server-qdrant"],
+      "type": "stdio",
+      "env": {
+        "QDRANT_URL": "http://localhost:6333",
+        "COLLECTION_NAME": "papers",
+        "EMBEDDING_MODEL": "BAAI/bge-small-en-v1.5"
+      }
+    },
+    "postgres": {
+      "command": "uvx",
+      "args": ["postgres-mcp"],
+      "type": "stdio",
+      "env": {
+        "DATABASE_URI": "",
+        "PYTHONUTF8": "1"
+      }
+    },
+    "context7": {
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp"],
+      "type": "stdio",
+      "env": {}
+    },
+    "firecrawl": {
+      "command": "npx",
+      "args": ["-y", "firecrawl-mcp"],
+      "type": "stdio",
+      "env": {
+        "FIRECRAWL_API_KEY": ""
+      }
+    },
+    "perplexity": {
+      "command": "npx",
+      "args": ["-y", "perplexity-mcp"],
+      "type": "stdio",
+      "env": {
+        "PERPLEXITY_API_KEY": ""
+      }
+    },
+    "tavily": {
+      "command": "npx",
+      "args": ["-y", "tavily-mcp"],
+      "type": "stdio",
+      "env": {
+        "TAVILY_API_KEY": ""
+      }
+    },
+    "drawio": {
+      "command": "npx",
+      "args": ["-y", "drawio-mcp"],
+      "type": "stdio",
+      "env": {}
+    },
+    "crawl4ai": {
+      "command": "uvx",
+      "args": ["crawl4ai-mcp"],
+      "type": "stdio",
+      "env": {
+        "PYTHONUTF8": "1"
+      }
     }
   }
 }
