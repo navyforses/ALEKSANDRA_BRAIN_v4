@@ -1,0 +1,25 @@
+mcp_name,description,allowed_agents,phase_first_used,owner,notes
+panic-stop,emergency kill-switch + n8n deactivation,*,0,system,FND-03 — every agent may call to stop the world
+hello-brain,liveness + system health,*,0,system,Phase 0 placeholder
+pubmed,PubMed E-utilities literature search,spider,1,perception,PRC-01 — must use NCBI api_key + project UA
+clinicaltrials,ClinicalTrials.gov v2 trial search,spider,1,perception,PRC-02
+biorxiv,bioRxiv/medRxiv preprint RSS,spider,1,perception,PRC-03
+crawl4ai,primary scraper for full-text gaps,spider,1,perception,PRC-04 — pin >=0.8.6 (supply-chain fix)
+firecrawl,fallback scraper behind budget gate,spider,1,perception,PRC-05 — only fires when crawl4ai fails twice AND monthly < $10
+browser-use,paywall bypass headless browser,spider,1,perception,Only on double-failure; rarely used
+graphiti,temporal knowledge graph writer,analyzer,2,memory,MEM-03 — writes require derived_from_source_ids[]
+qdrant,vector store reader/writer,analyzer,2,memory,MEM-04 — embeddings via fastembed local
+lightrag,unified retrieval surface,analyzer|hypothesis|repurposing|communicator,2,memory,MEM-05 — the ONLY allowed retrieval entry point
+mem0,shared agent memory,analyzer|hypothesis|repurposing|communicator,3,cognition,CGM-09 — per-agent_id scoping
+adaptive-got,hypothesis decomposition + falsifier,hypothesis,5,cognition,Vendor source — single maintainer risk
+repurpose,drug repurposing lookup,repurposing,5,cognition,Custom FastMCP; six-tier evidence ranking
+verifier,deterministic PMID/DOI/NCT/URL round-tripper,communicator,3,cognition,CGM-01 — must run before any draft is staged
+gmail,email digest send,communicator,4,action,ACD-03 — weekly digest only
+telegram,family channel push + ask_user,communicator,4,action,ACD-01 — three urgency tiers, quiet hours 22:00-07:00 Boston
+notion,family knowledge base writes,communicator,4,action,ACD-04 — staged drafts + provenance
+gcalendar,treatment timeline,communicator,6,action,ACI-02 — Duke EAP target + vigabatrin washout (v2)
+niivue,client-side neuroimaging viewer,viewer,7,visualization,VIS-01 — browser only, never voxels in server (v2)
+atlas,brain atlas region lookup,viewer,7,visualization,VIS-03 — region ids only, never voxels (v2)
+bonbid,neonatal segmentation runner,viewer,8,visualization,VIS-05 — accepts job descriptors only, NEVER voxel arguments (v2)
+tvb,brain simulation sandbox,viewer,9,visualization,SIM-01 — TVB Docker (v2)
+code-review-graph,project knowledge graph for Claude Code,*,0,dev-tools,Editor-side only; not invoked by runtime agents
