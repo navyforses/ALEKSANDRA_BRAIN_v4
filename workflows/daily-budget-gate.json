@@ -1,0 +1,164 @@
+{
+  "name": "daily-budget-gate",
+  "active": true,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 30
+            }
+          ]
+        }
+      },
+      "name": "Every 30 min",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 300],
+      "id": "trigger-30min"
+    },
+    {
+      "parameters": {
+        "url": "https://api.anthropic.com/v1/organizations/usage_report",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "starting_at",
+              "value": "={{ $now.startOf('day').toISO() }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Anthropic Usage",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300],
+      "id": "usage-fetch",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "anthropic-admin",
+          "name": "Anthropic Admin Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const today = $input.first().json;\nconst spend = (today.data || []).reduce((a, b) => a + (b.amount_usd || 0), 0);\nconst cap = parseFloat($env.DAILY_BUDGET_USD || '1.50');\nreturn [{ json: { spend_usd: spend, cap_usd: cap, exceeded: spend > cap } }];"
+      },
+      "name": "Compute Exceeded",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300],
+      "id": "compute"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ $json.exceeded }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ]
+        }
+      },
+      "name": "Over Cap?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [900, 300],
+      "id": "over-cap"
+    },
+    {
+      "parameters": {
+        "operation": "set",
+        "key": "BUDGET_LOCKED",
+        "value": "true",
+        "options": {}
+      },
+      "name": "Lock Budget",
+      "type": "n8n-nodes-base.staticData",
+      "typeVersion": 1,
+      "position": [1140, 200],
+      "id": "lock"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/sendMessage",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "chat_id",
+              "value": "={{ $env.TELEGRAM_CHAT_ID }}"
+            },
+            {
+              "name": "text",
+              "value": "=🔴 ბიუჯეტი დაბლოკილია დღევანდელ თარიღში.\nდახარჯული: ${{ $node['Compute Exceeded'].json.spend_usd.toFixed(2) }}\nლიმიტი: ${{ $node['Compute Exceeded'].json.cap_usd.toFixed(2) }}\nშემდეგი Anthropic call ვერ ეშვება დღეს."
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Telegram Alert",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1360, 200],
+      "id": "alert"
+    },
+    {
+      "parameters": {
+        "operation": "set",
+        "key": "BUDGET_LOCKED",
+        "value": "false",
+        "options": {}
+      },
+      "name": "Keep Open",
+      "type": "n8n-nodes-base.staticData",
+      "typeVersion": 1,
+      "position": [1140, 400],
+      "id": "keep-open"
+    }
+  ],
+  "connections": {
+    "Every 30 min": {
+      "main": [[{ "node": "Anthropic Usage", "type": "main", "index": 0 }]]
+    },
+    "Anthropic Usage": {
+      "main": [[{ "node": "Compute Exceeded", "type": "main", "index": 0 }]]
+    },
+    "Compute Exceeded": {
+      "main": [[{ "node": "Over Cap?", "type": "main", "index": 0 }]]
+    },
+    "Over Cap?": {
+      "main": [
+        [{ "node": "Lock Budget", "type": "main", "index": 0 }],
+        [{ "node": "Keep Open", "type": "main", "index": 0 }]
+      ]
+    },
+    "Lock Budget": {
+      "main": [[{ "node": "Telegram Alert", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "description": "FND-04 — halts Anthropic-calling workflows when daily spend > DAILY_BUDGET_USD ($1.50). Other workflows check BUDGET_LOCKED static variable before any Anthropic call.",
+    "phase": 0,
+    "requirement": "FND-04"
+  }
+}
