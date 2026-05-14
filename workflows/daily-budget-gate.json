@@ -21,35 +21,42 @@
     },
     {
       "parameters": {
-        "url": "https://api.anthropic.com/v1/organizations/usage_report",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/runs",
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
             {
-              "name": "starting_at",
-              "value": "={{ $now.startOf('day').toISO() }}"
+              "name": "select",
+              "value": "token_cost"
+            },
+            {
+              "name": "start_time",
+              "value": "=gte.{{ $now.startOf('day').toISO() }}"
+            },
+            {
+              "name": "kind",
+              "value": "in.(agent_run,fire_drill)"
             }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" }
           ]
         },
         "options": {}
       },
-      "name": "Anthropic Usage",
+      "name": "Supabase runs (today)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [460, 300],
-      "id": "usage-fetch",
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "anthropic-admin",
-          "name": "Anthropic Admin Key"
-        }
-      }
+      "id": "supabase-fetch"
     },
     {
       "parameters": {
-        "jsCode": "const today = $input.first().json;\nconst spend = (today.data || []).reduce((a, b) => a + (b.amount_usd || 0), 0);\nconst cap = parseFloat($env.DAILY_BUDGET_USD || '1.50');\nreturn [{ json: { spend_usd: spend, cap_usd: cap, exceeded: spend > cap } }];"
+        "jsCode": "// Sum token_cost from Supabase runs since midnight UTC.\n// FND-04 — gate fires when daily Anthropic spend > DAILY_BUDGET_USD.\nconst rows = $input.first().json || [];\nconst spend = rows.reduce((a, r) => a + parseFloat(r.token_cost || 0), 0);\nconst cap = parseFloat($env.DAILY_BUDGET_USD || '1.50');\nreturn [{ json: { spend_usd: Math.round(spend * 10000) / 10000, cap_usd: cap, row_count: rows.length, exceeded: spend > cap } }];"
       },
       "name": "Compute Exceeded",
       "type": "n8n-nodes-base.code",
@@ -107,7 +114,7 @@
             },
             {
               "name": "text",
-              "value": "=🔴 ბიუჯეტი დაბლოკილია დღევანდელ თარიღში.\nდახარჯული: ${{ $node['Compute Exceeded'].json.spend_usd.toFixed(2) }}\nლიმიტი: ${{ $node['Compute Exceeded'].json.cap_usd.toFixed(2) }}\nშემდეგი Anthropic call ვერ ეშვება დღეს."
+              "value": "=🔴 ბიუჯეტი დაბლოკილია დღევანდელ თარიღში.\nდახარჯული: ${{ $node['Compute Exceeded'].json.spend_usd.toFixed(4) }}\nლიმიტი: ${{ $node['Compute Exceeded'].json.cap_usd.toFixed(2) }}\nrun_count: {{ $node['Compute Exceeded'].json.row_count }}\nშემდეგი Anthropic call ვერ ეშვება დღეს."
             }
           ]
         },
@@ -135,9 +142,9 @@
   ],
   "connections": {
     "Every 30 min": {
-      "main": [[{ "node": "Anthropic Usage", "type": "main", "index": 0 }]]
+      "main": [[{ "node": "Supabase runs (today)", "type": "main", "index": 0 }]]
     },
-    "Anthropic Usage": {
+    "Supabase runs (today)": {
       "main": [[{ "node": "Compute Exceeded", "type": "main", "index": 0 }]]
     },
     "Compute Exceeded": {
@@ -157,8 +164,9 @@
     "executionOrder": "v1"
   },
   "meta": {
-    "description": "FND-04 — halts Anthropic-calling workflows when daily spend > DAILY_BUDGET_USD ($1.50). Other workflows check BUDGET_LOCKED static variable before any Anthropic call.",
+    "description": "FND-04 — sums token_cost from Supabase runs (since midnight UTC) and flips BUDGET_LOCKED when > DAILY_BUDGET_USD. No Anthropic Admin Key required; uses our existing service-role key + appended-only runs ledger.",
     "phase": 0,
-    "requirement": "FND-04"
+    "requirement": "FND-04",
+    "data_source": "supabase.runs (replaces Anthropic Usage API)"
   }
 }
