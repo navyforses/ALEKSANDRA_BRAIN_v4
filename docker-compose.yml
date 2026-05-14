@@ -1,0 +1,55 @@
+# ═══════════════════════════════════════════════════════════
+# ALEKSANDRA_BRAIN — Local infrastructure
+# Run with: docker-compose up -d
+# ═══════════════════════════════════════════════════════════
+
+services:
+  # ─── Neo4j (Knowledge Graph + Graphiti) ───────────────
+  neo4j:
+    image: neo4j:5.20-community
+    container_name: aleksandra-neo4j
+    ports:
+      - "7474:7474"   # Browser UI
+      - "7687:7687"   # Bolt protocol
+    environment:
+      - NEO4J_AUTH=neo4j/${NEO4J_PASSWORD:-changeme}
+      - NEO4J_PLUGINS=["apoc"]
+      - NEO4J_dbms_memory_heap_initial__size=512m
+      - NEO4J_dbms_memory_heap_max__size=2G
+      - NEO4J_dbms_memory_pagecache_size=1G
+    volumes:
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+      - neo4j_import:/var/lib/neo4j/import
+      - neo4j_plugins:/plugins
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:7474"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # ─── Qdrant (Vector Store + fastembed) ────────────────
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: aleksandra-qdrant
+    ports:
+      - "6333:6333"   # REST API + Dashboard
+      - "6334:6334"   # gRPC
+    volumes:
+      - qdrant_data:/qdrant/storage
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:6333/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+# n8n runs on Railway (not local). See docs/PHASE_0_HANDOUT.md §2.1
+
+volumes:
+  neo4j_data:
+  neo4j_logs:
+  neo4j_import:
+  neo4j_plugins:
+  qdrant_data:
