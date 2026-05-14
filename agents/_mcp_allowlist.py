@@ -15,6 +15,7 @@ Used by every agent factory in agents/*.py before binding MCP tools to
 the CrewAI Agent instance. A BLOCKED call writes a `runs` row with
 exit_status='blocked_by_allowlist' so violations are visible in audit.
 """
+
 from __future__ import annotations
 
 import csv
@@ -102,7 +103,9 @@ def filter_tools(agent_name: str, mcp_tools: Iterable) -> list:
         if is_allowed(agent_name, mcp_name):
             kept.append(tool)
         else:
-            log.info("filter_tools: drop %s for %s (not allowlisted)", mcp_name, agent_name)
+            log.info(
+                "filter_tools: drop %s for %s (not allowlisted)", mcp_name, agent_name
+            )
     return kept
 
 
@@ -143,6 +146,7 @@ def _record_block(agent_name: str, mcp_name: str) -> None:
 if __name__ == "__main__":
     # CLI: python -m agents._mcp_allowlist [agent_name]
     import sys
+
     target = sys.argv[1] if len(sys.argv) > 1 else None
     if target:
         print(f"MCPs allowed for {target!r}:")

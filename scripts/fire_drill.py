@@ -14,6 +14,7 @@ Run modes:
 The script writes a row to Supabase `runs` at start and on exit. Use
 docs/PHASE_0_EXIT_REPORT.md as the human-readable companion log.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -102,7 +103,10 @@ def _check_budget_locked() -> bool:
             timeout=3,
         )
         for var in r.json().get("data", []):
-            if var.get("key") == "BUDGET_LOCKED" and str(var.get("value")).lower() == "true":
+            if (
+                var.get("key") == "BUDGET_LOCKED"
+                and str(var.get("value")).lower() == "true"
+            ):
                 return True
     except Exception:
         pass
@@ -149,12 +153,14 @@ def main() -> int:
     mode = "telegram" if args.telegram else "budget" if args.budget else "manual"
     started = datetime.now(timezone.utc)
 
-    run_id = _supabase_insert({
-        "kind": "fire_drill",
-        "agent_id": f"fire_drill_{mode}",
-        "exit_status": "in_progress",
-        "start_time": started.isoformat(),
-    })
+    _supabase_insert(
+        {
+            "kind": "fire_drill",
+            "agent_id": f"fire_drill_{mode}",
+            "exit_status": "in_progress",
+            "start_time": started.isoformat(),
+        }
+    )
 
     _telegram(
         f"🔥 fire_drill started ({mode}). I will call Anthropic every {TICK_SECONDS}s "
@@ -181,15 +187,17 @@ def main() -> int:
     elapsed = round((ended - started).total_seconds(), 1)
     ok = halt_reason != "timeout" if (args.telegram or args.budget) else True
 
-    _supabase_insert({
-        "kind": "fire_drill",
-        "agent_id": f"fire_drill_{mode}",
-        "exit_status": halt_reason if halt_reason != "timeout" else "completed",
-        "exit_reason": f"calls={calls} cost_usd={total_cost:.4f} mode={mode}",
-        "token_cost": total_cost,
-        "start_time": started.isoformat(),
-        "end_time": ended.isoformat(),
-    })
+    _supabase_insert(
+        {
+            "kind": "fire_drill",
+            "agent_id": f"fire_drill_{mode}",
+            "exit_status": halt_reason if halt_reason != "timeout" else "completed",
+            "exit_reason": f"calls={calls} cost_usd={total_cost:.4f} mode={mode}",
+            "token_cost": total_cost,
+            "start_time": started.isoformat(),
+            "end_time": ended.isoformat(),
+        }
+    )
 
     summary = (
         f"🔥 fire_drill {'PASSED' if ok else 'FAILED'} ({mode}).\n"

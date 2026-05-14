@@ -6,6 +6,7 @@ Phase 0: smoke-test the crew (no tools yet, no real tasks) + verify the
 MCP allowlist (FND-06) is loaded before any agent can act.
 Phase I+: tools wired, real workflows run on schedule via n8n.
 """
+
 from __future__ import annotations
 
 from crewai import Crew, Process, Task
@@ -33,7 +34,7 @@ def build_crew() -> Crew:
     # Phase 0 smoke test: each agent reports status.
     status_tasks = [
         Task(
-            description=f"Report your status, role, and readiness.",
+            description="Report your status, role, and readiness.",
             agent=agent,
             expected_output="One sentence: <role> ready.",
         )

@@ -20,6 +20,7 @@ Environment variables (loaded from .env):
   SUPABASE_URL             — for runs ledger
   SUPABASE_SERVICE_ROLE_KEY
 """
+
 from __future__ import annotations
 
 import os
