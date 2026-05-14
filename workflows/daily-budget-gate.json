@@ -25,18 +25,9 @@
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
-            {
-              "name": "select",
-              "value": "token_cost"
-            },
-            {
-              "name": "start_time",
-              "value": "=gte.{{ $now.startOf('day').toISO() }}"
-            },
-            {
-              "name": "kind",
-              "value": "in.(agent_run,fire_drill)"
-            }
+            { "name": "select", "value": "token_cost" },
+            { "name": "start_time", "value": "=gte.{{ $now.startOf('day').toISO() }}" },
+            { "name": "kind", "value": "in.(agent_run,fire_drill)" }
           ]
         },
         "sendHeaders": true,
@@ -56,7 +47,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Sum token_cost from Supabase runs since midnight UTC.\n// FND-04 — gate fires when daily Anthropic spend > DAILY_BUDGET_USD.\nconst rows = $input.first().json || [];\nconst spend = rows.reduce((a, r) => a + parseFloat(r.token_cost || 0), 0);\nconst cap = parseFloat($env.DAILY_BUDGET_USD || '1.50');\nreturn [{ json: { spend_usd: Math.round(spend * 10000) / 10000, cap_usd: cap, row_count: rows.length, exceeded: spend > cap } }];"
+        "jsCode": "// FND-04 — sum token_cost since midnight UTC for agent_run + fire_drill.\nconst rows = $input.all().map(i => i.json);\nconst spend = rows.reduce((a, r) => a + parseFloat(r.token_cost || 0), 0);\nconst cap = parseFloat($env.DAILY_BUDGET_USD || '1.50');\nconst exceeded = spend > cap;\nreturn [{ json: {\n  spend_usd: Math.round(spend * 10000) / 10000,\n  cap_usd: cap,\n  row_count: rows.length,\n  exceeded,\n  budget_locked: exceeded,\n  checked_at: new Date().toISOString()\n} }];"
       },
       "name": "Compute Exceeded",
       "type": "n8n-nodes-base.code",
@@ -67,18 +58,13 @@
     {
       "parameters": {
         "conditions": {
-          "options": {
-            "version": 2
-          },
+          "options": { "version": 2 },
           "combinator": "and",
           "conditions": [
             {
               "leftValue": "={{ $json.exceeded }}",
               "rightValue": true,
-              "operator": {
-                "type": "boolean",
-                "operation": "true"
-              }
+              "operator": { "type": "boolean", "operation": "true" }
             }
           ]
         }
@@ -91,33 +77,34 @@
     },
     {
       "parameters": {
-        "operation": "set",
-        "key": "BUDGET_LOCKED",
-        "value": "true",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/runs",
+        "method": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"kind\": \"budget_lock\",\n  \"agent_id\": \"daily-budget-gate\",\n  \"exit_status\": \"killed_by_budget_gate\",\n  \"exit_reason\": \"daily spend $\" + $json.spend_usd + \" exceeded cap $\" + $json.cap_usd,\n  \"end_time\": $json.checked_at,\n  \"token_cost\": 0\n}",
         "options": {}
       },
-      "name": "Lock Budget",
-      "type": "n8n-nodes-base.staticData",
-      "typeVersion": 1,
+      "name": "Log Lock to runs",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
       "position": [1140, 200],
-      "id": "lock"
+      "id": "log-lock"
     },
     {
       "parameters": {
         "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/sendMessage",
         "sendBody": true,
-        "bodyParameters": {
-          "parameters": [
-            {
-              "name": "chat_id",
-              "value": "={{ $env.TELEGRAM_CHAT_ID }}"
-            },
-            {
-              "name": "text",
-              "value": "=🔴 ბიუჯეტი დაბლოკილია დღევანდელ თარიღში.\nდახარჯული: ${{ $node['Compute Exceeded'].json.spend_usd.toFixed(4) }}\nლიმიტი: ${{ $node['Compute Exceeded'].json.cap_usd.toFixed(2) }}\nrun_count: {{ $node['Compute Exceeded'].json.row_count }}\nშემდეგი Anthropic call ვერ ეშვება დღეს."
-            }
-          ]
-        },
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"chat_id\": \"{{ $env.TELEGRAM_CHAT_ID }}\",\n  \"text\": \"🔴 ბიუჯეტი დაბლოკილია დღევანდელ თარიღში.\\nდახარჯული: $\" + $node['Compute Exceeded'].json.spend_usd + \"\\nლიმიტი: $\" + $node['Compute Exceeded'].json.cap_usd + \"\\nrun_count: \" + $node['Compute Exceeded'].json.row_count + \"\\nშემდეგი Anthropic call ვერ ეშვება დღეს.\"\n}",
         "options": {}
       },
       "name": "Telegram Alert",
@@ -128,16 +115,13 @@
     },
     {
       "parameters": {
-        "operation": "set",
-        "key": "BUDGET_LOCKED",
-        "value": "false",
-        "options": {}
+        "jsCode": "// FND-04 — under cap. Just log + return; no Telegram noise.\nconst d = $input.first().json;\nconsole.log(`budget OK: spent $${d.spend_usd}/$${d.cap_usd} (${d.row_count} runs)`);\nreturn [{ json: d }];"
       },
-      "name": "Keep Open",
-      "type": "n8n-nodes-base.staticData",
-      "typeVersion": 1,
+      "name": "Under Cap (no-op)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
       "position": [1140, 400],
-      "id": "keep-open"
+      "id": "noop"
     }
   ],
   "connections": {
@@ -152,21 +136,19 @@
     },
     "Over Cap?": {
       "main": [
-        [{ "node": "Lock Budget", "type": "main", "index": 0 }],
-        [{ "node": "Keep Open", "type": "main", "index": 0 }]
+        [{ "node": "Log Lock to runs", "type": "main", "index": 0 }],
+        [{ "node": "Under Cap (no-op)", "type": "main", "index": 0 }]
       ]
     },
-    "Lock Budget": {
+    "Log Lock to runs": {
       "main": [[{ "node": "Telegram Alert", "type": "main", "index": 0 }]]
     }
   },
-  "settings": {
-    "executionOrder": "v1"
-  },
+  "settings": { "executionOrder": "v1" },
   "meta": {
-    "description": "FND-04 — sums token_cost from Supabase runs (since midnight UTC) and flips BUDGET_LOCKED when > DAILY_BUDGET_USD. No Anthropic Admin Key required; uses our existing service-role key + appended-only runs ledger.",
+    "description": "FND-04 — sums token_cost from Supabase runs (since midnight UTC) and on over-cap (1) writes a budget_lock row to runs and (2) sends Telegram alert. Other workflows query the latest budget_lock row before any Anthropic call.",
     "phase": 0,
     "requirement": "FND-04",
-    "data_source": "supabase.runs (replaces Anthropic Usage API)"
+    "data_source": "supabase.runs"
   }
 }
