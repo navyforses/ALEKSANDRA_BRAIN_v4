@@ -24,6 +24,9 @@ supabase>=2.8.0
 psycopg2-binary>=2.9.9
 pgvector>=0.3.0
 
+# ─── Object storage (Cloudflare R2 via S3-compatible API) ─
+boto3>=1.43.0
+
 # ─── MCP framework ───────────────────────────────────────
 fastmcp>=0.4.0
 mcp>=1.0.0
