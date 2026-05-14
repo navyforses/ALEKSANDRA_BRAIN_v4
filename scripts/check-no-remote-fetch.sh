@@ -12,8 +12,8 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-if [[ ! -d viewer ]] || [[ -z "$(find viewer -maxdepth 3 -name '*.ts' -o -name '*.tsx' 2>/dev/null | head -n 1)" ]]; then
-  echo "OK — viewer/ has no TS/TSX yet, nothing to check."
+if [[ ! -d viewer ]] || [[ -z "$(find viewer -path 'viewer/node_modules' -prune -o \( -name '*.ts' -o -name '*.tsx' \) -print 2>/dev/null | head -n 1)" ]]; then
+  echo "OK — viewer/ has no TS/TSX yet (excluding node_modules), nothing to check."
   exit 0
 fi
 
@@ -21,7 +21,10 @@ fi
 PATTERNS='(fetch\(|axios\.(get|post|put|delete|patch|head)|axios\(|new\s+XMLHttpRequest|navigator\.sendBeacon|EventSource\()'
 
 # Allowed targets: self-relative, /api/*, localhost, 127.0.0.1, blob:, data:
-violations=$(grep -RInE "$PATTERNS" viewer --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" 2>/dev/null \
+# Exclude node_modules + .next build output (third-party + generated code).
+violations=$(grep -RInE "$PATTERNS" viewer \
+    --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" \
+    --exclude-dir=node_modules --exclude-dir=.next --exclude-dir=dist 2>/dev/null \
   | grep -vE "(['\"]/api/|['\"]/[a-zA-Z]|['\"]\.\./|localhost|127\.0\.0\.1|blob:|data:|/\* allow-remote \*/)" \
   || true)
 
