@@ -90,7 +90,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"kind\": \"budget_lock\",\n  \"agent_id\": \"daily-budget-gate\",\n  \"exit_status\": \"killed_by_budget_gate\",\n  \"exit_reason\": \"daily spend $\" + $json.spend_usd + \" exceeded cap $\" + $json.cap_usd,\n  \"end_time\": $json.checked_at,\n  \"token_cost\": 0\n}",
+        "jsonBody": "{\n  \"kind\": \"budget_lock\",\n  \"agent_id\": \"daily-budget-gate\",\n  \"exit_status\": \"killed_by_budget_gate\",\n  \"exit_reason\": \"daily spend ${{ $json.spend_usd }} exceeded cap ${{ $json.cap_usd }}\",\n  \"end_time\": \"{{ $json.checked_at }}\",\n  \"token_cost\": 0\n}",
         "options": {}
       },
       "name": "Log Lock to runs",
@@ -104,7 +104,7 @@
         "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/sendMessage",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"chat_id\": \"{{ $env.TELEGRAM_CHAT_ID }}\",\n  \"text\": \"🔴 ბიუჯეტი დაბლოკილია დღევანდელ თარიღში.\\nდახარჯული: $\" + $node['Compute Exceeded'].json.spend_usd + \"\\nლიმიტი: $\" + $node['Compute Exceeded'].json.cap_usd + \"\\nrun_count: \" + $node['Compute Exceeded'].json.row_count + \"\\nშემდეგი Anthropic call ვერ ეშვება დღეს.\"\n}",
+        "jsonBody": "{\n  \"chat_id\": \"{{ $env.TELEGRAM_CHAT_ID }}\",\n  \"text\": \"🔴 ბიუჯეტი დაბლოკილია დღევანდელ თარიღში.\\nდახარჯული: ${{ $node['Compute Exceeded'].json.spend_usd }}\\nლიმიტი: ${{ $node['Compute Exceeded'].json.cap_usd }}\\nrun_count: {{ $node['Compute Exceeded'].json.row_count }}\\nშემდეგი Anthropic call ვერ ეშვება დღეს.\"\n}",
         "options": {}
       },
       "name": "Telegram Alert",
