@@ -56,7 +56,9 @@ yarn-error.log*
 
 # Claude Code / memory
 .claude-mem/
-.claude/cache/
+.claude/
+.agents/
+.code-review-graph/
 CLAUDE.local.md
 
 # IDE
