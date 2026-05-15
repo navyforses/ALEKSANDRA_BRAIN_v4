@@ -6,7 +6,10 @@
 services:
   # ─── Neo4j (Knowledge Graph + Graphiti) ───────────────
   neo4j:
-    image: neo4j:5.20-community
+    # Phase 2 sub-phase 2B requires Neo4j >= 5.24 for graphiti-core 0.29's
+    # dynamic-label syntax (SET n:$(node.labels)). Pinned to 5.26 LTS;
+    # named volumes preserve Phase 0 data (Patient + BrainRegion seeds).
+    image: neo4j:5.26-community
     container_name: aleksandra-neo4j
     ports:
       - "7474:7474"   # Browser UI
