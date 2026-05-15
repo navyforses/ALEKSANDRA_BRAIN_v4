@@ -25,9 +25,18 @@ import httpx
 from graphiti_core.nodes import EpisodeType
 
 from scripts.extraction.graphiti_client import GROUP_ID, get_graphiti
+from scripts.extraction.ontology import build_entity_types
 from scripts.ledger import _supabase_creds, _supabase_headers, get_state, set_state
 
 EPISODE_CHAR_THRESHOLD = 8000
+
+# MEM-06: ontology constraint loaded once per process. The LLM may classify an
+# extracted entity into one of these 8 types or skip it entirely; passing
+# excluded_entity_types=['Entity'] suppresses Graphiti's default catch-all
+# label so authors / affiliations / funders no longer flood the graph as
+# generic entities.
+_ENTITY_TYPES, _ONTOLOGY_VERSION = build_entity_types()
+_EXCLUDED_ENTITY_TYPES = ["Entity"]
 
 
 def _fetch_chunks(ledger_id: str) -> list[dict]:
@@ -153,10 +162,15 @@ async def ingest_paper_as_episode(ledger_id: str, *, force: bool = False) -> dic
             result = await g.add_episode(
                 name=name,
                 episode_body=segment,
-                source_description=f"{source_type} paper: {title[:120]}",
+                source_description=(
+                    f"{source_type} paper: {title[:120]} "
+                    f"[ontology v{_ONTOLOGY_VERSION}]"
+                ),
                 reference_time=ref_time,
                 source=EpisodeType.text,
                 group_id=GROUP_ID,
+                entity_types=_ENTITY_TYPES,
+                excluded_entity_types=_EXCLUDED_ENTITY_TYPES,
             )
             counters["episodes_created"] += 1
             ep_uuid = getattr(

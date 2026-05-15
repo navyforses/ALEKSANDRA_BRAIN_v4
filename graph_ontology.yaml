@@ -1,0 +1,148 @@
+# graph_ontology.yaml — MEM-06
+#
+# Single source-of-truth for the entity types Graphiti is allowed to extract
+# into the hie_research knowledge graph. Ad-hoc labels (Author, Funder,
+# Institution, EthicsCommittee, etc.) are rejected by NOT being listed here:
+# scripts/extraction/ingest_paper.py passes `entity_types=<this file>` and
+# `excluded_entity_types=['Entity']` to graphiti.add_episode, which forces the
+# LLM to either fit an extracted entity into one of these types or drop it.
+#
+# Changes to this file require a versioned migration commit (one entry per
+# version + a note in the commit body) — Phase 2 REQUIREMENTS MEM-06 contract.
+#
+# Each type:
+#   description  ← passed to the extractor LLM as the type definition (read
+#                  by Graphiti's resolve_extracted_nodes prompt template)
+#   examples     ← reserved for future few-shot prompting (not used today)
+#
+# Schema version is bumped whenever an existing type is renamed or removed.
+# Adding a new type is a minor bump (1.0 → 1.1). Removing/renaming is a
+# major bump (1.x → 2.0).
+
+version: "1.0"
+last_changed: 2026-05-15
+project: aleksandra_brain
+group_id: hie_research
+
+entity_types:
+  Drug:
+    description: >
+      A pharmaceutical compound, drug, or drug class used or studied in medical
+      treatment. Includes branded names (Levetiracetam, Vigabatrin), chemical
+      classes (sodium channel blockers, ketogenic compounds, neurosteroids),
+      and investigational compounds (CER-0001, allopregnanolone). Excludes
+      foods, supplements without therapeutic intent, and generic terms like
+      "medication" without a specific compound.
+    examples:
+      - Levetiracetam
+      - Vigabatrin
+      - Allopregnanolone
+      - N-acetylcysteine (NAC)
+      - Tricaprilin / CER-0001
+      - Sodium channel blockers (class)
+      - Erythropoietin
+
+  Gene:
+    description: >
+      A human, animal, or microbial gene or gene product (mRNA, protein) named
+      by its standard symbol or full name. Includes transcription factors,
+      enzymes, receptors named at the gene level. Excludes generic terms like
+      "growth factor" without a specific symbol and broad gene families
+      ("kinases") that are not a single gene.
+    examples:
+      - BDNF
+      - HIF1A
+      - SLC6A1
+      - VEGF
+      - GDNF
+      - NMDA receptor subunits (NR2B / GRIN2B)
+
+  Pathway:
+    description: >
+      A named biological signaling pathway, biochemical cascade, or molecular
+      mechanism. Includes inflammation cascades (NLRP3 inflammasome),
+      metabolism (AMPK signaling, mitochondrial respiration), excitotoxicity
+      (glutamate-NMDA), and oxidative stress pathways. Excludes single
+      molecules and broad concepts like "neuroprotection" without a named
+      mechanism.
+    examples:
+      - AMPK signaling
+      - Glutamate excitotoxicity
+      - NLRP3 inflammasome
+      - Oxidative stress / ROS pathway
+      - Apoptosis cascade
+      - BBB transport
+
+  BrainRegion:
+    description: >
+      A named anatomical region or structure of the brain. Includes cortical
+      areas (motor cortex, hippocampus), deep grey matter (basal ganglia,
+      thalamus), white matter tracts (corticospinal tract), and ventricles.
+      Excludes generic terms like "brain", "central nervous system", or
+      "cerebrum" alone.
+    examples:
+      - Hippocampus
+      - Basal ganglia
+      - Thalamus
+      - Corpus callosum
+      - Brainstem
+      - Periventricular white matter
+      - Cerebellum
+
+  Disease:
+    description: >
+      A clinical condition, diagnosis, or syndrome. Includes named diseases
+      (cystic encephalomalacia, HIE, cerebral palsy), syndromes (West
+      syndrome, infantile spasms), and pathological states (acute kidney
+      injury, multi-organ dysfunction). Excludes symptoms (seizure, vomiting),
+      lab abnormalities, and unspecified "complications".
+    examples:
+      - Hypoxic-ischemic encephalopathy (HIE)
+      - Cystic encephalomalacia
+      - Cerebral palsy
+      - West syndrome / infantile spasms
+      - Acute kidney injury
+      - Necrotizing enterocolitis
+      - Periventricular leukomalacia
+
+  Treatment:
+    description: >
+      A non-drug therapeutic intervention or procedure. Includes device-based
+      therapies (therapeutic hypothermia, ECMO), cellular therapies (cord
+      blood infusion, MSC), rehabilitation methods (constraint-induced
+      movement therapy), and surgical interventions. Pharmacological agents
+      go under Drug, not Treatment.
+    examples:
+      - Therapeutic hypothermia
+      - Cord blood infusion
+      - Mesenchymal stem cell therapy
+      - Hyperbaric oxygen
+      - ECMO
+      - Continuous kidney replacement therapy
+
+  Biomarker:
+    description: >
+      A measurable indicator of biological state used to diagnose, prognose,
+      or monitor a condition. Includes laboratory analytes (NSE, lactate,
+      troponin), imaging metrics (ADC map, ZADC, T2 hyperintensity),
+      electrophysiological markers (aEEG background, burst-suppression), and
+      composite scores (Sarnat stage, KDIGO criteria).
+    examples:
+      - Neuron-specific enolase (NSE)
+      - Serum lactate
+      - ADC map / ZADC
+      - aEEG background pattern
+      - Sarnat staging
+      - KDIGO definitions
+
+  Trial:
+    description: >
+      A named clinical trial, study, or registry by its identifier or short
+      name. Includes ClinicalTrials.gov NCT numbers, named cohort studies
+      (PANIC, ACODA), and protocol names (Duke EAP cord blood). Excludes
+      generic "study" mentions and unnamed observational reports.
+    examples:
+      - NCT05123456
+      - Duke EAP cord blood expanded access
+      - BONBID-HIE 2024 challenge
+      - PANIC study
