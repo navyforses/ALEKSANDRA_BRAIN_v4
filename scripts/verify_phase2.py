@@ -92,7 +92,9 @@ def _sb_count(path: str, params: dict[str, str]) -> int:
 
 
 def _qdrant_collection_info(name: str) -> dict:
-    url = os.environ.get("QDRANT_URL", "http://localhost:6333")
+    url = os.environ.get("QDRANT_URL", "http://127.0.0.1:6333").replace(
+        "localhost", "127.0.0.1"
+    )
     r = httpx.get(f"{url}/collections/{name}", timeout=10)
     r.raise_for_status()
     return r.json().get("result", {})
@@ -289,24 +291,31 @@ def check_mem_alignment(report: Report) -> None:
         )
     )
 
-    # MEM-04: Qdrant payload stamps
-    qdrant_url = os.environ.get("QDRANT_URL", "http://localhost:6333")
+    # MEM-04: Qdrant payload stamps. Filter to real chunk points (those that
+    # carry a chunk_id); any leftover smoke-test points without chunk_id are
+    # legacy fixtures and shouldn't gate the check.
+    qdrant_url = os.environ.get("QDRANT_URL", "http://127.0.0.1:6333").replace(
+        "localhost", "127.0.0.1"
+    )
     r = httpx.post(
         f"{qdrant_url}/collections/papers/points/scroll",
-        json={"limit": 5, "with_payload": True, "with_vector": False},
-        timeout=10,
+        json={"limit": 50, "with_payload": True, "with_vector": False},
+        timeout=30,
     )
     points = r.json().get("result", {}).get("points", [])
-    payloads = [p.get("payload", {}) for p in points if p.get("payload")]
+    payloads = [
+        p.get("payload", {}) for p in points if (p.get("payload") or {}).get("chunk_id")
+    ]
     has_em = all("embedding_model" in p for p in payloads) if payloads else False
     has_cv = all("chunker_version" in p for p in payloads) if payloads else False
     has_ch = all("content_hash" in p for p in payloads) if payloads else False
+    has_gu = all("graphiti_uuid" in p for p in payloads) if payloads else False
     report.add(
         Check(
             "MEM-04",
-            "Qdrant points stamped (embedding_model + chunker_version + content_hash)",
-            has_em and has_cv and has_ch,
-            f"sample={len(payloads)} em={has_em} cv={has_cv} ch={has_ch}",
+            "Qdrant points stamped (embedding_model + chunker_version + content_hash + graphiti_uuid)",
+            has_em and has_cv and has_ch and has_gu,
+            f"sample={len(payloads)} em={has_em} cv={has_cv} ch={has_ch} gu={has_gu}",
             "MEM-04",
         )
     )

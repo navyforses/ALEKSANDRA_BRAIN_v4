@@ -24,6 +24,7 @@ runs don't repay the model-load cost.
 
 from __future__ import annotations
 
+import hashlib
 import os
 import uuid
 from dataclasses import dataclass
@@ -33,12 +34,19 @@ from fastembed import TextEmbedding
 from qdrant_client import QdrantClient
 from qdrant_client.models import PointStruct
 
+from scripts.chunking.chunker import CHUNKER_VERSION
 from scripts.ledger import load_env
 
 EMBED_MODEL = "BAAI/bge-small-en-v1.5"
 EMBED_DIM = 384
 QDRANT_COLLECTION = "papers"
 QDRANT_PAYLOAD_TEXT_MAX = 300  # truncate preview field; full text lives in Supabase
+
+
+def _content_hash(text: str) -> str:
+    """SHA256 hex digest of the raw chunk text. MEM-04 dedup + provenance."""
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
 
 _embedder: TextEmbedding | None = None
 _qdrant: QdrantClient | None = None
@@ -104,6 +112,13 @@ def upsert_chunks(rows: list[ChunkRow]) -> list[str]:
                     "source_type": row.source_type,
                     "source_id": row.source_id,
                     "text_preview": row.raw_text[:QDRANT_PAYLOAD_TEXT_MAX],
+                    # MEM-04: provenance + dedup + version stamps. graphiti_uuid
+                    # is populated later by the post-2B reconciler that joins
+                    # paper_chunks ↔ kv_state.graphiti_processed:* episodes.
+                    "embedding_model": EMBED_MODEL,
+                    "chunker_version": CHUNKER_VERSION,
+                    "content_hash": _content_hash(row.raw_text),
+                    "graphiti_uuid": None,
                 },
             )
         )

@@ -23,6 +23,12 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 DEFAULT_CHUNK_SIZE = 512
 DEFAULT_CHUNK_OVERLAP = 64
 
+# CHUNKER_VERSION is stamped on every Qdrant point's payload (MEM-04). If you
+# change the splitter algorithm, the chunk size, the overlap, or the separator
+# set, BUMP this string so old vectors are distinguishable from new ones during
+# any rechunk pass. Format: "<algo>-<size>-<overlap>-v<n>".
+CHUNKER_VERSION = "rcst-512-64-v1"
+
 
 @dataclass
 class Chunk:
