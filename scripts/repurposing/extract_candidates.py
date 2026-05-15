@@ -20,14 +20,13 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import sys
 import uuid
 from datetime import datetime, timezone
 
-import anthropic
 import httpx
 
+from scripts.cognition.llm import call_claude
 from scripts.ledger import _supabase_creds, _supabase_headers, load_env
 
 MODEL = "claude-sonnet-4-5"
@@ -82,10 +81,6 @@ def _fetch_hypotheses(status_filter: list[str]) -> list[dict]:
 
 
 def _call_claude(hyp: dict) -> list[dict]:
-    api_key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
-    if not api_key:
-        raise RuntimeError("ANTHROPIC_API_KEY missing")
-    client = anthropic.Anthropic(api_key=api_key)
     user = (
         f"## Hypothesis title\n{hyp['title']}\n\n"
         f"## Description\n{hyp['description']}\n\n"
@@ -93,14 +88,16 @@ def _call_claude(hyp: dict) -> list[dict]:
         f"## AI reasoning (JSON)\n{hyp.get('ai_reasoning') or '{}'}\n\n"
         "Return JSON only."
     )
-    resp = client.messages.create(
+    # call_claude() appends one runs row (kind='llm_call',
+    # agent_id='repurposing_extract') with token+cost telemetry.
+    raw = call_claude(
+        prompt=user,
+        agent_id="repurposing_extract",
         model=MODEL,
+        system=SYSTEM,
         max_tokens=MAX_TOKENS,
         temperature=TEMPERATURE,
-        system=SYSTEM,
-        messages=[{"role": "user", "content": user}],
-    )
-    raw = "".join(b.text for b in resp.content if b.type == "text").strip()
+    ).strip()
     if raw.startswith("```"):
         first_nl = raw.find("\n")
         raw = raw[first_nl + 1 :].rsplit("```", 1)[0].strip()

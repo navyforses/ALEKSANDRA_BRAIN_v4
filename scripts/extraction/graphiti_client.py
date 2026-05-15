@@ -29,6 +29,7 @@ from graphiti_core.embedder.client import EmbedderClient
 from graphiti_core.llm_client.anthropic_client import AnthropicClient
 from graphiti_core.llm_client.config import LLMConfig
 
+from scripts.cognition.llm import make_instrumented_async_anthropic
 from scripts.ledger import load_env
 
 GROUP_ID = "hie_research"
@@ -87,7 +88,16 @@ def _build_anthropic_client() -> AnthropicClient:
         temperature=DEFAULT_TEMPERATURE,
         max_tokens=DEFAULT_MAX_TOKENS,
     )
-    return AnthropicClient(config=config, cache=False)
+    # Inject an instrumented AsyncAnthropic so every internal Graphiti LLM call
+    # (entity extraction, edge extraction, dedup, summarisation) writes one
+    # `runs` row with agent_id='analyzer_graphiti' + token+cost telemetry. The
+    # wrapper duck-types as AsyncAnthropic; see scripts.cognition.llm.
+    instrumented = make_instrumented_async_anthropic(
+        api_key=api_key,
+        agent_id="analyzer_graphiti",
+        max_retries=1,
+    )
+    return AnthropicClient(config=config, cache=False, client=instrumented)
 
 
 def get_graphiti() -> Graphiti:

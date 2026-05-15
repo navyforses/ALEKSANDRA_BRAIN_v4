@@ -29,9 +29,9 @@ import sys
 import time
 from datetime import datetime, timezone
 
-import anthropic
 import httpx
 
+from scripts.cognition.llm import call_claude
 from scripts.fetch_pubmed import (
     _efetch_xml,
     _esearch_pmids,
@@ -120,7 +120,6 @@ def _llm_dossier(name: str, signals: dict, hyp_context: str) -> str:
     api_key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
     if not api_key:
         return f"PubMed: {len(signals['pmids'])} hits; recent year {signals.get('recent_year')}; pediatric data {signals.get('has_pediatric_data')}."
-    client = anthropic.Anthropic(api_key=api_key)
     sys_msg = (
         "Write a single 4-6 sentence clinician dossier for the named "
         "repurposing candidate. Use only the supplied PubMed signals and "
@@ -133,14 +132,16 @@ def _llm_dossier(name: str, signals: dict, hyp_context: str) -> str:
         f"## PubMed signals\n{json.dumps(signals, indent=2)}\n\n"
         "Write the dossier paragraph."
     )
-    resp = client.messages.create(
+    # call_claude() appends one runs row (kind='llm_call',
+    # agent_id='repurposing_dossier') with token+cost telemetry.
+    return call_claude(
+        prompt=user,
+        agent_id="repurposing_dossier",
         model=MODEL,
+        system=sys_msg,
         max_tokens=MAX_TOKENS,
         temperature=TEMPERATURE,
-        system=sys_msg,
-        messages=[{"role": "user", "content": user}],
-    )
-    return "".join(b.text for b in resp.content if b.type == "text").strip()
+    ).strip()
 
 
 def _fetch_candidates_to_validate() -> list[dict]:

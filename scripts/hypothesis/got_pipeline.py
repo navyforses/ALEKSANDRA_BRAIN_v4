@@ -40,10 +40,10 @@ import sys
 import uuid
 from datetime import datetime, timezone
 
-import anthropic
 import httpx
 from neo4j import GraphDatabase
 
+from scripts.cognition.llm import call_claude
 from scripts.ledger import _supabase_creds, _supabase_headers, load_env
 from scripts.rag.retrieve import retrieve
 
@@ -215,20 +215,16 @@ prompt. No prose outside the JSON.
 # Step 3: run the LLM + parse
 # ------------------------------------------------------------------
 def _call_claude(system: str, user: str) -> str:
-    api_key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
-    if not api_key:
-        raise RuntimeError("ANTHROPIC_API_KEY missing from .env")
-    client = anthropic.Anthropic(api_key=api_key)
-    resp = client.messages.create(
+    # call_claude() writes one `runs` row (kind='llm_call', agent_id='hypothesis')
+    # per request, capturing tokens + USD cost. See scripts.cognition.llm.
+    return call_claude(
+        prompt=user,
+        agent_id="hypothesis",
         model=MODEL,
+        system=system,
         max_tokens=MAX_TOKENS,
         temperature=TEMPERATURE,
-        system=system,
-        messages=[{"role": "user", "content": user}],
-    )
-    # Concatenate all text blocks (Sonnet 4.5 usually returns one)
-    parts = [b.text for b in resp.content if b.type == "text"]
-    return "".join(parts).strip()
+    ).strip()
 
 
 def _parse_hypotheses(raw: str) -> list[dict]:
