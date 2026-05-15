@@ -1,0 +1,97 @@
+{
+  "name": "perception-6h",
+  "active": false,
+  "_phase_1_note": "Inactive template. Activates after a Railway Python worker exposing /perception-tick is deployed (separate post-Phase-1 mini-phase). For the Phase 1 exit drill we trigger scripts/perception_tick.py manually from the dev venv.",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 6
+            }
+          ]
+        }
+      },
+      "name": "Every 6 hours",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 300],
+      "id": "trigger-6h"
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.PERCEPTION_WORKER_URL }}/perception-tick",
+        "options": {
+          "timeout": 600000
+        }
+      },
+      "name": "Run perception_tick",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300],
+      "id": "perception-call",
+      "_comment": "Phase 1: replace PERCEPTION_WORKER_URL with Railway worker URL. For local-only drill, this node is skipped and scripts/perception_tick.py is run from venv."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse perception_tick response. The Python orchestrator returns:\n//   {\n//     \"exit_status\": \"completed\" | \"killed_by_budget_gate\",\n//     \"counts\": { pubmed: {...}, ctgov: {...}, ... },\n//     \"total_new_rows\": N,\n//     \"duration_seconds\": N\n//   }\nconst r = $input.first().json;\nconst exit_status = r.exit_status || 'unknown';\nconst total = r.total_new_rows ?? 0;\nconst dt = r.duration_seconds ?? 0;\nconst counts = r.counts || {};\nconst g = (step, key) => parseInt((counts[step] || {})[key] || 0);\nconst pubmed = g('pubmed', 'ledger_inserted');\nconst ctgov = g('ctgov', 'ledger_inserted');\nconst preprints = g('preprints', 'ledger_inserted');\nconst gap = g('gap_filler', 'ledger_inserted');\nconst neg = g('negative', 'ledger_inserted');\nconst summary = `\\u{1F578}\\uFE0F perception_tick ${exit_status} +${total} rows in ${dt}s\\n  pubmed=${pubmed} ctgov=${ctgov} preprints=${preprints}\\n  gap-fill=${gap} negative=${neg}`;\nreturn [{ json: { summary, exit_status, total, ...r } }];"
+      },
+      "name": "Format summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300],
+      "id": "format-summary"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/sendMessage",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"chat_id\": \"{{ $env.TELEGRAM_CHAT_ID }}\", \"text\": {{ JSON.stringify($json.summary) }}}",
+        "options": {}
+      },
+      "name": "Telegram summary",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 300],
+      "id": "telegram-post"
+    }
+  ],
+  "connections": {
+    "Every 6 hours": {
+      "main": [
+        [
+          {
+            "node": "Run perception_tick",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run perception_tick": {
+      "main": [
+        [
+          {
+            "node": "Format summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format summary": {
+      "main": [
+        [
+          {
+            "node": "Telegram summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
