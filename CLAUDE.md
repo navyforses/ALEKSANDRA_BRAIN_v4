@@ -108,7 +108,8 @@ BMC MRN: 7616818
 
 ## მიმდინარე ეტაპი
 მიმართულება I: აღქმა (Perception) — **დახურულია 2026-05-15** (10/10 PASS — see docs/PHASE_1_EXIT_REPORT.md)
-შემდეგი: მიმართულება II (Memory) — RAGFlow chunking + Qdrant embeddings + Graphiti entity extraction
+მიმართულება II: ცოდნა (Memory) — **დახურულია 2026-05-15** (14/14 PASS — see docs/PHASE_2_EXIT_REPORT.md). 200 entities · 307 facts · 47 episodes · MEM-01/04/05/06 live · MEM-02/03/07/08 deferred to Phase 2.5
+შემდეგი: მიმართულება III (Cognition — minimum) — CGM-01 verifier + CGM-02 Analyzer + CGM-03 Communicator + imperative-verb lint + 6-tier evidence ranking + HIGH-only confidence gate
 
 ## ენა
 - კოდი: ინგლისურად
