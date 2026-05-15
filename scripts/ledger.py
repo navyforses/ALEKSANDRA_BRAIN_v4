@@ -267,6 +267,41 @@ def insert_ledger_row(
 
 
 # ---------------------------------------------------------------------------
+# kv_state — cross-run perception state (Supabase-backed kv store)
+# ---------------------------------------------------------------------------
+def get_state(key: str) -> dict[str, Any] | None:
+    """Fetch a JSON value from kv_state. None if key not present."""
+    url, sb_key = _supabase_creds()
+    r = httpx.get(
+        f"{url}/rest/v1/kv_state",
+        params={"key": f"eq.{key}", "select": "value", "limit": "1"},
+        headers=_supabase_headers(sb_key, prefer="count=none"),
+        timeout=10,
+    )
+    if r.status_code != 200:
+        raise RuntimeError(f"get_state failed: HTTP {r.status_code}: {r.text[:200]}")
+    rows = r.json()
+    return rows[0]["value"] if rows else None
+
+
+def set_state(key: str, value: dict[str, Any]) -> None:
+    """Upsert a JSON value into kv_state."""
+    url, sb_key = _supabase_creds()
+    body = {"key": key, "value": value}
+    r = httpx.post(
+        f"{url}/rest/v1/kv_state",
+        json=body,
+        headers={
+            **_supabase_headers(sb_key),
+            "Prefer": "resolution=merge-duplicates,return=representation",
+        },
+        timeout=10,
+    )
+    if r.status_code not in (200, 201):
+        raise RuntimeError(f"set_state failed: HTTP {r.status_code}: {r.text[:200]}")
+
+
+# ---------------------------------------------------------------------------
 # Smoke test (python -m scripts.ledger)
 # ---------------------------------------------------------------------------
 def _smoke() -> int:
