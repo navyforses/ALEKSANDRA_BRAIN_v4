@@ -5,7 +5,7 @@
 > analyzing, and discovering treatment possibilities for children with
 > severe brain injury.
 
-**Status:** Phase 0 — Foundation (Week 1-2)
+**Status:** Phase 2 closed; Phase 2.5/3 entry active (2026-05-15)
 **Version:** v4.0
 **License:** MIT
 
@@ -99,39 +99,36 @@ docker-compose up -d        # Neo4j on :7474, Qdrant on :6333
 pip install -r requirements.txt
 ```
 
-### 4. Phase 0 smoke test
+### 4. Current verification
 ```bash
-python scripts/test_crew.py    # 5 agents initialize
-python scripts/test_all.py     # 10-point verification
+.venv/Scripts/python.exe -X utf8 -m scripts.verify_phase1
+.venv/Scripts/python.exe -X utf8 -m scripts.verify_phase2 --gate all
+.venv/Scripts/python.exe -X utf8 scripts/test_crew.py
 ```
 
-### 5. Run the (yet-empty) brain
+On Windows, use the project virtualenv and `-X utf8`; bare `python` can miss
+dependencies and CP1252 console output can break verifier tables.
+
+### 5. Run the brain shell
 ```bash
 python -m mcp.hello_brain      # MCP server
 ```
 
 ---
 
-## Phase 0 progress (current)
+## Current progress
 
-- [x] Repo scaffolding (this commit)
-- [ ] Supabase schema migration (§1.1)
-- [ ] Neo4j + Graphiti (§1.2)
-- [ ] Qdrant + fastembed (§1.3)
-- [ ] Cloudflare R2/KV (§1.4)
-- [ ] n8n on Railway (§2.1)
-- [ ] Telegram bot (§2.2)
-- [ ] Claude API key (§3.1)
-- [ ] CrewAI 5 agents (§3.2)
-- [ ] mem0 shared memory (§3.3)
-- [ ] Next.js + Vercel skeleton (§4.2)
-- [ ] FastMCP hello_brain (§5.1)
-- [ ] Papers + contacts migration (§6)
-- [ ] Security + RLS (§7)
-- [ ] Final verification (§8)
+- [x] Phase 0 foundation closed — see [`docs/PHASE_0_EXIT_REPORT.md`](docs/PHASE_0_EXIT_REPORT.md)
+- [x] Phase 1 perception closed — 10/10 PASS in [`docs/PHASE_1_EXIT_REPORT.md`](docs/PHASE_1_EXIT_REPORT.md)
+- [x] Phase 2 memory closed — 19/19 PASS in [`docs/PHASE_2_EXIT_REPORT.md`](docs/PHASE_2_EXIT_REPORT.md)
+- [x] External Phase 2 live audit written — [`docs/PHASE_2_LIVE_AUDIT.md`](docs/PHASE_2_LIVE_AUDIT.md)
+- [x] Claude Code activity diagnostic written — [`docs/ACTIVITY_DIAGNOSTIC_PLAN.md`](docs/ACTIVITY_DIAGNOSTIC_PLAN.md)
+- [ ] Phase 2.5 cleanups — perception scale-up, DSPy training data, supporting paper hydration, repurposing run logs
+- [ ] Phase 3 cognition minimum — CGM-01 verifier, Analyzer PICO, Communicator schema, evidence ranking, confidence gate
 
-Detailed plan → [`docs/PHASE_0_PLAN.md`](docs/PHASE_0_PLAN.md)
-Step-by-step handout → [`docs/PHASE_0_HANDOUT.md`](docs/PHASE_0_HANDOUT.md)
+Historical Phase 0 materials remain available:
+[`docs/PHASE_0_PLAN.md`](docs/PHASE_0_PLAN.md) and
+[`docs/PHASE_0_HANDOUT.md`](docs/PHASE_0_HANDOUT.md).
 
 ---
 
