@@ -8,10 +8,15 @@ PostgreSQL client tools.
 Usage:
     python -m scripts.migrate                 # apply all migrations
     python -m scripts.migrate --dry-run       # list files only
+    python -m scripts.migrate --only NNN_name # apply only one migration file
 
 Reads SUPABASE_DB_URL from .env (utf-8). Loads:
     1. scripts/schema.sql                    (baseline 10 tables)
     2. scripts/migrations/*.sql              (applied in alphabetical order)
+
+--only takes a filename stem (or full filename) and applies just that
+single migration. Useful when schema.sql is already deployed and you
+only need to add a new migration on top.
 """
 
 from __future__ import annotations
@@ -161,6 +166,12 @@ def apply_file(cur, path: Path, *, dry_run: bool) -> int:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument(
+        "--only",
+        type=str,
+        default=None,
+        help="Apply only one migration file (stem or full filename, no path).",
+    )
     args = ap.parse_args()
 
     env = load_env()
@@ -169,9 +180,19 @@ def main() -> int:
         print("ERROR: SUPABASE_DB_URL not configured in .env")
         return 1
 
-    files: list[Path] = [ROOT / "scripts" / "schema.sql"]
-    migrations = sorted((ROOT / "scripts" / "migrations").glob("*.sql"))
-    files.extend(migrations)
+    if args.only:
+        stem = args.only
+        if not stem.endswith(".sql"):
+            stem += ".sql"
+        target = ROOT / "scripts" / "migrations" / stem
+        if not target.exists():
+            print(f"ERROR: migration not found: {target}")
+            return 1
+        files: list[Path] = [target]
+    else:
+        files = [ROOT / "scripts" / "schema.sql"]
+        migrations = sorted((ROOT / "scripts" / "migrations").glob("*.sql"))
+        files.extend(migrations)
 
     print(f"applying {len(files)} SQL file(s) to {db_url.split('@')[-1]}")
     for f in files:
