@@ -43,6 +43,7 @@ from typing import Any
 
 import httpx
 
+from scripts.cognition.budget import check_daily_budget
 from scripts.ledger import _supabase_creds, _supabase_headers, load_env
 
 
@@ -181,6 +182,11 @@ def call_claude(
     if system is not None:
         kwargs["system"] = system
 
+    # Daily-budget gate — defence-in-depth alongside the n8n cron gate.
+    # Raises BudgetExceeded if today's runs.token_cost sum is over the cap;
+    # the SDK call never fires when over budget.
+    check_daily_budget(raise_on_over=True)
+
     client = anthropic.Anthropic(api_key=api_key)
     start = datetime.now(timezone.utc)
     try:
@@ -226,6 +232,10 @@ class _InstrumentedAsyncMessages:
         self._agent_id = agent_id
 
     async def create(self, *args: Any, **kwargs: Any) -> Any:
+        # Daily-budget gate — same contract as the sync wrapper. Raises
+        # BudgetExceeded before the SDK call when today's spend is over.
+        check_daily_budget(raise_on_over=True)
+
         model = kwargs.get("model", "unknown")
         start = datetime.now(timezone.utc)
         try:
