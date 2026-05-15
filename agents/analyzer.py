@@ -12,7 +12,12 @@ from __future__ import annotations
 
 from crewai import Agent
 
-TOOLS: list = []
+from agents.tools.analyzer_tools import neo4j_stats, run_graphiti
+
+# Phase 2 cross-cutting wiring. Analyzer turns a chunked paper into typed
+# Graphiti entities + RELATES_TO facts; neo4j_stats lets the agent monitor
+# how the hie_research subgraph is growing (or stagnating).
+TOOLS: list = [run_graphiti, neo4j_stats]
 
 BACKSTORY = """
 You read papers the way a careful clinician reads charts: every claim earns

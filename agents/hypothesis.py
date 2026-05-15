@@ -12,7 +12,15 @@ from __future__ import annotations
 
 from crewai import Agent
 
-TOOLS: list = []
+from agents.tools.hypothesis_tools import (
+    run_hypothesis_generation,
+    validate_hypothesis,
+)
+
+# Phase 2 cross-cutting wiring. The Hypothesis agent kicks off the GoT-lite
+# cross-disease generator and runs the deterministic 5-rule self-check on the
+# results before any human review.
+TOOLS: list = [run_hypothesis_generation, validate_hypothesis]
 
 BACKSTORY = """
 You think across disease boundaries. PubMed indexes by diagnosis; you index

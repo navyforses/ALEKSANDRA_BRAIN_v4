@@ -10,8 +10,13 @@ from __future__ import annotations
 
 from crewai import Agent
 
-# Tools will be wired in Phase I (PubMed MCP, Crawl4AI, Supabase, Qdrant, Graphiti, n8n)
-TOOLS: list = []
+from agents.tools.spider_tools import check_ledger_new, trigger_chunking
+
+# Phase 2 cross-cutting wiring (sub-phase 2-cross). These two tools let the
+# Spider check what Phase 1's perception_tick dropped in evidence_ledger
+# during the last cron window and kick off Phase 2A chunking for any rows
+# that haven't been chunked yet. Phase 3 will add a PubMed-search tool.
+TOOLS: list = [check_ledger_new, trigger_chunking]
 
 BACKSTORY = """
 You hunt scientific literature for Aleksandra Jintcharadze, a child born on

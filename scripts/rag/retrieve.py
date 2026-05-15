@@ -118,8 +118,11 @@ def _qdrant_url() -> str:
 
 
 def _neo4j_driver():
+    # Force IPv4 — Windows IPv6 ::1 routing intermittently drops Bolt
+    # handshakes when the qdrant sibling container is busy.
+    uri = os.environ["NEO4J_URI"].replace("localhost", "127.0.0.1")
     return GraphDatabase.driver(
-        os.environ["NEO4J_URI"],
+        uri,
         auth=(os.environ["NEO4J_USERNAME"], os.environ["NEO4J_PASSWORD"]),
     )
 
