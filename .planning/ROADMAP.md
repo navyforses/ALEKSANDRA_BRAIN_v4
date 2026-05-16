@@ -18,7 +18,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Perception** - Continuous, provenance-stamped literature ingest on a 6-hour cron
 - [x] **Phase 2: Memory** - Citation-tuple-first ledger, Graphiti+Qdrant memory, single retrieval surface
 - [x] **Phase 2.5: Quick Wins (INSERTED)** - Spend instrumentation, perception scale-up, family-visible layer, validation workflow
-- [ ] **Phase 3: Cognition (minimum)** - Verifier-gated Analyzer + Communicator drafting confidence-gated digests
+- [x] **Phase 3: Cognition (minimum)** - Verifier-gated Communicator drafting (9/11 PASS; CGM-04 + CGM-10 RED on owner-actionable external deps)
 - [ ] **Phase 4: First Family Value** - Confidence-gated Telegram/Gmail/Notion delivery + clinician PDF, 14-day acceptance test
 
 ## Phase Details
@@ -113,7 +113,7 @@ Phases execute in numeric order: 0 → 1 → 2 → 2.5 → 3 → 4
 | 1. Perception | 0/TBD | Closed — 10/10 PASS | 2026-05-15 |
 | 2. Memory | 0/TBD | Closed — 19/19 PASS | 2026-05-15 |
 | 2.5 Quick Wins (INSERTED) | 0/TBD | Closed — 16/16 PASS | 2026-05-16 |
-| 3. Cognition (minimum) | 0/TBD | Ready to start | - |
+| 3. Cognition (minimum) | 0/TBD | Closed — 9/11 PASS (CGM-04 + CGM-10 RED on external deps) | 2026-05-16 |
 | 4. First Family Value | 0/TBD | Not started | - |
 
 ## Coverage
