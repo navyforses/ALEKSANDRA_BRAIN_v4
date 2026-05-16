@@ -5,33 +5,35 @@
 
 ## Verdict
 
-Phase 3 closes at **9/11 PASS** in `scripts.verify_phase3` with two RED gates
-held open on documented external dependencies:
+Phase 3 closes at **11/11 PASS** in `scripts.verify_phase3`.
 
-- **CGM-04** awaits the one-time Gmail OAuth bootstrap (per
-  `docs/RUNBOOK-gmail-api.md`) + the first live outreach draft.
-- **CGM-10** awaits the Notion → Supabase contacts CSV import (per
-  `scripts/import_contacts_from_notion.py` + the `≥75 row` threshold).
+The Day 7 close shipped at 9/11 with two RED gates (CGM-04 + CGM-10) held
+on documented external dependencies. Both were unblocked the same day by
+Shako's out-of-band ChatGPT-assisted work — Gmail OAuth bootstrap + first
+clinician draft (Duke DTRI), and 96 contacts imported from
+`data/notion_contacts.csv`. The verifier hardening that ChatGPT also wrote
+into CGM-04 and CGM-10 (CGM-04 now requires ≥1 pending live draft, CGM-10
+now requires the contacts seed + anon RLS smoke) was already in the
+codebase, and both gates flipped to GREEN once the live work completed.
 
-Both RED gates are owner-actionable; no further code work is required to
-flip them GREEN. All code, fixtures, workflows, runbooks, migrations, and
-verifier wiring are in place.
+See `.handoffs/handoff-2026-05-16-phase3-green.md` for the full closure
+detail (Gmail draft ID, outreach_log row ID, import stats).
 
 | Gate | Day | Result | Evidence |
 | --- | --- | --- | --- |
 | CGM-01 source round-trip | Day 3 | PASS | 4 claims, 4/4 cited; persistable + banned + redaction reported in evidence |
 | CGM-02 PHI redactor | Day 2 | PASS | 12/12 redactor fixtures match (name/DOB/MRN/hospital/MRI block) |
 | CGM-03 tier router | Day 4 | PASS | 100/100 (100%) on labeled 100-event fixture (T0=20, T1=5, T2=20, T3=20, T4=35) |
-| CGM-04 outreach drafts | Day 5 | **RED** | GMAIL_SCOPES=('gmail.compose',); no 'gmail.send' anywhere; workflow file present; **awaits OAuth bootstrap + first live draft** |
+| CGM-04 outreach drafts | Day 5 | PASS | GMAIL_SCOPES=('gmail.compose',); no 'gmail.send' anywhere; workflow file present; 1 pending Gmail draft (Duke DTRI, outreach_log 062cdb71…) |
 | CGM-05 weekly brief PDF | Day 6 | PASS | Fixture render → 4000B PDF, 1 citation, 4 sections, 3 questions loaded |
 | CGM-06 confidence classifier | Day 2 | PASS | 30/30 outputs in [0,1] AND within labeled band |
 | CGM-07 language detect | Day 3 | PASS | 30/30 (100%) — en=10/10, ka=10/10, fr=10/10 |
 | CGM-08 banned phrases | Day 2 | PASS | 30/30 good + 27/30 bad = 95.0% accuracy on 60-case set |
 | CGM-09 daily outreach cap | Day 5 | PASS | dry-run with today_draft_count=5 returns blocked='daily_cap_reached(5/5)' |
-| CGM-10 migration + RLS + contacts seed | Day 1 | **RED** | Migration 008 applied, 3 new tables present, 6/6 contacts columns added, 0/0 bad policies, anon RLS smoke 5/5 clean; **contacts=0/75 awaits Notion CSV** |
+| CGM-10 migration + RLS + contacts seed | Day 1 | PASS | Migration 008 applied; 3 new tables; 6/6 contacts columns; 0 bad policies; anon RLS smoke 5/5 clean; contacts=96/75 from data/notion_contacts.csv |
 | Regression | — | PASS | verify_phase2_5 still 16/16 PASS |
 
-Prior-phase regression at sprint close: **verify_phase1 10/10 · verify_phase2 19/19 · verify_phase2_5 16/16 · verify_phase3 9/11**.
+Prior-phase regression at sprint close: **verify_phase1 10/10 · verify_phase2 19/19 · verify_phase2_5 16/16 · verify_phase3 11/11**.
 
 ## What Shipped (by day)
 
@@ -115,8 +117,9 @@ Prior-phase regression at sprint close: **verify_phase1 10/10 · verify_phase2 1
 - `requirements.txt += google-api-python-client, google-auth, google-auth-oauthlib`.
 - CGM-09 PASS via dry-run test with `today_draft_count=5`. CGM-04 PASS
   structurally on Day 5 but later tightened by a parallel verifier edit
-  to require `≥1 pending live draft` — that condition is now the held
-  CGM-04 RED state.
+  to require `≥1 pending live draft` — that condition was the
+  Day-7-close held-RED state, satisfied later the same day when the
+  Duke DTRI Gmail draft was created.
 
 ### Day 6 — `5806614` — Weekly Brief PDF (CGM-05 GREEN, CGM-01 deflake)
 
@@ -245,45 +248,41 @@ Phase 3 sprint cap.
 # 16/16 PASS — ALL GREEN
 
 .\.venv\Scripts\python.exe -X utf8 -m scripts.verify_phase3
-# 9/11 PASS — CGM-04 + CGM-10 RED on external dependencies
+# 11/11 PASS — ALL GREEN
 ```
 
-## Open Items (held RED, owner-actionable)
+## Closure Notes (both held items resolved 2026-05-16)
 
-### CGM-04 — first live outreach draft
+### CGM-04 — Gmail OAuth + first live draft
 
-Blocker: the verifier requires `≥1 row in outreach_log` with
-`gmail_draft_id IS NOT NULL AND sent_at IS NULL`. Producing such a row
-needs:
+Shipped same day via Shako's ChatGPT-assisted bootstrap:
 
-1. Run the one-time Gmail OAuth bootstrap per `docs/RUNBOOK-gmail-api.md`.
-   Output: `.secrets/gmail_oauth_credentials.json` +
-   `.secrets/gmail_oauth_token.json` (both `.gitignored`).
-2. Have at least one row in `contacts` with a valid email (depends on
-   CGM-10 below or a manually-inserted contact).
-3. Run `draft_outreach(contact_id, query, purpose='question')` (no
-   `dry_run`).
-4. Re-run `verify_phase3 --gate cgm-04` → expected PASS.
+- `.secrets/gmail_oauth_credentials.json` + `.secrets/gmail_oauth_token.json`
+  in place (both gitignored)
+- First clinician-context outreach drafted for the DTRI (Duke Cord Blood
+  Therapy Info, `cordbloodtherapyinfo@dm.duke.edu`)
+- `outreach_log` row `062cdb71-f2b7-4853-b7a3-eff23fdf9a5d`; Gmail draft
+  ID `r-1111876243842625585`; subject "Question about HIE research
+  context"; 5 citations; confidence 0.15
+- Draft is staged in Gmail Drafts; **Shako manually reviews before Send**
 
 Hard rules preserved: `GMAIL_SCOPES = ('gmail.compose',)` is unchanged;
 no `gmail.send`; manual-send-only policy for months 1–6.
 
 ### CGM-10 — contacts seed
 
-Blocker: the verifier requires `contacts ≥ 75 rows`. Producing them
-needs:
+Shipped same day via Shako's ChatGPT-assisted import:
 
-1. Export contacts from Notion to CSV (~80 rows expected per kickoff).
-2. Place at `data/notion_contacts.csv` (or any path).
-3. Dry-run:
-   `.venv\Scripts\python.exe -X utf8 -m scripts.import_contacts_from_notion --input data/notion_contacts.csv --dry-run`
-4. Confirm:
-   `--confirm` instead of `--dry-run`.
-5. Re-run `verify_phase3 --gate cgm-10` → expected PASS.
+- `data/notion_contacts.csv` (96 rows; gitignored)
+- 96 contacts inserted, 0 skipped, 0 failed
+- 78/96 inferred `outreach_language='en'`; remainder defaulted
+- All rows default to maximally-protective consent
+  (`consent_full_name = FALSE`, `consent_doctor_names = FALSE`,
+  `consent_hospital_names = FALSE`)
+- Anon RLS smoke: HTTP 200 with zero visible rows, as expected
 
-Imported rows default to maximally-protective consent
-(`consent_full_name = FALSE`, etc.). Per-contact consent flips happen
-out-of-band as the family decides.
+Per-contact consent flips happen out-of-band as the family decides
+(Phase 4 has a follow-up family-questions item for the first 5 contacts).
 
 ## What Phase 3 Does NOT Deliver (intentional scope discipline)
 
@@ -322,15 +321,23 @@ ceiling.
 
 Recommended first Phase 4 work:
 
-1. Complete the two held CGM-04 + CGM-10 items above so `verify_phase3`
-   reaches 11/11 GREEN before adding the Phase 4 surface.
-2. Wire the Weekly Brief PDF upload to R2 + the follow-up Telegram link
-   message; persist the row into `briefs` with `phi_redacted = TRUE`.
-3. Activate the tier router on real ingestion events (the alerts pipeline
-   currently has the schema + classifier but no production producer).
-4. Schedule the first real Weekly Brief delivery for Sunday 2026-05-24
-   09:00 ET.
-5. Begin the 14-day family-value acceptance test once items 2–4 land.
+1. Provision the Notion family-knowledge-base database (parent page +
+   schema) and wire `scripts/communicator/notion_archiver.py` to append
+   findings with full provenance (ACD-04).
+2. Activate the tier router on real ingestion events via
+   `scripts/communicator/telegram_sender.py` honoring the existing
+   `is_quiet_hour` + `defer_to_next_morning` helpers (ACD-01 + ACD-02).
+3. Build the clinician PDF renderer (separate from `weekly_brief.py`,
+   richer citation table + patient context version) and ship it via
+   the existing Gmail compose-only flow with PDF attachment (ACD-05).
+4. Extend `workflows/weekly_brief.json` with a Gmail digest step
+   (ACD-03) and schedule the first real delivery for Sunday 2026-05-24
+   09:00 ET — Shako manually reviews the first draft.
+5. Add the daily spend report cron + the `runs.digest_id` linkage
+   (OBS-02 + OBS-03) before the 14-day acceptance window starts.
+6. The 14-day acceptance window starts only when Shako issues the
+   explicit start command — not auto-triggered by code ship.
 
-Phase 3 is closed for code work. The two RED gates are tracked here and
-in `docs/PHASE_3_COMPLETION_KA.md` for owner action.
+Phase 3 is closed for code work. Phase 4 design contract lives in
+`C:\Users\jinch\.claude\plans\approved-virtual-kite.md` and is
+approved as of 2026-05-16.
