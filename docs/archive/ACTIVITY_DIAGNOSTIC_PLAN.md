@@ -1,5 +1,10 @@
 # Activity Diagnostic Plan
 
+> Archived 2026-05-16 after Phase 2.5 closed. This diagnostic is a historical
+> Claude Code activity snapshot from 2026-05-15; its Phase 2.5 gap list is no
+> longer the current project state. Current status lives in
+> `../PHASE_2_5_EXIT_REPORT.md` and `../PHASE_3_READINESS.md`.
+
 > Local-first checklist for auditing Claude Code activity in `ALEKSANDRA_BRAIN`.
 > Current snapshot: 2026-05-15.
 

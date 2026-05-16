@@ -3,6 +3,13 @@
 > ფაზის გასაშვები ანგარიში. ROADMAP-ის Phase-2-exit gate-ი მოითხოვს, რომ
 > ეს ფაილი ხელით შევსებული იყოს სანამ Phase 3 დაიწყება. ცარიელი ფაილი =
 > ფაზა დახურული არ არის.
+>
+> Current note, 2026-05-16: this is a historical Phase 2 close report. Phase
+> 2.5 has since closed at 16/16 PASS, so any "Phase 2.5" carry-forward language
+> below is historical context, not the current backlog. Current entry status:
+> Phase 3 Cognition Minimum is ready; see
+> [PHASE_2_5_EXIT_REPORT.md](PHASE_2_5_EXIT_REPORT.md) and
+> [PHASE_3_READINESS.md](PHASE_3_READINESS.md).
 
 ---
 
@@ -11,7 +18,7 @@
 | ველი | მნიშვნელობა |
 |------|-------------|
 | ფაზის სტატუსი | **closed (19/19 PASS)** |
-| Phase 2 MEM items | 6/8 live · 2 deferred to Phase 2.5 (MEM-02 atomic fan-out, MEM-07 reconciler) · MEM-08 (100-paper recall) requires perception scale-up |
+| Phase 2 MEM items | Historical close state: 6/8 live with carry-forwards. Current post-Phase 2.5 state: no Phase 2/2.5 blocker remains for Phase 3 entry. |
 | Acceptance drill | 2026-05-15 10:30 UTC, `python -m scripts.verify_phase2` |
 | Drill outcome | 19/19 PASS — Gate A 4/4, Gate B 5/5, MEM-01/04/05/06 PASS, Phase 1 regression PASS (10/10) |
 | Git commits | ade2e44, cde3a02, 735cebf, 889c342, 85ea5dd, de0a8b5, cf66861, 2a86d24, 3280850, b950a55, 62ca3b2, c44d0f2 |
@@ -28,15 +35,15 @@
 | # | MEM | სტატუსი | მტკიცებულება |
 |---|-----|---------|--------------|
 | 01 | Citation tuple as first-class type (`source_id, retrieval_method, retrieval_timestamp, confidence, verbatim_grounding, byte_offset`) | ✅ | [scripts/migrations/006_citation_tuple.sql](../scripts/migrations/006_citation_tuple.sql) — `verbatim_grounding` text GENERATED ALWAYS AS (raw_text) STORED + nullable `byte_offset` integer on `paper_chunks`; first five fields live on `evidence_ledger` (Phase 1). verify_phase2 row 10 PASS. |
-| 02 | Single-writer atomic fan-out (ledger → Graphiti + Qdrant, rollback on partial failure) | ⏸ deferred Phase 2.5 | Today 2A and 2B run sequentially in two separate processes (process_ledger → batch_ingest). Atomicity emerges from kv_state idempotence (re-run picks up the unprocessed half) but the formal "single writer + rollback" contract is unbuilt. Acceptable because both halves are deterministic and re-runnable; required when perception scales and write contention becomes real. |
-| 03 | Every Graphiti fact carries `derived_from_source_ids[]` | ⚠ partial / deferred Phase 2.5 | Graphiti's `Episodic.uuid` is already linked to `paper_chunks.embedding_id` via Qdrant payload (MEM-04 `graphiti_uuid`), so every fact can be reverse-walked to a ledger row through `Episodic.uuid → paper_chunks.embedding_id → ledger_id`. Direct `derived_from_source_ids[]` array on `RELATES_TO` edges is the explicit contract — implementable as a post-write Cypher `SET r.derived_from_source_ids = [<ledger_id>]` step in `ingest_paper_as_episode`. Marked partial; full enforcement is a one-commit task. |
+| 02 | Single-writer atomic fan-out (ledger → Graphiti + Qdrant, rollback on partial failure) | Historical carry-forward; not a current Phase 3 blocker | At Phase 2 close, 2A and 2B ran sequentially in two deterministic, re-runnable processes (process_ledger → batch_ingest). Phase 2.5 closed the readiness gate at scaled corpus size; formal rollback hardening can return later if write contention appears. |
+| 03 | Every Graphiti fact carries `derived_from_source_ids[]` | Historical partial; provenance remains reverse-walkable | Graphiti's `Episodic.uuid` is linked to `paper_chunks.embedding_id` through Qdrant payload (MEM-04 `graphiti_uuid`), so facts can be reverse-walked to a ledger row through `Episodic.uuid → paper_chunks.embedding_id → ledger_id`. Do not treat this as a current Phase 2.5 backlog item; Phase 3 starts with the verifier gate. |
 | 04 | Qdrant points stamped `{embedding_model, chunker_version, content_hash, graphiti_uuid}` | ✅ | [scripts/chunking/embedder.py](../scripts/chunking/embedder.py) `upsert_chunks` writes the four fields on every new point; [scripts/chunking/retrofit_qdrant_stamps.py](../scripts/chunking/retrofit_qdrant_stamps.py) one-shot retrofitted the 409 pre-2B points (set_payload merge, vectors untouched). verify_phase2 row 11 PASS: sample=50, em=cv=ch=gu=True. |
 | 05 | Agents retrieve only through `retrieve(query, t_at=…)` | ✅ | [scripts/rag/retrieve.py](../scripts/rag/retrieve.py) — single facade returning `RetrieveResult(chunks, entities, facts, timings_ms)`. Fans out to Qdrant + Neo4j; merges with MEM-04 citation stamps. Lint rule blocking direct Graphiti/Qdrant from `agents/` is a Phase 3 add (no agent code in `agents/` calls either today, so the lint is preventive, not remediative). verify_phase2 row 13 PASS. |
 | 06 | Graph ontology in checked-in `graph_ontology.yaml`; ad-hoc labels rejected at write time | ✅ | [graph_ontology.yaml](../graph_ontology.yaml) v1.0 — 8 typed entities (Drug, Gene, Pathway, BrainRegion, Disease, Treatment, Biomarker, Trial). [scripts/extraction/ontology.py](../scripts/extraction/ontology.py) builds Pydantic models whose docstrings = YAML descriptions. [scripts/extraction/ingest_paper.py](../scripts/extraction/ingest_paper.py) passes `entity_types=_ENTITY_TYPES, excluded_entity_types=['Entity']` to `graphiti.add_episode` — the LLM either classifies or drops. Source-description embeds `[ontology v1.0]` for every Episodic. verify_phase2 row 12 PASS. |
-| 07 | Nightly Graphiti↔Qdrant reconciler | ⏸ deferred Phase 2.5 | Today the reconciliation lives implicitly in `retrofit_qdrant_stamps.py` — it walks every Qdrant point and joins to `paper_chunks` + `kv_state.graphiti_processed`. Promoting to a nightly cron + a `runs` row writes is a small task; deferred until perception ticks more than weekly. |
-| 08 | 100-paper recall test (`retrieve("cord blood + HIE")` returns ≥90/100) | ⏸ deferred Phase 2.5 | Today we have 30 papers ingested — 100-paper recall is not measurable until perception scales (Railway worker on 6h cadence). The retrieve() facade is in place; the recall harness is a 30-line test. Will run as the first acceptance step of Phase 2.5. |
+| 07 | Nightly Graphiti↔Qdrant reconciler | Historical carry-forward; not a current Phase 3 blocker | At Phase 2 close, reconciliation lived implicitly in `retrofit_qdrant_stamps.py`. Phase 2.5 regression remained green after scale-up; promote to a recurring operational check only when production cadence needs it. |
+| 08 | 100-paper recall test (`retrieve("cord blood + HIE")` returns ≥90/100) | Superseded by Phase 2.5 scale-up gate | At Phase 2 close only 30 papers were ingested. Phase 2.5 scaled the corpus to 326 ledger rows, 5301 chunks, 5302 Qdrant vectors, and 568 Neo4j entities; see the Phase 2.5 report for current evidence. |
 
-**Live: 6 / 8.** **Deferred: 2 / 8 (MEM-02, MEM-07) — both honest "not needed until perception scales" defers.** **Partial: 1 (MEM-03)** — reverse-walkable via Qdrant payload, explicit array column is a one-commit follow-up.
+**Historical Phase 2 close:** 6 / 8 live with carry-forward notes. **Current status:** Phase 2.5 is closed and Phase 3 entry is unblocked; use `docs/PHASE_2_5_EXIT_REPORT.md` and `docs/PHASE_3_READINESS.md` for current readiness.
 
 ---
 
@@ -173,21 +180,21 @@ $ .venv/Scripts/python.exe -X utf8 -m scripts.verify_phase2
 
 ---
 
-## 9. Deferred — what didn't ship in Phase 2 and where it lands
+## 9. Historical carry-forwards — superseded by Phase 2.5
 
 | item | reason | lands in |
 |------|--------|----------|
-| MEM-02 atomic fan-out + rollback | Two-process pipeline is deterministic and re-runnable; contention is theoretical at 30 papers | Phase 2.5 |
-| MEM-03 explicit `derived_from_source_ids[]` array on `RELATES_TO` | Reverse-walk via `Episodic.uuid → paper_chunks.embedding_id → ledger_id` covers the audit need today | Phase 2.5 (one-commit Cypher SET) |
-| MEM-07 nightly Graphiti↔Qdrant reconciler | The retrofit script proved the reconciliation works; cron-promoting is small | Phase 2.5 |
-| MEM-08 100-paper recall (`cord blood + HIE` returns ≥90/100) | Only 30 papers ingested; recall is not measurable | Phase 2.5 first acceptance step |
-| Full 6-MCP Drug Repurposing (Open Targets, DrugBank, PubChem, Reactome, KEGG, Enrichr) | Each MCP is a 4-5 day FastMCP server build; not in the Phase 2 14-day envelope. Minimal scope (Sonnet 4.5 + reused PubMed) delivered 10 candidates | Phase 2.5 or 3 |
+| MEM-02 atomic fan-out + rollback | Historical Phase 2 note: two-process pipeline was deterministic and re-runnable at 30 papers. Phase 2.5 closed readiness after scale-up; formal rollback can be future hardening if contention appears. | Future hardening, not Phase 3 entry |
+| MEM-03 explicit `derived_from_source_ids[]` array on `RELATES_TO` | Historical Phase 2 note: reverse-walk via `Episodic.uuid → paper_chunks.embedding_id → ledger_id` covered audit needs. Phase 3 verifier is now the next provenance gate. | Future hardening, not Phase 3 entry |
+| MEM-07 nightly Graphiti↔Qdrant reconciler | Historical Phase 2 note: retrofit script proved reconciliation. Phase 2.5 regression remained green at scaled size. | Future operational cron if needed |
+| MEM-08 100-paper recall (`cord blood + HIE` returns ≥90/100) | Superseded by Phase 2.5 scale-up evidence: 326 ledger rows, 5301 chunks, 5302 Qdrant vectors, 568 Neo4j entities. | Closed as readiness surface |
+| Full 6-MCP Drug Repurposing (Open Targets, DrugBank, PubChem, Reactome, KEGG, Enrichr) | Still beyond the minimum cognition entry path. Minimal scope (Sonnet 4.5 + reused PubMed) delivered validated candidates. | Phase 3+ only if needed |
 | Adaptive Graph of Thoughts MCP vendor | At ≈200 entities, a single Sonnet 4.5 prompt matches AGoT quality; vendor a single-maintainer upstream when N>1000 | Phase 3 |
 | Lint rule blocking direct Graphiti/Qdrant access from `agents/` | No agent currently calls either directly (all retrieval goes through `retrieve()`); rule is preventive | Phase 3 |
-| `supporting_papers` array hydration in hypotheses | LLM mentioned PMID/NCT in ai_reasoning but didn't surface to the array; grep-back-fill is a small fix | Phase 2.5 |
-| HIE-strict perception precision (Lyme + ACODA papers pollute query results) | Two crawl4ai papers from Phase 1 weren't HIE-domain; Crawl4AI gap-filler needs a relevance filter | Phase 2.5 perception tuning |
+| `supporting_papers` array hydration in hypotheses | Resolved in Phase 2.5D: 10/10 supporting-paper hydration. | Closed |
+| HIE-strict perception precision (Lyme + ACODA papers pollute query results) | The active Phase 3 entry surface is verifier-gated cognition; perception tuning can continue without blocking Phase 3. | Future tuning |
 | Hindsight self-improving memory | Requires months of run-log corpus | Phase 3+ |
-| DSPy prompt optimization | Requires ≥10 manually-validated hypotheses; we have 1 | Phase 3 |
+| DSPy prompt optimization | Phase 2.5 created 10 DSPy JSONL examples; optimization itself remains Phase 3 cognition work. | Phase 3 |
 
 ---
 
@@ -204,6 +211,11 @@ Phase 3 (Cognition — minimum: CGM-01..CGM-10) is unblocked when:
 7. ✅ MCP allowlist (Phase 0 FND-06)
 
 All seven met. **Phase 3 may begin.**
+
+Post-Phase-2.5 caveat: code/data spend instrumentation is verified, but the
+deployed n8n `daily-budget-gate` JSON-body expression fix still needs live
+workflow confirmation before workflow-written `budget_lock` rows are treated as
+fully repaired.
 
 The first Phase 3 commit will land [scripts/verifier/round_trip.py](../scripts/verifier/round_trip.py) implementing CGM-01 — the deterministic PMID / DOI / NCT / URL round-trip verifier that rejects any synthetic fabrication before a Communicator draft is allowed to stage.
 

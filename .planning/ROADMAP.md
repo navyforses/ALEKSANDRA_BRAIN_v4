@@ -4,17 +4,20 @@
 
 ALEKSANDRA_BRAIN ships in five sequential v1 phases that move from a hardened, cost-gated foundation to a confidence-gated digest the family can act on. Phase 0 establishes the trust boundary (privacy import-lint, RLS, kill-switch, spend cap, MCP allowlist, secrets vault, run ledger). Phase 1 turns on continuous ingestion from PubMed E-utilities, ClinicalTrials.gov v2, bioRxiv/medRxiv RSS, with Crawl4AI for the gaps and Firecrawl as a budget-gated fallback. Phase 2 makes provenance load-bearing: a citation tuple becomes a first-class type, a single-writer ledger atomically fans out to Graphiti and Qdrant, and LightRAG becomes the only retrieval surface agents are allowed to call. Phase 3 stands up the minimum cognition path — a deterministic verifier that round-trips every PMID/DOI/NCT/URL, an Analyzer that extracts PICO + evidence-grade under the provenance contract, and a Communicator that drafts under a fixed schema with an imperative-verb lint, a six-tier evidence ranking, and a HIGH-only confidence gate. Phase 4 closes the loop by delivering one credible lead to the family inside a 14-day window via confidence-gated Telegram pushes, a weekly Gmail digest, Notion archival, and a clinician-shareable PDF that embeds full provenance — under a $30 total-cost ceiling. v2 phases (Cognition-full, Action interactivity, Visualization viewer/segmentation/simulation, HIPAA posture) live in REQUIREMENTS.md and are explicitly out of v1 scope.
 
+Current execution state as of 2026-05-16: Phase 0, Phase 1, Phase 2, and the inserted Phase 2.5 Quick Wins sprint are closed. Phase 3 Cognition Minimum is the active next phase. The only live operational caveat is the n8n `daily-budget-gate` JSON-body expression bug, which is being fixed outside this documentation pass; Phase 2.5A code/data spend instrumentation is green.
+
 ## Phases
 
 **Phase Numbering:**
 - Integer phases (0, 1, 2, 3, 4): Planned milestone work
-- Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
+- Decimal phases (2.1, 2.2, 2.5): Urgent insertions (marked with INSERTED)
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 0: Foundation** - Trust boundary, cost gates, kill-switch, MCP allowlist, run ledger
-- [ ] **Phase 1: Perception** - Continuous, provenance-stamped literature ingest on a 6-hour cron
-- [ ] **Phase 2: Memory** - Citation-tuple-first ledger, atomic Graphiti+Qdrant fan-out, single retrieval surface
+- [x] **Phase 0: Foundation** - Trust boundary, cost gates, kill-switch, MCP allowlist, run ledger
+- [x] **Phase 1: Perception** - Continuous, provenance-stamped literature ingest on a 6-hour cron
+- [x] **Phase 2: Memory** - Citation-tuple-first ledger, Graphiti+Qdrant memory, single retrieval surface
+- [x] **Phase 2.5: Quick Wins (INSERTED)** - Spend instrumentation, perception scale-up, family-visible layer, validation workflow
 - [ ] **Phase 3: Cognition (minimum)** - Verifier-gated Analyzer + Communicator drafting confidence-gated digests
 - [ ] **Phase 4: First Family Value** - Confidence-gated Telegram/Gmail/Notion delivery + clinician PDF, 14-day acceptance test
 
@@ -59,9 +62,22 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 **Phase-exit gate (CATASTROPHIC, half-1 of fabricated-citations defense):** The citation tuple as a first-class type (MEM-01) and the `derived_from_source_ids[]` write contract (MEM-03) must be live before any cognitive agent runs in Phase 3 — i.e., the schema must make ungrounded claims structurally impossible before agents start drafting.
 
+### Phase 2.5: Quick Wins (INSERTED)
+**Goal**: Close the Phase 2 carry-forward surface before cognition work: harden spend instrumentation, scale perception/memory volume, add family-visible views, and hydrate validation data for Phase 3.
+**Depends on**: Phase 2 (Memory)
+**Requirements**: Verification gates A-D in `scripts.verify_phase2_5`
+**Status**: Closed 2026-05-16, 16/16 PASS.
+**Success Criteria** (what must be TRUE):
+  1. Spend instrumentation stores precise `runs.token_cost`, `check_daily_budget()` reads that surface, and at least one positive-cost `llm_call` row exists.
+  2. The memory corpus is scaled past the Phase 2 smoke-test size: ≥100 ledger rows, ≥5000 chunks and Qdrant vectors, and ≥500 Neo4j HIE entities.
+  3. Family-visible dashboard and workflow fire surfaces exist and pass RLS smoke checks.
+  4. Hypothesis validation has a browser route, ≥5 confirmed hypotheses, ≥10 DSPy JSONL examples, and ≥90% supporting-paper hydration.
+
+**Operational caveat:** The code/data spend instrumentation gate is green, but the deployed n8n `daily-budget-gate` JSON-body expression bug is still being fixed. Do not treat workflow-written `budget_lock` rows as confirmed until that workflow fix is deployed and tested.
+
 ### Phase 3: Cognition (minimum)
 **Goal**: By the end of this phase, the family has a draft digest in Notion every cron cycle that contains zero fabricated citations, zero direct instructions to the family, and only HIGH-confidence findings on top — staged but not yet pushed to Telegram.
-**Depends on**: Phase 2 (citation tuple, write contract, LightRAG retrieval surface, ontology)
+**Depends on**: Phase 2.5 (Phase 1/2 regressions green, scaled corpus, validation examples, spend instrumentation)
 **Requirements**: CGM-01, CGM-02, CGM-03, CGM-04, CGM-05, CGM-06, CGM-07, CGM-08, CGM-09, CGM-10
 **Success Criteria** (what must be TRUE):
   1. The family can open the staged Notion draft and see that every PMID, DOI, NCT identifier, and URL has been round-tripped against its original index API — a synthetic-fabrication smoke test confirms the verifier rejects ≥99 of 100 planted fakes before publication.
@@ -89,14 +105,15 @@ Decimal phases appear between their surrounding integers in numeric order.
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 0 → 1 → 2 → 3 → 4
+Phases execute in numeric order: 0 → 1 → 2 → 2.5 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 0. Foundation | 0/TBD | Not started | - |
-| 1. Perception | 0/TBD | Not started | - |
-| 2. Memory | 0/TBD | Not started | - |
-| 3. Cognition (minimum) | 0/TBD | Not started | - |
+| 0. Foundation | 0/TBD | Closed | 2026-05-14 |
+| 1. Perception | 0/TBD | Closed — 10/10 PASS | 2026-05-15 |
+| 2. Memory | 0/TBD | Closed — 19/19 PASS | 2026-05-15 |
+| 2.5 Quick Wins (INSERTED) | 0/TBD | Closed — 16/16 PASS | 2026-05-16 |
+| 3. Cognition (minimum) | 0/TBD | Ready to start | - |
 | 4. First Family Value | 0/TBD | Not started | - |
 
 ## Coverage
@@ -124,7 +141,7 @@ Phases execute in numeric order: 0 → 1 → 2 → 3 → 4
 | Off-label framing (CATASTROPHIC) | Imperative-verb lint + six-tier evidence ranking + tone post-processor + clinician-question schema | Phase 3 (CGM-03, CGM-04, CGM-05, CGM-06) |
 | MRI leak (CATASTROPHIC, import-lint half) | CI fails any server-side import of `viewer/` imaging code; CI fails any remote `fetch`/`axios.post`/`XMLHttpRequest` from `viewer/` | Phase 0 (FND-01, FND-02) |
 | MRI leak (CATASTROPHIC, viewer half) | Client-side-only viewer, CSP, dcm2niix.wasm, segmentation on family-local Docker | **v2 (VIS-* requirements — not in v1)** |
-| Cost runaway (HIGH) | `/stop` kill-switch + n8n daily Anthropic spend gate at $1.50/day | Phase 0 (FND-03, FND-04) |
+| Cost runaway (HIGH) | `/stop` kill-switch + code-side `check_daily_budget()` + n8n daily spend gate at $1.50/day; n8n JSON-body fix still needs live confirmation | Phase 0 (FND-03, FND-04) + Phase 2.5A |
 | Shared-memory poisoning (HIGH) | `derived_from_source_ids[]` write contract + per-`agent_id` mem0 scoping | Phase 2 (MEM-03) + Phase 3 (CGM-09) |
 
 ---

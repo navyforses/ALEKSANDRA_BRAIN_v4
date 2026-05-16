@@ -1,5 +1,10 @@
 # ფაზა 2 — Live Audit (2026-05-15)
 
+> Archived 2026-05-16 after Phase 2.5 closed. This audit is a historical
+> snapshot of Phase 2 readiness for Phase 2.5; do not use its Phase 2.5
+> recommendations as the current backlog. Current status lives in
+> `../PHASE_2_5_EXIT_REPORT.md` and `../PHASE_3_READINESS.md`.
+
 > 21-პუნქტიანი external audit ROADMAP-ის ორიგინალური targets-ის წინააღმდეგ
 > (handout-ის ფიგურები, არა მოდიფიცირებული mossy-plan-ის რეალისტური ცილები).
 > verify_phase2-ის internal acceptance რომ **19/19 PASS** ცალკე ფაილია:

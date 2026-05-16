@@ -5,7 +5,7 @@
 > analyzing, and discovering treatment possibilities for children with
 > severe brain injury.
 
-**Status:** Phase 2.5 closed; Phase 3 cognition entry ready (2026-05-16)
+**Status:** Phase 2.5 closed; Phase 3 cognition entry ready; budget workflow fix in progress (2026-05-16)
 **Version:** v4.0
 **License:** MIT
 
@@ -123,13 +123,21 @@ python -m mcp.hello_brain      # MCP server
 - [x] Phase 1 perception closed — 10/10 PASS in [`docs/PHASE_1_EXIT_REPORT.md`](docs/PHASE_1_EXIT_REPORT.md)
 - [x] Phase 2 memory closed — 19/19 PASS in [`docs/PHASE_2_EXIT_REPORT.md`](docs/PHASE_2_EXIT_REPORT.md)
 - [x] Phase 2.5 quick wins closed — 16/16 PASS in [`docs/PHASE_2_5_EXIT_REPORT.md`](docs/PHASE_2_5_EXIT_REPORT.md)
-- [x] External Phase 2 live audit written — [`docs/PHASE_2_LIVE_AUDIT.md`](docs/PHASE_2_LIVE_AUDIT.md)
-- [x] Claude Code activity diagnostic written — [`docs/ACTIVITY_DIAGNOSTIC_PLAN.md`](docs/ACTIVITY_DIAGNOSTIC_PLAN.md)
+- [x] Phase 3 readiness documented — [`docs/PHASE_3_READINESS.md`](docs/PHASE_3_READINESS.md)
 - [ ] Phase 3 cognition minimum — CGM-01 verifier, Analyzer PICO, Communicator schema, evidence ranking, confidence gate
 
 Historical Phase 0 materials remain available:
 [`docs/PHASE_0_PLAN.md`](docs/PHASE_0_PLAN.md) and
 [`docs/PHASE_0_HANDOUT.md`](docs/PHASE_0_HANDOUT.md).
+
+Archived audit snapshots remain available under [`docs/archive/`](docs/archive/):
+[`PHASE_2_LIVE_AUDIT.md`](docs/archive/PHASE_2_LIVE_AUDIT.md) and
+[`ACTIVITY_DIAGNOSTIC_PLAN.md`](docs/archive/ACTIVITY_DIAGNOSTIC_PLAN.md).
+
+Budget caveat: Phase 2.5A spend instrumentation passes, but the deployed n8n
+`daily-budget-gate` JSON-body expression bug is still being fixed. Treat the
+code-side `check_daily_budget()` guard as active; treat workflow-written
+`budget_lock` rows as pending confirmation until that fix lands.
 
 ---
 

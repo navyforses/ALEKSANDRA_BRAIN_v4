@@ -15,6 +15,11 @@ Phase 2.5 is closed: **16/16 PASS** in `scripts.verify_phase2_5 --gate all`.
 | D — Validation Workflow | 4/4 PASS | `/hypotheses`, 5 confirmed research hypotheses, 10 DSPy JSONL examples, 10/10 supporting-paper hydration |
 | Regression | PASS | Phase 2 verifier remains 19/19 PASS |
 
+Operational caveat: Gate A closes the code/data spend-instrumentation contract,
+not the deployed n8n workflow bug. The `daily-budget-gate` JSON-body expression
+fix is still in progress outside this documentation pass; workflow-written
+`budget_lock` rows need a final live confirmation after that fix lands.
+
 ## What Changed
 
 - Added the family dashboard route: `viewer/app/dashboard/page.tsx`.

@@ -56,20 +56,28 @@ ALEKSANDRA_BRAIN-ს ორი დამოუკიდებელი მცვ
 
 n8n-ის `daily-budget-gate` workflow ყოველ 30 წუთში ერთხელ ამოწმებს:
 
-- Anthropic-ის Usage API-ს ეკითხება: „რამდენი დაიხარჯა დღევანდელ თარიღში?"
+- Supabase `runs.token_cost` rows since 00:00 UTC
+- მხოლოდ `kind in (agent_run, fire_drill, llm_call)` rows ითვლება
 - თუ პასუხი > $1.50:
-  - n8n-ის ცვლადი `BUDGET_LOCKED` → `true`
+  - Supabase `runs`-ში იწერება `kind='budget_lock'`
   - Telegram-ში მოგვდის წითელი შეტყობინება „🔴 ბიუჯეტი დაბლოკილია"
-- ყველა სხვა workflow რომელიც Anthropic-ის API-ს იძახებს, **ჯერ ამოწმებს ამ ცვლადს** — თუ `true`, აჩერებს თავის თავს
+- ყველა Anthropic call code-side helper-ით ჯერ იძახებს `check_daily_budget()`-ს
 
 შემდეგი დღის 00:00 UTC-ზე ჭერი ავტომატურად ნულდება (ახალი დღე, ახალი ხარჯი).
 
+**მიმდინარე caveat (2026-05-16):** Phase 2.5A verifier ადასტურებს spend
+instrumentation-ს, მაგრამ deployed n8n `daily-budget-gate`-ში JSON-body
+expression bug ჯერ კიდევ ფიქსირდება. სანამ workflow owner არ დაადასტურებს
+ცოცხალ fix-ს, `budget_lock` rows შეიძლება ისევ simulator/fire-drill გზით
+იყოს დასამოწმებელი. Code-side `check_daily_budget()` guard მაინც აქტიურია.
+
 ### ჭერი წითლდება — რა ვუყო
 
-1. გადახედე Anthropic-ის Usage Dashboard-ს: console.anthropic.com → Usage
-2. იპოვე რომელი workflow დახარჯა იმდენი — ჩვეულებრივად ერთი workflow მარყუჟში მოექცა
-3. დაგვიკავშირდი ან ხელით გათიშე ის workflow n8n-ში
-4. ხელახლა ჩასართავად — დაელოდე 00:00 UTC-ს
+1. Supabase-ში ნახე დღევანდელი `runs` rows: `agent_run`, `fire_drill`, `llm_call`
+2. პარალელურად გადაამოწმე Anthropic Usage Dashboard: console.anthropic.com → Usage
+3. იპოვე რომელი workflow ან agent loop-ი ხარჯავს ზედმეტად
+4. დაგვიკავშირდი ან ხელით გათიშე ის workflow n8n-ში
+5. ხელახლა ჩასართავად — დაელოდე 00:00 UTC-ს
 
 ---
 
