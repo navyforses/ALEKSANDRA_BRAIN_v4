@@ -148,14 +148,61 @@ def check_cgm_02(report: Report) -> None:
             )
         )
         return
-    # Day 2 will populate: load tests/fixtures/redactor_examples.jsonl,
-    # run each through redact(), assert all PHI patterns caught with consent=False.
+    from scripts.communicator import phi_redactor as P
+
+    fixtures_path = ROOT / "tests" / "fixtures" / "redactor_examples.jsonl"
+    if not fixtures_path.exists():
+        report.add(
+            Check(
+                "CGM-02",
+                "PHI redactor catches name/DOB/MRN/hospital/MRI patterns",
+                False,
+                f"fixture missing: {fixtures_path}",
+                "CGM-02",
+            )
+        )
+        return
+
+    passed = 0
+    total = 0
+    failures: list[str] = []
+    with fixtures_path.open("r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            total += 1
+            row = json.loads(line)
+            consent = P.ConsentFlags(
+                consent_full_name=row["consent"].get("consent_full_name", False),
+                consent_doctor_names=row["consent"].get("consent_doctor_names", False),
+                consent_hospital_names=row["consent"].get(
+                    "consent_hospital_names", False
+                ),
+            )
+            result = P.redact(row["text"], consent=consent)
+            got_blocked = bool(result.blocked)
+            want_blocked = bool(row.get("expect_blocked", False))
+            got_categories = sorted({r.category for r in result.redactions})
+            want_categories = sorted(row.get("expected_categories", []))
+            ok = got_blocked == want_blocked and got_categories == want_categories
+            if ok:
+                passed += 1
+            else:
+                failures.append(
+                    f"{row['label']}: want blocked={want_blocked} cats={want_categories}, "
+                    f"got blocked={got_blocked} cats={got_categories}"
+                )
+    ok = passed == total and total >= 10
+    evidence = f"{passed}/{total} fixtures match"
+    if failures:
+        evidence += f"  first_failure={failures[0]!r}"
     report.add(
         Check(
             "CGM-02",
             "PHI redactor catches name/DOB/MRN/hospital/MRI patterns",
-            False,
-            "implementation present but check body not wired (Day 2 task)",
+            ok,
+            evidence,
             "CGM-02",
         )
     )
@@ -260,14 +307,58 @@ def check_cgm_06(report: Report) -> None:
             )
         )
         return
-    # Day 2 will populate: load tests/fixtures/confidence_examples.jsonl,
-    # run score() for each, assert every output in [0.0, 1.0].
+    from scripts.communicator.confidence_classifier import ConfidenceInput, score
+
+    fixtures_path = ROOT / "tests" / "fixtures" / "confidence_examples.jsonl"
+    if not fixtures_path.exists():
+        report.add(
+            Check(
+                "CGM-06",
+                "Confidence classifier returns score ∈ [0,1] deterministically",
+                False,
+                f"fixture missing: {fixtures_path}",
+                "CGM-06",
+            )
+        )
+        return
+
+    in_range = 0
+    in_band = 0
+    total = 0
+    band_failures: list[str] = []
+    with fixtures_path.open("r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            total += 1
+            row = json.loads(line)
+            ci = ConfidenceInput(
+                evidence_grade=row["input"]["evidence_grade"],
+                source_count=row["input"]["source_count"],
+                source_recency_years=row["input"]["source_recency_years"],
+                direct_relevance=row["input"]["direct_relevance"],
+                citation_round_trip_passed=row["input"]["citation_round_trip_passed"],
+            )
+            s = score(ci)
+            if 0.0 <= s <= 1.0:
+                in_range += 1
+            lo = row["expected_min"]
+            hi = row["expected_max"]
+            if lo <= s <= hi:
+                in_band += 1
+            else:
+                band_failures.append(f"{row['label']}: got {s}, want [{lo},{hi}]")
+    ok = in_range == total and in_band == total and total >= 20
+    evidence = f"in_range={in_range}/{total}  in_band={in_band}/{total}"
+    if band_failures:
+        evidence += f"  first_failure={band_failures[0]!r}"
     report.add(
         Check(
             "CGM-06",
             "Confidence classifier returns score ∈ [0,1] deterministically",
-            False,
-            "implementation present but check body not wired (Day 2 task)",
+            ok,
+            evidence,
             "CGM-06",
         )
     )
@@ -316,14 +407,56 @@ def check_cgm_08(report: Report) -> None:
             )
         )
         return
-    # Day 2 will populate: load tests/fixtures/banned_good.jsonl + banned_bad.jsonl,
-    # assert ≥ 95% correct classification on the combined set.
+    from scripts.communicator.banned_phrases import check as bp_check
+
+    fix_good = ROOT / "tests" / "fixtures" / "banned_good.jsonl"
+    fix_bad = ROOT / "tests" / "fixtures" / "banned_bad.jsonl"
+    if not (fix_good.exists() and fix_bad.exists()):
+        report.add(
+            Check(
+                "CGM-08",
+                "Banned-phrase detector blocks clinical-command verbs",
+                False,
+                "fixtures missing (banned_good.jsonl / banned_bad.jsonl)",
+                "CGM-08",
+            )
+        )
+        return
+
+    def _load(path):
+        out = []
+        with path.open("r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line:
+                    out.append(json.loads(line))
+        return out
+
+    good_rows = _load(fix_good)
+    bad_rows = _load(fix_bad)
+
+    # Good rows: every check() must return passed=True
+    good_pass = sum(1 for r in good_rows if bp_check(r["text"]).passed)
+    # Bad rows: every check() must return passed=False
+    bad_caught = sum(1 for r in bad_rows if not bp_check(r["text"]).passed)
+
+    total_good = len(good_rows)
+    total_bad = len(bad_rows)
+    # Accuracy target: ≥95% of the combined set classified correctly.
+    correct = good_pass + bad_caught
+    total = total_good + total_bad
+    accuracy = (correct / total) if total else 0.0
+    ok = accuracy >= 0.95 and total_good >= 25 and total_bad >= 25
+    evidence = (
+        f"good_pass={good_pass}/{total_good}  bad_caught={bad_caught}/{total_bad}  "
+        f"accuracy={accuracy:.2%}"
+    )
     report.add(
         Check(
             "CGM-08",
             "Banned-phrase detector blocks clinical-command verbs",
-            False,
-            "implementation present but check body not wired (Day 2 task)",
+            ok,
+            evidence,
             "CGM-08",
         )
     )

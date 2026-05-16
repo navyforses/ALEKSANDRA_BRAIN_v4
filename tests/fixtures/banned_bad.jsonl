@@ -1,0 +1,30 @@
+{"text": "Aleksandra should start vigabatrin tomorrow.", "locale": "en", "expected_category": "imperative_prescription"}
+{"text": "We recommend increasing the dose to 200mg.", "locale": "en", "expected_category": "recommendation"}
+{"text": "You should administer cord blood within the next 48 hours.", "locale": "en", "expected_category": "patient_directed"}
+{"text": "Aleksandra will recover with this treatment.", "locale": "en", "expected_category": "prediction"}
+{"text": "The patient must stop the medication immediately.", "locale": "en", "expected_category": "imperative_prescription"}
+{"text": "Start the trial enrollment process this week.", "locale": "en", "expected_category": "imperative_prescription"}
+{"text": "We suggest replacing keppra with vigabatrin.", "locale": "en", "expected_category": "recommendation"}
+{"text": "This proves the therapy will work for HIE patients.", "locale": "en", "expected_category": "prediction"}
+{"text": "Please administer the antiepileptic at 8am.", "locale": "en", "expected_category": "patient_directed"}
+{"text": "She will definitely improve after the infusion.", "locale": "en", "expected_category": "prediction"}
+{"text": "Diagnose the child with cystic encephalomalacia subtype B.", "locale": "en", "expected_category": "patient_directed"}
+{"text": "Decrease the dose by half this morning.", "locale": "en", "expected_category": "imperative_prescription"}
+{"text": "Begin the cord-blood infusion before the washout window closes.", "locale": "en", "expected_category": "imperative_prescription"}
+{"text": "The outcome will be a meaningful clinical recovery.", "locale": "en", "expected_category": "prediction"}
+{"text": "It is recommended that the family pursue Duke EAP without delay.", "locale": "en", "expected_category": "recommendation"}
+{"text": "Aleksandra-ს უნდა მიიღოს ვიგაბატრინი დღეიდან.", "locale": "ka", "expected_category": "imperative_prescription"}
+{"text": "ვურჩევთ დოზის გაორმაგებას.", "locale": "ka", "expected_category": "recommendation"}
+{"text": "ეს თერაპია გამოჯანმრთელდება Aleksandra-ს.", "locale": "ka", "expected_category": "prediction"}
+{"text": "უნდა შეწყდეს ვალპროატის მიღება.", "locale": "ka", "expected_category": "imperative_prescription"}
+{"text": "გვირჩევთ, რომ პაციენტმა მიიღოს ეს მკურნალობა.", "locale": "ka", "expected_category": "recommendation"}
+{"text": "უნდა გაიზარდოს დოზა 200მგ-მდე.", "locale": "ka", "expected_category": "imperative_prescription"}
+{"text": "უნდა ჩაუტარდეს ცხინური სისხლის ინფუზია.", "locale": "ka", "expected_category": "imperative_prescription"}
+{"text": "Vous devriez commencer le traitement immédiatement.", "locale": "fr", "expected_category": "patient_directed"}
+{"text": "Nous recommandons d'augmenter la dose.", "locale": "fr", "expected_category": "recommendation"}
+{"text": "Elle devrait recevoir le sang de cordon ce mois-ci.", "locale": "fr", "expected_category": "patient_directed"}
+{"text": "Il est recommandé d'arrêter le médicament actuel.", "locale": "fr", "expected_category": "recommendation"}
+{"text": "Elle se rétablira avec cette intervention.", "locale": "fr", "expected_category": "prediction"}
+{"text": "Commencer le traitement par cordoplasmine cette semaine.", "locale": "fr", "expected_category": "imperative_prescription"}
+{"text": "Réduire la dose à moitié à partir de demain.", "locale": "fr", "expected_category": "imperative_prescription"}
+{"text": "We guarantee Aleksandra will respond to this therapy.", "locale": "en", "expected_category": "prediction"}
