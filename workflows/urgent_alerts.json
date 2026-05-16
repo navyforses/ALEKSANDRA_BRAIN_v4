@@ -1,0 +1,152 @@
+{
+  "name": "urgent-alerts",
+  "active": false,
+  "_phase_2_5_note": "Family-facing urgent alert workflow. PHI-free: checks high-relevance papers and newly confirmed research hypotheses, posts a concise Telegram alert, then appends a runs row (kind='urgent_alert') so verify_phase2_5 C.4 can confirm delivery.",
+  "settings": {
+    "executionOrder": "v1",
+    "saveExecutionProgress": true,
+    "saveDataSuccessExecution": "all",
+    "saveDataErrorExecution": "all",
+    "executionTimeout": 60
+  },
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 6
+            }
+          ]
+        }
+      },
+      "name": "Every 6 hours",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 300],
+      "id": "trigger-6h"
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/papers",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "select", "value": "title,relevance_score,pmid,ct_id" },
+            { "name": "relevance_score", "value": "gte.0.9" },
+            { "name": "order", "value": "relevance_score.desc.nullslast" },
+            { "name": "limit", "value": "3" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" }
+          ]
+        },
+        "options": { "timeout": 15000 }
+      },
+      "name": "High relevance papers",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 220],
+      "id": "high-relevance"
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/hypotheses",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "select", "value": "title,status,reviewed_at" },
+            { "name": "status", "value": "eq.confirmed" },
+            { "name": "order", "value": "reviewed_at.desc.nullslast" },
+            { "name": "limit", "value": "5" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" }
+          ]
+        },
+        "options": { "timeout": 15000 }
+      },
+      "name": "Confirmed hypotheses",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 380],
+      "id": "confirmed-hypotheses"
+    },
+    {
+      "parameters": {
+        "jsCode": "const all = $input.all();\nconst papers = Array.isArray(all[0]?.json) ? all[0].json : [];\nconst hypotheses = Array.isArray(all[1]?.json) ? all[1].json : [];\nfunction trim(s, n) { return s && s.length > n ? s.slice(0, n-1) + '...' : (s || ''); }\nconst paperLines = papers.map((p, i) => `${i+1}. [${Number(p.relevance_score || 0).toFixed(2)}] ${trim(p.title, 90)}`).join('\\n') || '(none)';\nconst hypLines = hypotheses.map((h, i) => `${i+1}. ${trim(h.title, 90)}`).join('\\n') || '(none)';\nconst text = ['ALEKSANDRA_BRAIN urgent check', '', 'High-relevance papers:', paperLines, '', 'Confirmed hypotheses:', hypLines].join('\\n');\nreturn [{ json: { text, paperCount: papers.length, confirmedCount: hypotheses.length } }];"
+      },
+      "name": "Compose alert",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [720, 300],
+      "id": "compose-alert"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/sendMessage",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"chat_id\": \"{{ $env.TELEGRAM_CHAT_ID }}\", \"text\": {{ JSON.stringify($json.text) }}, \"disable_web_page_preview\": true}",
+        "options": {}
+      },
+      "name": "Telegram alert",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [960, 240],
+      "id": "telegram-alert"
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/runs",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"kind\": \"urgent_alert\", \"agent_id\": \"urgent_alerts\", \"exit_status\": \"completed\", \"exit_reason\": {{ JSON.stringify('papers=' + $('Compose alert').first().json.paperCount + ' confirmed=' + $('Compose alert').first().json.confirmedCount) }}, \"tokens_input\": 0, \"tokens_output\": 0, \"token_cost\": 0}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Append runs row",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [960, 380],
+      "id": "runs-append"
+    }
+  ],
+  "connections": {
+    "Every 6 hours": {
+      "main": [[
+        { "node": "High relevance papers", "type": "main", "index": 0 },
+        { "node": "Confirmed hypotheses", "type": "main", "index": 0 }
+      ]]
+    },
+    "High relevance papers": {
+      "main": [[{ "node": "Compose alert", "type": "main", "index": 0 }]]
+    },
+    "Confirmed hypotheses": {
+      "main": [[{ "node": "Compose alert", "type": "main", "index": 1 }]]
+    },
+    "Compose alert": {
+      "main": [[
+        { "node": "Telegram alert", "type": "main", "index": 0 },
+        { "node": "Append runs row", "type": "main", "index": 0 }
+      ]]
+    }
+  }
+}
