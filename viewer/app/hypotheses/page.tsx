@@ -105,7 +105,14 @@ export default async function HypothesesPage() {
                       {hypothesis.hypothesis_type || "other"}
                     </span>
                   </div>
-                  <h2 className="mt-3 text-lg font-semibold leading-7">{hypothesis.title}</h2>
+                  <h2 className="mt-3 text-lg font-semibold leading-7">
+                    <Link
+                      href={`/hypotheses/${hypothesis.id}`}
+                      className="hover:underline focus:underline focus:outline-none"
+                    >
+                      {hypothesis.title}
+                    </Link>
+                  </h2>
                   <p className="mt-2 max-w-4xl text-sm leading-6 text-stone-700">
                     {hypothesis.description}
                   </p>
@@ -134,36 +141,47 @@ export default async function HypothesesPage() {
                   <span className="rounded-md bg-white/80 px-3 py-2 font-mono text-xs text-stone-700 ring-1 ring-stone-200">
                     papers {(hypothesis.supporting_papers || []).length}
                   </span>
-                  <form action={reviewHypothesis} className="flex flex-wrap gap-2">
+                  <form
+                    action={reviewHypothesis}
+                    className="flex w-full flex-col gap-2 lg:w-96"
+                  >
                     <input type="hidden" name="id" value={hypothesis.id} />
                     <input type="hidden" name="title" value={hypothesis.title} />
-                    <button
-                      className="inline-flex min-h-10 items-center gap-2 rounded-md bg-emerald-700 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-800"
-                      name="status"
-                      value="confirmed"
-                      type="submit"
-                    >
-                      <span aria-hidden="true">✓</span>
-                      Confirm
-                    </button>
-                    <button
-                      className="inline-flex min-h-10 items-center gap-2 rounded-md bg-white px-3 py-2 text-sm font-medium text-stone-800 ring-1 ring-stone-300 hover:bg-stone-100"
-                      name="status"
-                      value="under_review"
-                      type="submit"
-                    >
-                      <span aria-hidden="true">?</span>
-                      Review
-                    </button>
-                    <button
-                      className="inline-flex min-h-10 items-center gap-2 rounded-md bg-white px-3 py-2 text-sm font-medium text-rose-800 ring-1 ring-rose-300 hover:bg-rose-50"
-                      name="status"
-                      value="rejected"
-                      type="submit"
-                    >
-                      <span aria-hidden="true">×</span>
-                      Reject
-                    </button>
+                    <textarea
+                      name="outcome"
+                      rows={2}
+                      placeholder="Optional curator note (why? evidence quality? next step?)"
+                      className="w-full rounded-md border border-stone-300 bg-white/90 px-3 py-2 text-xs leading-5 text-stone-800 placeholder:text-stone-400 focus:border-cyan-400 focus:outline-none focus:ring-1 focus:ring-cyan-300"
+                    />
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        className="inline-flex min-h-10 items-center gap-2 rounded-md bg-emerald-700 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-800"
+                        name="status"
+                        value="confirmed"
+                        type="submit"
+                      >
+                        <span aria-hidden="true">✓</span>
+                        Confirm
+                      </button>
+                      <button
+                        className="inline-flex min-h-10 items-center gap-2 rounded-md bg-white px-3 py-2 text-sm font-medium text-stone-800 ring-1 ring-stone-300 hover:bg-stone-100"
+                        name="status"
+                        value="under_review"
+                        type="submit"
+                      >
+                        <span aria-hidden="true">?</span>
+                        Review
+                      </button>
+                      <button
+                        className="inline-flex min-h-10 items-center gap-2 rounded-md bg-white px-3 py-2 text-sm font-medium text-rose-800 ring-1 ring-rose-300 hover:bg-rose-50"
+                        name="status"
+                        value="rejected"
+                        type="submit"
+                      >
+                        <span aria-hidden="true">×</span>
+                        Reject
+                      </button>
+                    </div>
                   </form>
                 </div>
               </div>
