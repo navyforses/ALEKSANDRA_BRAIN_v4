@@ -34,6 +34,7 @@ Expected CSV columns (case-insensitive; missing optional fields are OK):
   orcid
   contact_type     (researcher|clinician|coordinator|...)
   relationship_status
+  outreach_language    (en|fr|ka; optional, inferred when missing)
   first_contact_date  (YYYY-MM-DD)
   last_contact_date   (YYYY-MM-DD)
   next_followup_date  (YYYY-MM-DD)
@@ -53,6 +54,7 @@ from __future__ import annotations
 import argparse
 import csv
 import os
+import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -87,6 +89,35 @@ VALID_RELATIONSHIP_STATUSES = {
     "completed",
 }
 
+VALID_LANGUAGES = {"en", "fr", "ka"}
+
+EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+GEORGIAN_RE = re.compile(r"[\u10A0-\u10FF]")
+
+FR_HINTS = {
+    "france",
+    "belgium",
+    "switzerland",
+    "quebec",
+    "montreal",
+    "paris",
+    "lyon",
+    "marseille",
+    "toulouse",
+    "strasbourg",
+    "universite",
+    "hopital",
+    "chu ",
+}
+
+KA_HINTS = {
+    "georgia",
+    "sakartvelo",
+    "tbilisi",
+    "batumi",
+    "kutaisi",
+}
+
 
 @dataclass
 class ContactRow:
@@ -105,6 +136,7 @@ class ContactRow:
     orcid: str | None
     contact_type: str | None
     relationship_status: str | None
+    outreach_language: str
     first_contact_date: str | None
     last_contact_date: str | None
     next_followup_date: str | None
@@ -144,13 +176,54 @@ def _enum_or_none(s: str | None, allowed: set[str]) -> str | None:
     return s_low if s_low in allowed else None
 
 
-def parse_csv(path: Path) -> list[ContactRow]:
+def _email_or_none(s: str | None) -> str | None:
+    if not s:
+        return None
+    email = s.strip().lower()
+    return email if EMAIL_RE.match(email) else None
+
+
+def _infer_outreach_language(raw: dict) -> str:
+    explicit = _enum_or_none(_g(raw, "outreach_language"), VALID_LANGUAGES)
+    if explicit:
+        return explicit
+
+    haystack = " ".join(
+        v
+        for v in (
+            _g(raw, "full_name"),
+            _g(raw, "short_name"),
+            _g(raw, "institution"),
+            _g(raw, "department"),
+            _g(raw, "city"),
+            _g(raw, "country"),
+            _g(raw, "email"),
+        )
+        if v
+    )
+    hay_low = haystack.lower()
+    if GEORGIAN_RE.search(haystack) or any(h in hay_low for h in KA_HINTS):
+        return "ka"
+    if any(h in hay_low for h in FR_HINTS) or ".fr" in hay_low:
+        return "fr"
+    return "en"
+
+
+def parse_csv_with_warnings(path: Path) -> tuple[list[ContactRow], list[str]]:
     rows: list[ContactRow] = []
+    warnings: list[str] = []
     with path.open("r", encoding="utf-8-sig", newline="") as f:
         reader = csv.DictReader(f)
-        for raw in reader:
+        for line_no, raw in enumerate(reader, start=2):
             full_name = _g(raw, "full_name")
             if not full_name:
+                continue
+            email_raw = _g(raw, "email")
+            email = _email_or_none(email_raw)
+            if email_raw and not email:
+                warnings.append(
+                    f"line {line_no}: skipped {full_name!r}; invalid email {email_raw!r}"
+                )
                 continue
             focus_raw = _g(raw, "research_focus") or ""
             focus = [
@@ -166,7 +239,7 @@ def parse_csv(path: Path) -> list[ContactRow]:
                     department=_g(raw, "department"),
                     city=_g(raw, "city"),
                     country=_g(raw, "country"),
-                    email=_g(raw, "email"),
+                    email=email,
                     phone=_g(raw, "phone"),
                     website=_g(raw, "website"),
                     research_focus=focus,
@@ -177,6 +250,7 @@ def parse_csv(path: Path) -> list[ContactRow]:
                     relationship_status=_enum_or_none(
                         _g(raw, "relationship_status"), VALID_RELATIONSHIP_STATUSES
                     ),
+                    outreach_language=_infer_outreach_language(raw),
                     first_contact_date=_date_or_none(_g(raw, "first_contact_date")),
                     last_contact_date=_date_or_none(_g(raw, "last_contact_date")),
                     next_followup_date=_date_or_none(_g(raw, "next_followup_date")),
@@ -184,6 +258,11 @@ def parse_csv(path: Path) -> list[ContactRow]:
                     aleksandra_relevance=_g(raw, "aleksandra_relevance"),
                 )
             )
+    return rows, warnings
+
+
+def parse_csv(path: Path) -> list[ContactRow]:
+    rows, _warnings = parse_csv_with_warnings(path)
     return rows
 
 
@@ -222,7 +301,7 @@ def insert_contact(conn, row: ContactRow) -> None:
       %(first_contact_date)s, %(last_contact_date)s, %(next_followup_date)s,
       %(communication_notes)s, %(aleksandra_relevance)s,
       FALSE, FALSE, FALSE,
-      'en', 0
+      %(outreach_language)s, 0
     )
     """
     with conn.cursor() as cur:
@@ -244,6 +323,7 @@ def insert_contact(conn, row: ContactRow) -> None:
                 "orcid": row.orcid,
                 "contact_type": row.contact_type,
                 "relationship_status": row.relationship_status,
+                "outreach_language": row.outreach_language,
                 "first_contact_date": row.first_contact_date,
                 "last_contact_date": row.last_contact_date,
                 "next_followup_date": row.next_followup_date,
@@ -279,8 +359,14 @@ def main() -> int:
         print(f"[ERROR] input file not found: {args.input}", file=sys.stderr)
         return 2
 
-    rows = parse_csv(args.input)
+    rows, warnings = parse_csv_with_warnings(args.input)
     print(f"Parsed {len(rows)} CSV rows from {args.input}")
+    if warnings:
+        print(f"Skipped invalid rows: {len(warnings)}")
+        for msg in warnings[:10]:
+            print(f"  WARN: {msg}")
+        if len(warnings) > 10:
+            print(f"  ... and {len(warnings) - 10} more warnings")
 
     conn = psycopg2.connect(os.environ["SUPABASE_DB_URL"], sslmode="require")
     try:
@@ -308,7 +394,10 @@ def main() -> int:
 
         if args.dry_run:
             for r in new_rows[:10]:
-                print(f"  WOULD INSERT: {r.full_name} <{r.email or 'no-email'}>")
+                print(
+                    f"  WOULD INSERT: {r.full_name} <{r.email or 'no-email'}> "
+                    f"lang={r.outreach_language}"
+                )
             if len(new_rows) > 10:
                 print(f"  ... and {len(new_rows) - 10} more")
             print("[DRY-RUN] no rows written")

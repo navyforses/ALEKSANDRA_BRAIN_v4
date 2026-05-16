@@ -89,6 +89,7 @@ htmlcov/
 .tox/
 coverage.xml
 *.cover
+briefs/*.pdf
 
 # Runtime run logs
 scripts/repurposing/run_logs/

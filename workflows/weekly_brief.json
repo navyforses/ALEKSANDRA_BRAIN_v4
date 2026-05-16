@@ -1,0 +1,73 @@
+{
+  "name": "weekly-brief",
+  "active": true,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            { "field": "cronExpression", "expression": "0 13 * * 0" }
+          ]
+        }
+      },
+      "name": "Sunday 13:00 UTC (09:00 ET)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 300],
+      "id": "trigger-sunday"
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/runs",
+        "method": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"kind\": \"weekly_brief_trigger\",\n  \"agent_id\": \"weekly-brief\",\n  \"exit_status\": \"queued\",\n  \"start_time\": \"{{ $now.toISO() }}\",\n  \"end_time\": \"{{ $now.toISO() }}\",\n  \"token_cost\": 0\n}",
+        "options": {}
+      },
+      "name": "Log brief trigger",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300],
+      "id": "log-trigger"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/sendMessage",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"chat_id\": \"{{ $env.TELEGRAM_CHAT_ID }}\",\n  \"text\": \"📑 Weekly Brief queued for {{ $now.toFormat('yyyy-MM-dd') }}. A worker will render the PDF, upload to R2, and reply with the link. No automatic email — Shako reviews before forwarding.\"\n}",
+        "options": {}
+      },
+      "name": "Telegram notify",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 300],
+      "id": "telegram-notify"
+    }
+  ],
+  "connections": {
+    "Sunday 13:00 UTC (09:00 ET)": {
+      "main": [[{ "node": "Log brief trigger", "type": "main", "index": 0 }]]
+    },
+    "Log brief trigger": {
+      "main": [[{ "node": "Telegram notify", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "meta": {
+    "description": "Phase 3 CGM-05 — Sunday 09:00 ET (13:00 UTC) weekly brief trigger. Logs a 'weekly_brief_trigger' runs row and pings Telegram so Shako knows the brief is incoming. The actual PDF render runs on the project worker via `python -m scripts.communicator.weekly_brief --week-start <next-sunday>` and uploads to R2; a follow-up Telegram message with the R2 link is sent by that worker.",
+    "phase": 3,
+    "requirement": "CGM-05",
+    "owner_locked": "2026-05-16 Sunday 09:00 local (ET while in Boston/Durham)"
+  }
+}

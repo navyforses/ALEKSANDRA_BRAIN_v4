@@ -1,0 +1,33 @@
+# scripts/communicator/questions_queue.yaml
+#
+# Family questions surfaced in the Weekly Brief PDF (Phase 3 CGM-05).
+# Each entry produces one line in the "Family questions" section.
+# Empty list → "No open questions this week" line in the brief.
+#
+# Fields:
+#   id:       short slug (referenced in commit logs / triage)
+#   question: the actual question, written in plain language
+#   context:  one sentence of "why we're asking now"
+#   asked_at: ISO date the question first surfaced
+#   status:   open | answered | deferred
+#
+# Manager flips status to "answered" or "deferred" when the family decides.
+
+questions:
+  - id: weekly_brief_day
+    question: "Sunday 09:00 ET delivery time for the Weekly Brief — confirm?"
+    context: "Owner-locked 2026-05-16 but worth verifying after the first real brief lands."
+    asked_at: "2026-05-16"
+    status: open
+
+  - id: t1_quiet_hours_categories
+    question: "Which T1 categories may bypass quiet hours (22:00–08:00)?"
+    context: "Trial deadlines and direct researcher replies are the obvious yes; medication-safety alerts default yes; need to confirm BMC urgent message handling."
+    asked_at: "2026-05-16"
+    status: open
+
+  - id: outreach_consent_first_pass
+    question: "Review the first 5 imported contacts and flip consent_full_name / consent_doctor_names / consent_hospital_names per contact?"
+    context: "All imported contacts default to fully redacted identity. Per-contact consent is how we earn outreach precision."
+    asked_at: "2026-05-16"
+    status: open
