@@ -28,6 +28,7 @@ import httpx
 
 from scripts.cognition.llm import call_claude
 from scripts.ledger import _supabase_creds, _supabase_headers, load_env
+from scripts.repurposing.run_logging import RepurposingRunLog
 
 MODEL = "claude-sonnet-4-5"
 TEMPERATURE = 0.2
@@ -163,12 +164,15 @@ def _insert_therapy(cand: dict, hyp_id: str) -> str | None:
 
 
 def run(status_filter: list[str] | None = None) -> dict:
+    run_log = RepurposingRunLog("extract_candidates")
     load_env()
     status_filter = status_filter or ["new", "under_review", "promising"]
     hyps = _fetch_hypotheses(status_filter)
     print(f"hypotheses to process: {len(hyps)}")
+    run_log.event("fetched hypotheses", count=len(hyps), status_filter=status_filter)
 
     existing = _existing_therapies()
+    run_log.event("loaded existing therapies", count=len(existing))
     summary = {
         "hypotheses_seen": len(hyps),
         "candidates_proposed": 0,
@@ -178,6 +182,11 @@ def run(status_filter: list[str] | None = None) -> dict:
 
     for h in hyps:
         cands = _call_claude(h)
+        run_log.event(
+            "extracted candidates",
+            hypothesis_id=h["id"],
+            candidate_count=len(cands),
+        )
         summary["candidates_proposed"] += len(cands)
         for c in cands:
             name = (c.get("name") or "").strip().lower()
@@ -185,11 +194,15 @@ def run(status_filter: list[str] | None = None) -> dict:
                 continue
             if name in existing:
                 summary["skipped_dup"] += 1
+                run_log.event("skipped duplicate", therapy_name=name)
                 continue
             new_id = _insert_therapy(c, h["id"])
             if new_id:
                 summary["inserted"] += 1
                 existing[name] = {"id": new_id, "name": c["name"]}
+                run_log.event("inserted therapy", therapy_id=new_id, therapy_name=name)
+    latest_log = run_log.finish(summary)
+    print(f"run log: {latest_log}")
     return summary
 
 

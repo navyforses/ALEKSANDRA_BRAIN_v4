@@ -39,6 +39,7 @@ from scripts.fetch_pubmed import (
     configure_entrez,
 )
 from scripts.ledger import _supabase_creds, _supabase_headers, load_env
+from scripts.repurposing.run_logging import RepurposingRunLog
 
 MODEL = "claude-sonnet-4-5"
 TEMPERATURE = 0.2
@@ -176,12 +177,14 @@ def _update_therapy(t_id: str, body: dict) -> bool:
 
 
 def run(limit: int | None = None) -> dict:
+    run_log = RepurposingRunLog("pubmed_validation")
     load_env()
     configure_entrez()
     cands = _fetch_candidates_to_validate()
     if limit:
         cands = cands[:limit]
     print(f"candidates to validate: {len(cands)}")
+    run_log.event("fetched candidates", count=len(cands), limit=limit)
     summary = {
         "seen": len(cands),
         "validated": 0,
@@ -193,6 +196,7 @@ def run(limit: int | None = None) -> dict:
         if not name:
             continue
         print(f"  ↪ {name}")
+        run_log.event("validating candidate", therapy_id=c["id"], therapy_name=name)
         try:
             signals = _query_pubmed(name)
             new_ev = _classify_evidence(signals)
@@ -227,9 +231,28 @@ def run(limit: int | None = None) -> dict:
                 print(
                     f"     → {new_ev}  ({len(signals['pmids'])} pmids, recent {signals.get('recent_year')})"
                 )
+                run_log.event(
+                    "updated therapy",
+                    therapy_id=c["id"],
+                    therapy_name=name,
+                    evidence_in_hie=new_ev,
+                    pmid_count=len(signals["pmids"]),
+                    recent_year=signals.get("recent_year"),
+                )
         except Exception as e:
             summary["errors"] += 1
             print(f"     [err] {type(e).__name__}: {e}")
+            run_log.event(
+                "validation error",
+                therapy_id=c["id"],
+                therapy_name=name,
+                error=f"{type(e).__name__}: {e}",
+            )
+    latest_log = run_log.finish(
+        summary,
+        status="completed" if summary["errors"] == 0 else "partial",
+    )
+    print(f"run log: {latest_log}")
     return summary
 
 
