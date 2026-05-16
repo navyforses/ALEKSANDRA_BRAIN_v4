@@ -5,7 +5,7 @@
 > analyzing, and discovering treatment possibilities for children with
 > severe brain injury.
 
-**Status:** Phase 2 closed; Phase 2.5/3 entry active (2026-05-15)
+**Status:** Phase 2.5 closed; Phase 3 cognition entry ready (2026-05-16)
 **Version:** v4.0
 **License:** MIT
 
@@ -103,6 +103,7 @@ pip install -r requirements.txt
 ```bash
 .venv/Scripts/python.exe -X utf8 -m scripts.verify_phase1
 .venv/Scripts/python.exe -X utf8 -m scripts.verify_phase2 --gate all
+.venv/Scripts/python.exe -X utf8 -m scripts.verify_phase2_5 --gate all
 .venv/Scripts/python.exe -X utf8 scripts/test_crew.py
 ```
 
@@ -121,9 +122,9 @@ python -m mcp.hello_brain      # MCP server
 - [x] Phase 0 foundation closed — see [`docs/PHASE_0_EXIT_REPORT.md`](docs/PHASE_0_EXIT_REPORT.md)
 - [x] Phase 1 perception closed — 10/10 PASS in [`docs/PHASE_1_EXIT_REPORT.md`](docs/PHASE_1_EXIT_REPORT.md)
 - [x] Phase 2 memory closed — 19/19 PASS in [`docs/PHASE_2_EXIT_REPORT.md`](docs/PHASE_2_EXIT_REPORT.md)
+- [x] Phase 2.5 quick wins closed — 16/16 PASS in [`docs/PHASE_2_5_EXIT_REPORT.md`](docs/PHASE_2_5_EXIT_REPORT.md)
 - [x] External Phase 2 live audit written — [`docs/PHASE_2_LIVE_AUDIT.md`](docs/PHASE_2_LIVE_AUDIT.md)
 - [x] Claude Code activity diagnostic written — [`docs/ACTIVITY_DIAGNOSTIC_PLAN.md`](docs/ACTIVITY_DIAGNOSTIC_PLAN.md)
-- [ ] Phase 2.5 cleanups — perception scale-up, DSPy training data, supporting paper hydration, repurposing run logs
 - [ ] Phase 3 cognition minimum — CGM-01 verifier, Analyzer PICO, Communicator schema, evidence ranking, confidence gate
 
 Historical Phase 0 materials remain available:

@@ -109,6 +109,7 @@ BMC MRN: 7616818
 ## მიმდინარე ეტაპი
 მიმართულება I: აღქმა (Perception) — **დახურულია 2026-05-15** (10/10 PASS — see docs/PHASE_1_EXIT_REPORT.md)
 მიმართულება II: ცოდნა (Memory) — **დახურულია 2026-05-15** (19/19 PASS — see docs/PHASE_2_EXIT_REPORT.md). 200 entities · 307 facts · 47 episodes · 10 hypotheses (3 promising) · 12 therapy candidates (5 PubMed-validated incl. Vigabatrin + Cord blood — Duke EAP path) · MEM-01/04/05/06 live · MEM-02/03/07/08 deferred to Phase 2.5
+მიმართულება II.5: სწრაფი გამყარება (Quick Wins) — **დახურულია 2026-05-16** (16/16 PASS — see docs/PHASE_2_5_EXIT_REPORT.md). Spend A 3/3 · Scale-up B 4/4 · Family-visible C 4/4 · Validation D 4/4; 326 ledger · 5301 chunks · 5302 Qdrant vectors · 568 Neo4j entities · 5 confirmed research hypotheses · 10/10 supporting_papers hydrated · 10 DSPy JSONL examples.
 შემდეგი: მიმართულება III (Cognition — minimum) — CGM-01 verifier + CGM-02 Analyzer + CGM-03 Communicator + imperative-verb lint + 6-tier evidence ranking + HIGH-only confidence gate
 
 ## ენა
