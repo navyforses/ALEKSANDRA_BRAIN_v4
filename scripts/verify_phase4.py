@@ -411,14 +411,84 @@ def check_ffv_05(report: Report) -> None:
             )
         )
         return
-    # Day 3 will populate: ≥1 row in outreach_log with trigger_kind='clinician_pdf'
-    # AND gmail_draft_id IS NOT NULL.
+    import tempfile
+    from datetime import datetime as _dt
+
+    from scripts.communicator.clinician_pdf import (
+        ClinicianClaim,
+        ClinicianPDFInput,
+        render_clinician_pdf,
+    )
+
+    # Structural smoke: render a fixture PDF into temp dir; assert size and
+    # no PHI safety-net block. This proves the renderer + patient context
+    # work end-to-end without needing a real contact row.
+    tmp_pdf = (
+        Path(tempfile.gettempdir())
+        / f"phase4_ffv05_smoke_{_dt.now().timestamp():.0f}.pdf"
+    )
+    try:
+        out = render_clinician_pdf(
+            ClinicianPDFInput(
+                topic="Smoke test — cord blood expanded access for severe HIE",
+                audience_label="Smoke test recipient",
+                claims=[
+                    ClinicianClaim(
+                        sentence="Preclinical evidence supports autologous cord blood for neonatal HIE.",
+                        citation_ids=["PMID:0000001"],
+                        evidence_grade=2,
+                        confidence=0.82,
+                    ),
+                ],
+                citation_metadata={
+                    "PMID:0000001": {
+                        "source_type": "pubmed",
+                        "retrieval_timestamp": "2026-05-16T10:00:00Z",
+                        "url": "https://pubmed.ncbi.nlm.nih.gov/0000001/",
+                    },
+                },
+                agent_run_ids=["smoke-run-00000000"],
+            ),
+            tmp_pdf,
+        )
+        smoke_ok = (
+            not out.blocked
+            and out.bytes_written > 1024
+            and out.claim_count == 1
+            and out.citation_count == 1
+        )
+        smoke_evidence = (
+            f"pdf={out.bytes_written}B claims={out.claim_count} "
+            f"citations={out.citation_count} version={out.patient_context_version}"
+        )
+    except Exception as e:
+        smoke_ok = False
+        smoke_evidence = f"render_raised: {type(e).__name__}: {str(e)[:120]}"
+    finally:
+        try:
+            tmp_pdf.unlink()
+        except OSError:
+            pass
+
+    # Production-data check: ≥1 outreach_log row with trigger_kind='clinician_pdf'
+    # AND gmail_draft_id NOT NULL — RED until first real clinician draft fires.
+    rows = _pg_query(
+        """
+        SELECT count(*) FROM outreach_log
+        WHERE trigger_kind = 'clinician_pdf' AND gmail_draft_id IS NOT NULL
+        """
+    )
+    n_prod = int(rows[0][0]) if rows else 0
+    prod_ok = n_prod >= 1
+
+    ok = smoke_ok and prod_ok
+    evidence = f"smoke={smoke_ok} ({smoke_evidence})  prod_clinician_drafts={n_prod}"
     report.add(
         Check(
             "FFV-05",
             "Clinician PDF renders + Gmail draft has PDF attachment",
-            False,
-            "implementation present but check body not wired (Day 3)",
+            ok,
+            evidence,
             "ACD-05",
         )
     )

@@ -36,6 +36,7 @@ import os
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from email.message import EmailMessage
+from pathlib import Path
 from typing import Any
 
 import psycopg2
@@ -207,6 +208,42 @@ def _gmail_create_draft(to_email: str, subject: str, body: str) -> str:
     msg.set_content(body)
     msg["To"] = to_email
     msg["Subject"] = subject
+
+    raw = base64.urlsafe_b64encode(msg.as_bytes()).decode("ascii")
+    draft = (
+        service.users()
+        .drafts()
+        .create(userId="me", body={"message": {"raw": raw}})
+        .execute()
+    )
+    return draft["id"]
+
+
+def _gmail_create_draft_with_attachment(
+    to_email: str,
+    subject: str,
+    body: str,
+    attachment_path: Path,
+    attachment_filename: str | None = None,
+) -> str:
+    """Create a Gmail draft with one PDF attached. Returns the draft ID.
+
+    Uses the same gmail.compose scope as the plain-text draft path — adding
+    an attachment does not require gmail.send or any broader capability.
+    """
+    service = _gmail_service()
+    msg = EmailMessage()
+    msg.set_content(body)
+    msg["To"] = to_email
+    msg["Subject"] = subject
+
+    pdf_bytes = attachment_path.read_bytes()
+    msg.add_attachment(
+        pdf_bytes,
+        maintype="application",
+        subtype="pdf",
+        filename=attachment_filename or attachment_path.name,
+    )
 
     raw = base64.urlsafe_b64encode(msg.as_bytes()).decode("ascii")
     draft = (
@@ -395,9 +432,163 @@ def _insert_outreach_log(draft: OutreachDraft) -> str:
         conn.close()
 
 
+def draft_clinician_outreach(
+    contact_id: str,
+    topic: str,
+    *,
+    audience_label: str,
+    claims: list,
+    citation_metadata: dict[str, dict] | None = None,
+    agent_run_ids: list[str] | None = None,
+    consent: ConsentFlags | None = None,
+    today_draft_count: int | None = None,
+    dry_run: bool = False,
+    output_dir: Path | None = None,
+) -> OutreachDraft:
+    """Phase 4 ACD-05 — render clinician PDF and stage Gmail draft with attachment.
+
+    Pipeline:
+      1. Daily cap check (uses outreach_log row count; fails closed on DB error).
+      2. Consent lookup for the recipient contact.
+      3. Patient context snapshot (versioned).
+      4. PDF render via clinician_pdf.render_clinician_pdf().
+      5. Optional R2 upload (only when caller passes the artifact path through;
+         the upload itself is a Manager-side action so we keep it out of this
+         function to avoid blocking the smoke test on R2 connectivity).
+      6. Gmail draft with PDF attachment via the gmail.compose scope.
+      7. outreach_log row insert with trigger_kind='clinician_pdf' and
+         phi_redacted=TRUE.
+
+    Manual-send-only: the draft is staged in Gmail Drafts. Shako reviews
+    and clicks Send. The PDF lives on disk (or R2 if Manager uploads).
+    """
+    from scripts.communicator.clinician_pdf import (
+        ClinicianClaim,
+        ClinicianPDFInput,
+        render_clinician_pdf,
+    )
+    from scripts.communicator.patient_context import current_context
+
+    count = today_draft_count if today_draft_count is not None else count_drafts_today()
+    if count >= MAX_DAILY_DRAFTS:
+        return OutreachDraft(
+            contact_id=contact_id,
+            purpose="clinician_pdf",
+            language="en",
+            subject="",
+            body="",
+            blocked=True,
+            block_reason=f"daily_cap_reached({count}/{MAX_DAILY_DRAFTS})",
+            dry_run=dry_run,
+            drafted_at=datetime.now(timezone.utc).isoformat(),
+        )
+
+    if consent is None:
+        consent = load_consent_flags(contact_id) if not dry_run else ConsentFlags()
+
+    ctx = current_context()
+
+    # Coerce caller's claim list into ClinicianClaim records
+    coerced_claims: list[ClinicianClaim] = []
+    for raw in claims or []:
+        if isinstance(raw, ClinicianClaim):
+            coerced_claims.append(raw)
+            continue
+        coerced_claims.append(
+            ClinicianClaim(
+                sentence=str(raw.get("sentence", "")).strip(),
+                citation_ids=list(raw.get("citation_ids") or []),
+                evidence_grade=int(raw.get("evidence_grade", 5)),
+                confidence=float(raw.get("confidence", 0.0)),
+            )
+        )
+
+    out_dir = output_dir or (Path("briefs") / "clinician")
+    out_dir.mkdir(parents=True, exist_ok=True)
+    pdf_path = out_dir / (
+        f"clinician_{ctx.version_hash}_{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S')}.pdf"
+    )
+
+    pdf_inp = ClinicianPDFInput(
+        topic=topic,
+        audience_label=audience_label,
+        claims=coerced_claims,
+        citation_metadata=citation_metadata or {},
+        agent_run_ids=agent_run_ids or [],
+    )
+    pdf_out = render_clinician_pdf(
+        pdf_inp,
+        pdf_path,
+        consent=consent,
+        context=ctx,
+    )
+    if pdf_out.blocked:
+        return OutreachDraft(
+            contact_id=contact_id,
+            purpose="clinician_pdf",
+            language="en",
+            subject=f"Clinician brief — {topic[:60]}",
+            body="",
+            blocked=True,
+            block_reason=f"pdf_blocked: {pdf_out.block_reason}",
+            dry_run=dry_run,
+            drafted_at=datetime.now(timezone.utc).isoformat(),
+        )
+
+    body = (
+        f"Hello,\n\n"
+        f"Attached is a clinician-shareable brief on {topic}. The brief is "
+        f"research-discovery material for your review, not a clinical "
+        f"recommendation. Every claim cites a source the recipient can "
+        f"verify independently. Patient context version: {pdf_out.patient_context_version}.\n\n"
+        f"Best,\nShako (sent on behalf of A.J.'s family)"
+    )
+    subject = f"Clinician brief — {topic[:60]}"
+
+    citations: list[str] = sorted(
+        {cid for claim in coerced_claims for cid in claim.citation_ids}
+    )
+    confidence = (
+        round(
+            sum(c.confidence for c in coerced_claims) / len(coerced_claims),
+            4,
+        )
+        if coerced_claims
+        else 0.0
+    )
+
+    draft = OutreachDraft(
+        contact_id=contact_id,
+        purpose="clinician_pdf",
+        language="en",
+        subject=subject,
+        body=body,
+        evidence_refs=citations,
+        confidence=confidence,
+        dry_run=dry_run,
+        drafted_at=datetime.now(timezone.utc).isoformat(),
+    )
+
+    if dry_run:
+        return draft
+
+    to_email = _lookup_contact_email(contact_id)
+    if not to_email:
+        draft.blocked = True
+        draft.block_reason = "contact_missing_email"
+        return draft
+
+    draft.gmail_draft_id = _gmail_create_draft_with_attachment(
+        to_email, subject, body, pdf_path
+    )
+    draft.outreach_log_id = _insert_outreach_log(draft)
+    return draft
+
+
 __all__ = [
     "OutreachDraft",
     "draft_outreach",
+    "draft_clinician_outreach",
     "count_drafts_today",
     "MAX_DAILY_DRAFTS",
     "GMAIL_SCOPES",
