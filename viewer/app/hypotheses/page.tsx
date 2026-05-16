@@ -48,12 +48,21 @@ export default async function HypothesesPage() {
           <Link href="/" className="font-mono text-sm font-semibold tracking-normal">
             ALEKSANDRA_BRAIN
           </Link>
-          <div className="flex items-center gap-2 text-sm">
+          <div className="flex flex-wrap items-center gap-2 text-sm">
             <Link className="rounded-md px-3 py-2 text-stone-700 hover:bg-white" href="/dashboard">
               Dashboard
             </Link>
-            <Link className="rounded-md px-3 py-2 text-stone-700 hover:bg-white" href="/hypotheses">
+            <Link className="rounded-md bg-white px-3 py-2 text-stone-900 ring-1 ring-stone-200" href="/hypotheses">
               Hypotheses
+            </Link>
+            <Link className="rounded-md px-3 py-2 text-stone-700 hover:bg-white" href="/papers">
+              Papers
+            </Link>
+            <Link className="rounded-md px-3 py-2 text-stone-700 hover:bg-white" href="/therapies">
+              Therapies
+            </Link>
+            <Link className="rounded-md px-3 py-2 text-stone-700 hover:bg-white" href="/timeline">
+              Timeline
             </Link>
           </div>
         </nav>

@@ -1,0 +1,223 @@
+import Link from "next/link";
+import { getRows } from "@/lib/supabase";
+
+export const dynamic = "force-dynamic";
+
+type Therapy = {
+  id: string;
+  name: string;
+  therapy_type: string | null;
+  mechanism_of_action: string | null;
+  evidence_in_hie: string | null;
+  evidence_summary: string | null;
+  clinical_status: string | null;
+  available_locations: string[] | null;
+  approximate_cost: string | null;
+  aleksandra_eligible: boolean | null;
+  aleksandra_status: string | null;
+  aleksandra_notes: string | null;
+  optimal_age_window: string | null;
+  time_sensitivity: string | null;
+  ai_assessment: string | null;
+  confidence_level: string | null;
+  created_at: string | null;
+};
+
+function tone(value: string | null) {
+  if (value === "proven" || value === "receiving" || value === "completed") {
+    return "border-emerald-300 bg-emerald-50 text-emerald-900";
+  }
+  if (value === "promising" || value === "planned" || value === "applied" || value === "evaluating") {
+    return "border-cyan-300 bg-cyan-50 text-cyan-900";
+  }
+  if (value === "disproven" || value === "ineligible" || value === "declined") {
+    return "border-rose-300 bg-rose-50 text-rose-900";
+  }
+  return "border-stone-200 bg-white text-stone-800";
+}
+
+function yesNo(value: boolean | null) {
+  if (value == null) return "unknown";
+  return value ? "yes" : "no";
+}
+
+function listValue(values: string[] | null) {
+  return values && values.length > 0 ? values.join(", ") : "not listed";
+}
+
+function Nav() {
+  return (
+    <nav className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-200 pb-4">
+      <Link href="/" className="font-mono text-sm font-semibold tracking-normal">
+        ALEKSANDRA_BRAIN
+      </Link>
+      <div className="flex flex-wrap items-center gap-2 text-sm">
+        <Link className="rounded-md px-3 py-2 text-stone-700 hover:bg-white" href="/dashboard">
+          Dashboard
+        </Link>
+        <Link className="rounded-md px-3 py-2 text-stone-700 hover:bg-white" href="/hypotheses">
+          Hypotheses
+        </Link>
+        <Link className="rounded-md px-3 py-2 text-stone-700 hover:bg-white" href="/papers">
+          Papers
+        </Link>
+        <Link className="rounded-md bg-white px-3 py-2 text-stone-900 ring-1 ring-stone-200" href="/therapies">
+          Therapies
+        </Link>
+        <Link className="rounded-md px-3 py-2 text-stone-700 hover:bg-white" href="/timeline">
+          Timeline
+        </Link>
+      </div>
+    </nav>
+  );
+}
+
+export default async function TherapiesPage() {
+  const therapies = await getRows<Therapy>("therapies", {
+    select:
+      "id,name,therapy_type,mechanism_of_action,evidence_in_hie,evidence_summary,clinical_status,available_locations,approximate_cost,aleksandra_eligible,aleksandra_status,aleksandra_notes,optimal_age_window,time_sensitivity,ai_assessment,confidence_level,created_at",
+    order: "name.asc",
+    limit: 100,
+  });
+
+  const active = therapies.rows.filter((t) => t.aleksandra_status === "receiving").length;
+  const watching = therapies.rows.filter((t) =>
+    ["planned", "applied", "evaluating"].includes(t.aleksandra_status || ""),
+  ).length;
+  const promising = therapies.rows.filter((t) => t.evidence_in_hie === "promising").length;
+
+  return (
+    <main className="min-h-screen bg-stone-50 text-stone-950">
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-5 py-6 sm:px-8">
+        <Nav />
+
+        <header className="grid gap-4 lg:grid-cols-[1fr_auto]">
+          <div>
+            <p className="font-mono text-xs uppercase text-cyan-700">Therapy tracker</p>
+            <h1 className="mt-1 text-3xl font-semibold tracking-normal sm:text-4xl">
+              Therapies
+            </h1>
+            <p className="mt-3 max-w-3xl text-sm leading-6 text-stone-600">
+              Read-only status view of treatments, programs, and research candidates. This page is operational context, not clinical advice.
+            </p>
+          </div>
+          <div className="grid min-w-72 grid-cols-3 gap-3">
+            <div className="rounded-md border border-stone-200 bg-white p-4">
+              <p className="font-mono text-xs uppercase text-stone-500">Shown</p>
+              <p className="mt-2 text-2xl font-semibold">{therapies.rows.length}</p>
+            </div>
+            <div className="rounded-md border border-stone-200 bg-white p-4">
+              <p className="font-mono text-xs uppercase text-stone-500">Active</p>
+              <p className="mt-2 text-2xl font-semibold">{active}</p>
+            </div>
+            <div className="rounded-md border border-stone-200 bg-white p-4">
+              <p className="font-mono text-xs uppercase text-stone-500">Watching</p>
+              <p className="mt-2 text-2xl font-semibold">{watching}</p>
+            </div>
+          </div>
+        </header>
+
+        {therapies.error ? (
+          <section className="rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+            {therapies.error}
+          </section>
+        ) : null}
+
+        <section className="grid gap-3 sm:grid-cols-3">
+          <div className="rounded-md border border-stone-200 bg-white p-4">
+            <p className="font-mono text-xs uppercase text-stone-500">Promising HIE evidence</p>
+            <p className="mt-2 text-xl font-semibold">{promising}</p>
+          </div>
+          <div className="rounded-md border border-stone-200 bg-white p-4">
+            <p className="font-mono text-xs uppercase text-stone-500">Eligible marked yes</p>
+            <p className="mt-2 text-xl font-semibold">
+              {therapies.rows.filter((t) => t.aleksandra_eligible).length}
+            </p>
+          </div>
+          <div className="rounded-md border border-stone-200 bg-white p-4">
+            <p className="font-mono text-xs uppercase text-stone-500">Time critical</p>
+            <p className="mt-2 text-xl font-semibold">
+              {therapies.rows.filter((t) => t.time_sensitivity === "critical").length}
+            </p>
+          </div>
+        </section>
+
+        <section className="grid gap-4">
+          {therapies.rows.map((therapy) => (
+            <article key={therapy.id} className="rounded-md border border-stone-200 bg-white p-4">
+              <div className="grid gap-4 lg:grid-cols-[1fr_auto]">
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className={`rounded-md border px-2 py-1 font-mono text-xs ${tone(therapy.aleksandra_status)}`}>
+                      {therapy.aleksandra_status || "not_considered"}
+                    </span>
+                    <span className={`rounded-md border px-2 py-1 font-mono text-xs ${tone(therapy.evidence_in_hie)}`}>
+                      evidence {therapy.evidence_in_hie || "unknown"}
+                    </span>
+                    <span className="font-mono text-xs text-stone-500">
+                      {therapy.therapy_type || "type pending"}
+                    </span>
+                  </div>
+                  <h2 className="mt-3 text-lg font-semibold leading-7">{therapy.name}</h2>
+                  {therapy.mechanism_of_action ? (
+                    <p className="mt-2 max-w-4xl text-sm leading-6 text-stone-700">
+                      {therapy.mechanism_of_action}
+                    </p>
+                  ) : null}
+                </div>
+                <dl className="grid gap-3 text-sm sm:grid-cols-3 lg:w-96">
+                  <div>
+                    <dt className="font-mono text-xs uppercase text-stone-500">Eligible</dt>
+                    <dd className="mt-1 font-semibold">{yesNo(therapy.aleksandra_eligible)}</dd>
+                  </div>
+                  <div>
+                    <dt className="font-mono text-xs uppercase text-stone-500">Window</dt>
+                    <dd className="mt-1 font-semibold">{therapy.optimal_age_window || "n/a"}</dd>
+                  </div>
+                  <div>
+                    <dt className="font-mono text-xs uppercase text-stone-500">Timing</dt>
+                    <dd className="mt-1 font-semibold">{therapy.time_sensitivity || "n/a"}</dd>
+                  </div>
+                </dl>
+              </div>
+
+              <div className="mt-4 grid gap-4 border-t border-stone-100 pt-4 lg:grid-cols-3">
+                <div>
+                  <p className="font-mono text-xs uppercase text-stone-500">Clinical status</p>
+                  <p className="mt-1 text-sm text-stone-700">{therapy.clinical_status || "unknown"}</p>
+                </div>
+                <div>
+                  <p className="font-mono text-xs uppercase text-stone-500">Locations</p>
+                  <p className="mt-1 text-sm text-stone-700">{listValue(therapy.available_locations)}</p>
+                </div>
+                <div>
+                  <p className="font-mono text-xs uppercase text-stone-500">Cost</p>
+                  <p className="mt-1 text-sm text-stone-700">{therapy.approximate_cost || "unknown"}</p>
+                </div>
+              </div>
+
+              {therapy.evidence_summary || therapy.ai_assessment || therapy.aleksandra_notes ? (
+                <div className="mt-4 grid gap-3 border-t border-stone-100 pt-4">
+                  {therapy.evidence_summary ? (
+                    <p className="text-sm leading-6 text-stone-700">{therapy.evidence_summary}</p>
+                  ) : null}
+                  {therapy.ai_assessment ? (
+                    <p className="text-sm leading-6 text-stone-700">{therapy.ai_assessment}</p>
+                  ) : null}
+                  {therapy.aleksandra_notes ? (
+                    <p className="text-sm leading-6 text-stone-700">{therapy.aleksandra_notes}</p>
+                  ) : null}
+                </div>
+              ) : null}
+            </article>
+          ))}
+          {therapies.rows.length === 0 ? (
+            <div className="rounded-md border border-stone-200 bg-white p-6 text-sm text-stone-500">
+              No therapy rows returned.
+            </div>
+          ) : null}
+        </section>
+      </div>
+    </main>
+  );
+}
