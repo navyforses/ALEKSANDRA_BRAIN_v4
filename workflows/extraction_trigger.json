@@ -1,0 +1,119 @@
+{
+  "name": "extraction-trigger",
+  "active": false,
+  "_phase_2_5_note": "Auto-Graphiti extraction trigger. Runs every 30 minutes; calls the Railway perception_worker /extraction-tick endpoint, which invokes scripts.extraction.batch_ingest.run_batch() — extracts entities + relationships into Neo4j hie_research subgraph for any paper_chunks rows where graphiti_uuid IS NULL. Concurrency is critical (OR-1): Graphiti's add_episode is NOT process-safe; queue mode + n8n per-workflow concurrency=1 must be enforced.",
+  "settings": {
+    "executionOrder": "v1",
+    "saveExecutionProgress": true,
+    "saveDataSuccessExecution": "all",
+    "saveDataErrorExecution": "all",
+    "executionTimeout": 3600
+  },
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 30
+            }
+          ]
+        }
+      },
+      "name": "Every 30 minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 300],
+      "id": "trigger-30m"
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.PERCEPTION_WORKER_URL }}/extraction-tick",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"force\": false, \"limit\": null}",
+        "options": {
+          "timeout": 3000000
+        }
+      },
+      "name": "Run extraction-tick",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300],
+      "id": "extraction-call",
+      "_comment": "POST to perception_worker /extraction-tick. force=false respects kv_state guard; limit=null processes everything pending."
+    },
+    {
+      "parameters": {
+        "jsCode": "// batch_ingest.run_batch returns the grand totals dict.\nconst r = $input.first().json;\nconst seen = r.papers_seen ?? 0;\nconst processed = r.papers_processed ?? 0;\nconst eps = r.episodes_created ?? 0;\nconst ents = r.entities_added ?? r.entities_after - r.entities_before ?? 0;\nconst errs = r.errors ?? 0;\nconst noisy = (processed + eps + errs) > 0;\nconst summary = `🧠 extraction-tick  +${processed} papers  +${eps} episodes  ~${ents} entities  ${errs ? '⚠️ '+errs+' errors' : ''}`;\nreturn [{ json: { summary, noisy, ...r } }];"
+      },
+      "name": "Format summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300],
+      "id": "format-summary"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "is-noisy",
+              "leftValue": "={{ $json.noisy }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "name": "Has new activity?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [900, 300],
+      "id": "noisy-gate"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/sendMessage",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"chat_id\": \"{{ $env.TELEGRAM_CHAT_ID }}\", \"text\": {{ JSON.stringify($json.summary) }}}",
+        "options": {}
+      },
+      "name": "Telegram summary",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1120, 240],
+      "id": "telegram-post"
+    }
+  ],
+  "connections": {
+    "Every 30 minutes": {
+      "main": [[{ "node": "Run extraction-tick", "type": "main", "index": 0 }]]
+    },
+    "Run extraction-tick": {
+      "main": [[{ "node": "Format summary", "type": "main", "index": 0 }]]
+    },
+    "Format summary": {
+      "main": [[{ "node": "Has new activity?", "type": "main", "index": 0 }]]
+    },
+    "Has new activity?": {
+      "main": [
+        [{ "node": "Telegram summary", "type": "main", "index": 0 }],
+        []
+      ]
+    }
+  }
+}

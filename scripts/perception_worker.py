@@ -77,31 +77,29 @@ class _Handler(BaseHTTPRequestHandler):
         _json_response(self, 404, {"error": "not_found", "path": self.path})
 
     def do_POST(self) -> None:  # noqa: N802
-        if self.path != "/perception-tick":
+        # Three POST endpoints, all behind the same budget gate.
+        # /perception-tick    → fetchers (PRC-01..07; LLM-free)
+        # /chunking-tick      → process_ledger (chunk + embed + relevance score)
+        # /extraction-tick    → batch_ingest (Graphiti entity extraction)
+        if self.path not in (
+            "/perception-tick",
+            "/chunking-tick",
+            "/extraction-tick",
+        ):
             _json_response(self, 404, {"error": "not_found", "path": self.path})
             return
 
-        # Parse body (optional flags); empty body = production defaults.
-        body: dict[str, Any] = {}
-        length = int(self.headers.get("Content-Length") or 0)
-        if length > 0:
-            try:
-                body = json.loads(self.rfile.read(length).decode("utf-8") or "{}")
-                if not isinstance(body, dict):
-                    raise ValueError("body must be a JSON object")
-            except (json.JSONDecodeError, ValueError) as e:
-                _json_response(self, 400, {"error": "bad_json", "detail": str(e)})
-                return
+        body = self._parse_body()
+        if body is None:
+            return  # already responded with 400
 
-        # Defence-in-depth budget gate (HC-2/HC-4). The wrapper inside
-        # call_claude() also checks, but we fail fast here before spinning
-        # up the whole perception pipeline if today's spend is already over.
+        # Defence-in-depth budget gate (HC-2/HC-4) BEFORE any pipeline.
         try:
             today_spend, over = check_daily_budget(threshold_usd=12.0)
         except Exception as e:
             LOG.exception("budget check failed open")
             today_spend, over = 0.0, False
-            _ = e  # swallow; budget gate must not block ingestion on Supabase blips
+            _ = e
         if over:
             _json_response(
                 self,
@@ -114,12 +112,29 @@ class _Handler(BaseHTTPRequestHandler):
             )
             return
 
+        if self.path == "/perception-tick":
+            self._handle_perception(body)
+        elif self.path == "/chunking-tick":
+            self._handle_chunking(body)
+        elif self.path == "/extraction-tick":
+            self._handle_extraction(body)
+
+    def _parse_body(self) -> dict[str, Any] | None:
+        body: dict[str, Any] = {}
+        length = int(self.headers.get("Content-Length") or 0)
+        if length > 0:
+            try:
+                body = json.loads(self.rfile.read(length).decode("utf-8") or "{}")
+                if not isinstance(body, dict):
+                    raise ValueError("body must be a JSON object")
+            except (json.JSONDecodeError, ValueError) as e:
+                _json_response(self, 400, {"error": "bad_json", "detail": str(e)})
+                return None
+        return body
+
+    def _handle_perception(self, body: dict[str, Any]) -> None:
         small = bool(body.get("small", False))
         no_telegram = bool(body.get("no_telegram", False))
-
-        # Import here so a bad PERCEPTION import (e.g., missing env var) does
-        # not crash the whole HTTP server on startup; instead the first POST
-        # returns the error.
         try:
             from scripts import perception_tick  # noqa: PLC0415
         except Exception as e:
@@ -130,11 +145,8 @@ class _Handler(BaseHTTPRequestHandler):
                 {"error": "import_failed", "detail": f"{type(e).__name__}: {e}"},
             )
             return
-
         if no_telegram:
-            # Stub the module-level _telegram so the smoke test doesn't post.
             perception_tick._telegram = lambda _msg: None  # type: ignore[attr-defined]
-
         try:
             result = perception_tick.run(small=small)
         except BudgetExceeded as e:
@@ -160,7 +172,75 @@ class _Handler(BaseHTTPRequestHandler):
                 },
             )
             return
+        _json_response(self, 200, result)
 
+    def _handle_chunking(self, body: dict[str, Any]) -> None:
+        limit = int(body.get("limit", 0)) or 0
+        only_papers = bool(body.get("only_papers", False))
+        score = bool(body.get("score", True))
+        try:
+            from scripts.chunking.process_ledger import run as chunk_run  # noqa: PLC0415
+
+            result = chunk_run(limit=limit, only_papers=only_papers, score=score)
+        except BudgetExceeded as e:
+            _json_response(
+                self,
+                429,
+                {
+                    "error": "budget_exceeded",
+                    "today_spend_usd": e.today_spend_usd,
+                    "cap_usd": e.threshold_usd,
+                },
+            )
+            return
+        except Exception as e:
+            LOG.exception("process_ledger.run raised")
+            _json_response(
+                self,
+                500,
+                {
+                    "error": "chunking_failed",
+                    "detail": f"{type(e).__name__}: {e}",
+                    "trace": traceback.format_exc(limit=5),
+                },
+            )
+            return
+        _json_response(self, 200, result)
+
+    def _handle_extraction(self, body: dict[str, Any]) -> None:
+        import asyncio  # noqa: PLC0415
+
+        force = bool(body.get("force", False))
+        limit = body.get("limit")
+        if limit is not None:
+            limit = int(limit)
+        try:
+            from scripts.extraction.batch_ingest import run_batch  # noqa: PLC0415
+
+            result = asyncio.run(run_batch(force=force, limit=limit))
+        except BudgetExceeded as e:
+            _json_response(
+                self,
+                429,
+                {
+                    "error": "budget_exceeded",
+                    "today_spend_usd": e.today_spend_usd,
+                    "cap_usd": e.threshold_usd,
+                },
+            )
+            return
+        except Exception as e:
+            LOG.exception("batch_ingest.run_batch raised")
+            _json_response(
+                self,
+                500,
+                {
+                    "error": "extraction_failed",
+                    "detail": f"{type(e).__name__}: {e}",
+                    "trace": traceback.format_exc(limit=5),
+                },
+            )
+            return
         _json_response(self, 200, result)
 
 

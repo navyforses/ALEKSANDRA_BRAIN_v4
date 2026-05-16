@@ -1,0 +1,165 @@
+{
+  "name": "daily-digest",
+  "active": false,
+  "_phase_2_5_note": "Family-facing daily digest at 09:00 UTC. Fully template-based (no LLM call → cost = $0/day). Reads counts + top-3 relevance from Supabase, posts a single Telegram message in Georgian + English, then writes a runs row (kind='daily_digest') so verify_phase2_5 C.3 can confirm delivery. n8n SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY env vars required.",
+  "settings": {
+    "executionOrder": "v1",
+    "saveExecutionProgress": true,
+    "saveDataSuccessExecution": "all",
+    "saveDataErrorExecution": "all",
+    "executionTimeout": 60
+  },
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * *"
+            }
+          ]
+        }
+      },
+      "name": "09:00 UTC daily",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 300],
+      "id": "trigger-9utc"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Compute the ISO timestamp for 24h ago (UTC). Reused by every Supabase HEAD/GET below.\nconst since = new Date(Date.now() - 24*60*60*1000).toISOString();\nreturn [{ json: { since } }];"
+      },
+      "name": "Compute window",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 300],
+      "id": "compute-window"
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/papers",
+        "options": { "timeout": 15000 },
+        "queryParameters": {
+          "parameters": [
+            { "name": "select", "value": "id,title,relevance_score,direct_relevance,cross_disease_source" },
+            { "name": "ingested_at", "value": "=gte.{{ $json.since }}" },
+            { "name": "order", "value": "relevance_score.desc.nullslast" },
+            { "name": "limit", "value": "3" }
+          ]
+        },
+        "sendQuery": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" }
+          ]
+        },
+        "sendHeaders": true
+      },
+      "name": "Top 3 papers (24h)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [640, 200],
+      "id": "top3-papers"
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/runs",
+        "options": { "timeout": 15000 },
+        "queryParameters": {
+          "parameters": [
+            { "name": "select", "value": "token_cost,kind,agent_id,start_time" },
+            { "name": "kind", "value": "eq.llm_call" },
+            { "name": "start_time", "value": "=gte.{{ $('Compute window').first().json.since }}" }
+          ]
+        },
+        "sendQuery": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" }
+          ]
+        },
+        "sendHeaders": true
+      },
+      "name": "LLM spend (24h)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [640, 380],
+      "id": "spend-24h"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Compose the digest text. Inputs:\n//   item 0 (Top 3 papers): array of {id,title,relevance_score,direct_relevance,cross_disease_source}\n//   item 1 (LLM spend):    array of {token_cost,kind,agent_id,start_time}\nconst all = $input.all();\nconst topPapers = (all[0]?.json && Array.isArray(all[0].json)) ? all[0].json : [];\nconst spendRows = (all[1]?.json && Array.isArray(all[1].json)) ? all[1].json : [];\nconst since = $('Compute window').first().json.since;\n\nconst spendUsd = spendRows.reduce((acc, r) => acc + parseFloat(r.token_cost || 0), 0);\nconst llmCalls = spendRows.length;\nconst paperCount = topPapers.length;\n\nfunction trim(s, n) { return s && s.length > n ? s.slice(0, n-1) + '…' : (s || ''); }\n\nconst tops = topPapers.length > 0\n  ? topPapers.map((p, i) => {\n      const rs = p.relevance_score == null ? '?' : Number(p.relevance_score).toFixed(2);\n      const tag = p.direct_relevance ? '🎯 HIE' : (p.cross_disease_source ? `↔ ${trim(p.cross_disease_source, 24)}` : '·');\n      return `  ${i+1}. [${rs}] ${tag}  —  ${trim(p.title || '', 90)}`;\n    }).join('\\n')\n  : '  (no new papers in last 24h)';\n\nconst text = [\n  '📊 ALEKSANDRA_BRAIN — Daily Digest',\n  `Window: since ${since.slice(0,10)} 09:00 UTC`,\n  '',\n  `Top relevance (last 24h, ${paperCount} new):`,\n  tops,\n  '',\n  `LLM activity: ${llmCalls} calls,  $${spendUsd.toFixed(6)}`\n].join('\\n');\n\nreturn [{ json: { text, paperCount, llmCalls, spendUsd } }];"
+      },
+      "name": "Compose digest",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [860, 300],
+      "id": "compose-digest"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/sendMessage",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"chat_id\": \"{{ $env.TELEGRAM_CHAT_ID }}\", \"text\": {{ JSON.stringify($json.text) }}, \"disable_web_page_preview\": true}",
+        "options": {}
+      },
+      "name": "Telegram digest",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1080, 240],
+      "id": "telegram-post"
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/runs",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"kind\": \"daily_digest\", \"agent_id\": \"daily_digest\", \"exit_status\": \"completed\", \"exit_reason\": {{ JSON.stringify('papers=' + $('Compose digest').first().json.paperCount + ' llm_calls=' + $('Compose digest').first().json.llmCalls + ' spend=$' + $('Compose digest').first().json.spendUsd.toFixed(6)) }}, \"tokens_input\": 0, \"tokens_output\": 0, \"token_cost\": 0}",
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendHeaders": true,
+        "options": {}
+      },
+      "name": "Append runs row",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1080, 380],
+      "id": "runs-append",
+      "_comment": "Lets verify_phase2_5 C.3 detect 'digest fired in last 24h' via runs query."
+    }
+  ],
+  "connections": {
+    "09:00 UTC daily": {
+      "main": [[{ "node": "Compute window", "type": "main", "index": 0 }]]
+    },
+    "Compute window": {
+      "main": [[
+        { "node": "Top 3 papers (24h)", "type": "main", "index": 0 },
+        { "node": "LLM spend (24h)", "type": "main", "index": 0 }
+      ]]
+    },
+    "Top 3 papers (24h)": {
+      "main": [[{ "node": "Compose digest", "type": "main", "index": 0 }]]
+    },
+    "LLM spend (24h)": {
+      "main": [[{ "node": "Compose digest", "type": "main", "index": 1 }]]
+    },
+    "Compose digest": {
+      "main": [[
+        { "node": "Telegram digest", "type": "main", "index": 0 },
+        { "node": "Append runs row", "type": "main", "index": 0 }
+      ]]
+    }
+  }
+}
