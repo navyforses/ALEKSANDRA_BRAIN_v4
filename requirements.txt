@@ -66,6 +66,11 @@ google-auth-oauthlib>=1.2.1
 reportlab>=4.2.5
 PyYAML>=6.0
 
+# ─── Notion family knowledge base (Phase 4 ACD-04) ───────
+# Integration is internal/append-only — Read + Insert + Update only.
+# See docs/RUNBOOK-notion-api.md for the setup contract.
+notion-client>=2.2.1
+
 # ─── Utilities ───────────────────────────────────────────
 python-dotenv>=1.0.0
 pydantic>=2.9.0
