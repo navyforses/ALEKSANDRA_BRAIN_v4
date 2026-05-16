@@ -12,7 +12,7 @@ verify_phase3.py — Phase 3 Cognition Minimum exit-gate harness.
   CGM-07  Language detection routes EN/FR/KA correctly             (Day 3)
   CGM-08  Banned-phrase detector blocks clinical-command verbs     (Day 2)
   CGM-09  Daily outreach draft cap of 5 enforced                   (Day 5)
-  CGM-10  Migration 008 applied; no USING(true) on base tables     (Day 1) ← Day 0/1 baseline
+  CGM-10  Migration 008 + contacts seed + anon RLS smoke           (Day 1) ← Day 0/1 baseline
 
 Plus a final REGR row that re-runs verify_phase2_5 to confirm Phase 1/2/2.5
 remain green (HC-7 gate-before-next discipline).
@@ -21,9 +21,9 @@ This file deliberately mirrors scripts/verify_phase2_5.py's structure and
 helper signatures so all four verifiers can later be merged mechanically.
 
 Day 0 / Day 1 baseline state:
-  - CGM-10 is GREEN (Migration 008 applied 2026-05-16).
-  - CGM-01..CGM-09 are RED with "module not implemented" evidence until the
-    corresponding day ships its module under scripts/communicator/.
+  - CGM-10 is GREEN only after Migration 008 is applied, contacts has >=75 rows,
+    and anon REST smoke tests return 401/403 or no rows.
+  - Later CGM gates may already be GREEN if a future-day module was built early.
 
 Usage:
     .venv/Scripts/python.exe -X utf8 -m scripts.verify_phase3
@@ -41,6 +41,7 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
+import httpx
 import psycopg2
 
 from scripts.ledger import load_env
@@ -103,6 +104,37 @@ def _module_present(dotted: str) -> bool:
         return True
     except ImportError:
         return False
+
+
+def _anon_rest_no_rows(table: str) -> tuple[bool, str]:
+    url = os.environ.get("SUPABASE_URL", "").rstrip("/")
+    anon = os.environ.get("SUPABASE_ANON_KEY", "")
+    if not url:
+        return False, "SUPABASE_URL missing"
+    if not anon:
+        return False, "SUPABASE_ANON_KEY missing"
+
+    try:
+        r = httpx.get(
+            f"{url}/rest/v1/{table}",
+            params={"select": "id", "limit": "1"},
+            headers={"apikey": anon, "Authorization": f"Bearer {anon}"},
+            timeout=8,
+        )
+        if r.status_code in (401, 403):
+            return True, f"{table}=HTTP {r.status_code}"
+        if r.status_code == 200:
+            try:
+                body = r.json()
+            except ValueError:
+                return False, f"{table}=HTTP 200 non-json body_len={len(r.text)}"
+            return (
+                body == [],
+                f"{table}=HTTP 200 rows={len(body) if isinstance(body, list) else 'non-list'}",
+            )
+        return False, f"{table}=HTTP {r.status_code} body_len={len(r.text)}"
+    except Exception as e:
+        return False, f"{table}={type(e).__name__}: {e}"
 
 
 # ---------------------------------------------------------------------------
@@ -251,14 +283,67 @@ def check_cgm_03(report: Report) -> None:
             )
         )
         return
-    # Day 4 will populate: load tests/fixtures/tier_router_events.jsonl (100 rows),
-    # run classify() over each, assert ≥90 match the labeled tier.
+    from datetime import datetime
+
+    from scripts.communicator.tier_router import Event, classify
+
+    fixture_path = ROOT / "tests" / "fixtures" / "tier_router_events.jsonl"
+    if not fixture_path.exists():
+        report.add(
+            Check(
+                "CGM-03",
+                "Tier router ≥ 90% accuracy on 100 labeled events",
+                False,
+                f"fixture missing: {fixture_path}",
+                "CGM-03",
+            )
+        )
+        return
+
+    correct = 0
+    total = 0
+    by_tier: dict[str, list[int]] = {t: [0, 0] for t in ("T0", "T1", "T2", "T3", "T4")}
+    failures: list[str] = []
+    with fixture_path.open("r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            total += 1
+            row = json.loads(line)
+            expected = row["expected_tier"]
+            by_tier[expected][1] += 1
+            ev = Event(
+                kind=row["kind"],
+                confidence=row["confidence"],
+                phi_blocked=row.get("phi_blocked", False),
+                banned_blocked=row.get("banned_blocked", False),
+                source_round_trip_passed=row.get("source_round_trip_passed", True),
+                is_duplicate=row.get("is_duplicate", False),
+                payload=row.get("payload", {}),
+                timestamp=datetime.fromisoformat(row["timestamp_iso"]),
+            )
+            decision = classify(ev, t1_count_today=row.get("t1_count_today", 0))
+            if decision.tier == expected:
+                correct += 1
+                by_tier[expected][0] += 1
+            else:
+                failures.append(
+                    f"{row['id']}: want={expected} got={decision.tier} ({decision.reason})"
+                )
+
+    accuracy = correct / total if total else 0.0
+    ok = correct >= 90 and total == 100
+    per_tier = " ".join(f"{k}={v[0]}/{v[1]}" for k, v in by_tier.items())
+    evidence = f"{correct}/{total} correct ({accuracy:.0%})  {per_tier}"
+    if failures:
+        evidence += f"  first_failure={failures[0]!r}"
     report.add(
         Check(
             "CGM-03",
             "Tier router ≥ 90% accuracy on 100 labeled events",
-            False,
-            "implementation present but check body not wired (Day 4 task)",
+            ok,
+            evidence,
             "CGM-03",
         )
     )
@@ -577,13 +662,15 @@ def check_cgm_09(report: Report) -> None:
 
 
 # ---------------------------------------------------------------------------
-# CGM-10 — Migration 008 applied + RLS audit clean
+# CGM-10 — Migration 008 applied + contacts seeded + RLS audit clean
 # ---------------------------------------------------------------------------
 def check_cgm_10(report: Report) -> None:
-    # Three sub-conditions, all must hold:
+    # Five sub-conditions, all must hold:
     #   (a) The three new tables exist.
     #   (b) The ten base tables have no policy named "Service role full access".
     #   (c) The contacts table has the six new consent/outreach columns.
+    #   (d) The contacts table has the Day 1 minimum seed count.
+    #   (e) Anon REST reads on family-sensitive tables return no rows or 401/403.
     try:
         new_tables = _pg_query(
             """
@@ -617,16 +704,26 @@ def check_cgm_10(report: Report) -> None:
         )
         cond_c = len(new_cols) == 6
 
-        ok = cond_a and cond_b and cond_c
+        contact_count = _pg_query("SELECT count(*) FROM contacts")[0][0]
+        cond_d = contact_count >= 75
+
+        smoke_tables = ("papers", "therapies", "hypotheses", "contacts", "outreach_log")
+        smoke_results = [_anon_rest_no_rows(t) for t in smoke_tables]
+        cond_e = all(ok for ok, _msg in smoke_results)
+        smoke_evidence = "; ".join(msg for _ok, msg in smoke_results)
+
+        ok = cond_a and cond_b and cond_c and cond_d and cond_e
         evidence = (
             f"new_tables={sorted(new_set)} "
             f"bad_policies={len(bad_policies)} "
-            f"new_contact_cols={len(new_cols)}/6"
+            f"new_contact_cols={len(new_cols)}/6 "
+            f"contacts={contact_count}/75 "
+            f"anon_smoke=[{smoke_evidence}]"
         )
         report.add(
             Check(
                 "CGM-10",
-                "Migration 008 applied; no USING(true) on base tables",
+                "Migration 008, contacts seed, and anon RLS smoke pass",
                 ok,
                 evidence,
                 "CGM-10",
@@ -636,7 +733,7 @@ def check_cgm_10(report: Report) -> None:
         report.add(
             Check(
                 "CGM-10",
-                "Migration 008 applied; no USING(true) on base tables",
+                "Migration 008, contacts seed, and anon RLS smoke pass",
                 False,
                 f"{type(e).__name__}: {e}",
                 "CGM-10",
