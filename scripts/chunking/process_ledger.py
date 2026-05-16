@@ -111,6 +111,7 @@ def process_one(ledger_row: dict, *, batch_size: int = 50) -> dict:
         "chunks_embedded": 0,
         "skipped_existing": 0,
         "skipped_no_text": 0,
+        "embed_error": 0,
     }
 
     # 1. Idempotency check
@@ -153,7 +154,12 @@ def process_one(ledger_row: dict, *, batch_size: int = 50) -> dict:
     inserted = _supabase_post("paper_chunks", insert_rows)
     counters["chunks_inserted"] = len(inserted)
 
-    # 6. Embed + Qdrant upsert in batches of `batch_size`
+    # 6. Embed + Qdrant upsert in batches of `batch_size`.
+    # If embed fails (e.g. Qdrant unreachable), the inserts above ALREADY
+    # made it into Postgres with embedding_id=NULL. We swallow the embed
+    # error so the caller still credits the inserts AND so subsequent
+    # ledger rows keep getting processed; the unembedded rows can be
+    # rescued later by scripts/chunking/backfill_embeddings.py.
     chunk_rows: list[ChunkRow] = [
         ChunkRow(
             chunk_id=row["id"],
@@ -165,18 +171,26 @@ def process_one(ledger_row: dict, *, batch_size: int = 50) -> dict:
         for row in inserted
     ]
     embedded_at = datetime.now(timezone.utc).isoformat()
-    for start in range(0, len(chunk_rows), batch_size):
-        batch = chunk_rows[start : start + batch_size]
-        point_ids = upsert_chunks(batch)
-        # 7. PATCH each row's embedding_id (Supabase REST doesn't support bulk
-        # updates of differing values in one call without a CTE; one PATCH per row)
-        for cr, pid in zip(batch, point_ids):
-            _supabase_patch(
-                "paper_chunks",
-                {"embedding_id": pid, "embedded_at": embedded_at},
-                {"id": f"eq.{cr.chunk_id}"},
-            )
-            counters["chunks_embedded"] += 1
+    try:
+        for start in range(0, len(chunk_rows), batch_size):
+            batch = chunk_rows[start : start + batch_size]
+            point_ids = upsert_chunks(batch)
+            # 7. PATCH each row's embedding_id (Supabase REST doesn't support bulk
+            # updates of differing values in one call without a CTE; one PATCH per row)
+            for cr, pid in zip(batch, point_ids):
+                _supabase_patch(
+                    "paper_chunks",
+                    {"embedding_id": pid, "embedded_at": embedded_at},
+                    {"id": f"eq.{cr.chunk_id}"},
+                )
+                counters["chunks_embedded"] += 1
+    except Exception as exc:
+        counters["embed_error"] = 1
+        print(
+            f"    [embed-fail] ledger {ledger_id[:8]} ({source_type}/{source_id[:24]}): "
+            f"{type(exc).__name__}: {exc} — kept {counters['chunks_inserted']} rows "
+            f"with embedding_id=NULL; recover via backfill_embeddings.py"
+        )
 
     return counters
 
@@ -316,6 +330,7 @@ def run(*, limit: int = 0, only_papers: bool = False, score: bool = True) -> dic
         "chunks_embedded": 0,
         "skipped_existing": 0,
         "skipped_no_text": 0,
+        "embed_errors": 0,
         "papers_inserted": 0,
         "papers_skipped_existing": 0,
         "papers_skipped_no_title": 0,
@@ -376,12 +391,14 @@ def run(*, limit: int = 0, only_papers: bool = False, score: bool = True) -> dic
             totals["chunks_embedded"] += c["chunks_embedded"]
             totals["skipped_existing"] += c["skipped_existing"]
             totals["skipped_no_text"] += c["skipped_no_text"]
+            totals["embed_errors"] += c.get("embed_error", 0)
             tag = (
                 "skip-existing"
                 if c["skipped_existing"]
                 else "skip-empty"
                 if c["skipped_no_text"]
                 else f"chunks={c['chunks_inserted']} embedded={c['chunks_embedded']}"
+                + (" embed-FAIL" if c.get("embed_error") else "")
             )
             print(
                 f"  [{i:3d}/{len(ledger_rows)}] {row['source_type']:<10}/{row['source_id'][:24]:<24} {tag:<28} {dt:5.2f}s"
