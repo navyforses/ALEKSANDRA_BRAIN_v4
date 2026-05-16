@@ -12,7 +12,21 @@ from __future__ import annotations
 
 from crewai import Agent
 
-TOOLS: list = []
+from scripts.communicator.language import detect as detect_language
+from scripts.communicator.phi_redactor import redact as redact_phi
+from scripts.communicator.summarize import generate_summary
+
+# Day 3 tool registry — callable directly by the verifier, Day 5 outreach
+# drafter, and Day 6 weekly brief. CrewAI @tool decoration is intentionally
+# deferred until the Crew is actually run; at that point each entry below
+# becomes a Tool() instance with the same signature.
+COMMUNICATOR_TOOLS = {
+    "generate_summary": generate_summary,
+    "redact_phi": redact_phi,
+    "detect_language": detect_language,
+}
+
+TOOLS: list = []  # CrewAI Tool() instances populated when the Crew runs.
 
 BACKSTORY = """
 You write for Shalva, Aleksandra's father — a software developer, not a

@@ -120,14 +120,42 @@ def check_cgm_01(report: Report) -> None:
             )
         )
         return
-    # Day 3 will populate the real check: walk recent outreach_log + briefs.sections,
-    # confirm every claim sentence cites a PMID/DOI/NCT/URL that round-trips.
+
+    # CGM-01 runs ONE live summarize() call on a fixed Phase 3 fixture query
+    # and asserts that every returned claim has ≥1 citation_id. The
+    # summarize.py code already drops uncited claims before returning, but
+    # this gate confirms that contract end-to-end against live evidence.
+    from scripts.communicator.summarize import generate_summary
+
+    fixture_query = "Cord blood expanded-access programs for severe neonatal HIE"
+    try:
+        draft = generate_summary(fixture_query, audience="internal", language="en")
+    except Exception as e:
+        report.add(
+            Check(
+                "CGM-01",
+                "Every Communicator output has ≥1 source citation per claim",
+                False,
+                f"live summarize() raised: {type(e).__name__}: {str(e)[:200]}",
+                "CGM-01",
+            )
+        )
+        return
+
+    n_claims = len(draft.claims)
+    n_cited = sum(1 for c in draft.claims if c.citation_ids)
+    persistable = draft.persistable()
+    ok = n_claims >= 1 and n_cited == n_claims and persistable
+    evidence = (
+        f"claims={n_claims}  cited={n_cited}/{n_claims}  persistable={persistable}  "
+        f"confidence={draft.confidence}"
+    )
     report.add(
         Check(
             "CGM-01",
             "Every Communicator output has ≥1 source citation per claim",
-            False,
-            "implementation present but check body not wired (Day 3 task)",
+            ok,
+            evidence,
             "CGM-01",
         )
     )
@@ -367,6 +395,46 @@ def check_cgm_06(report: Report) -> None:
 # ---------------------------------------------------------------------------
 # CGM-07 — Language detection
 # ---------------------------------------------------------------------------
+_LANG_FIXTURE: tuple[tuple[str, str], ...] = (
+    # 10 English
+    ("en", "Review the latest paper on cord blood expanded-access protocols."),
+    (
+        "en",
+        "Three cohort studies report neuroplasticity windows in the first 24 months.",
+    ),
+    ("en", "Discuss vigabatrin washout timing with the clinician before Duke EAP."),
+    ("en", "The trial sponsor lists vigabatrin washout as an exclusion criterion."),
+    ("en", "Two preprints describe cystic encephalomalacia segmentation pipelines."),
+    ("en", "Confirm with the family whether this question is in scope for next week."),
+    ("en", "The BONBID-HIE 2024 challenge top-3 architectures share a training set."),
+    ("en", "Schedule a clinician conversation about repurposing candidates."),
+    ("en", "Recent meta-analysis identifies promising neuroplasticity windows."),
+    ("en", "The investigator reports an open enrollment window through July 2026."),
+    # 10 Georgian
+    ("ka", "ალექსანდრა გადადის შემდეგ ეტაპზე."),
+    ("ka", "მოამზადე ექიმთან განსახილველი მოკლე ბრიფი."),
+    ("ka", "შესაძლოა ღირდეს ექიმთან განხილვა შემდეგ ვიზიტზე."),
+    ("ka", "შენიშნე ეს კვირეული ბრიფისთვის."),
+    ("ka", "გაუგზავნე ეს ექიმს კონტექსტისთვის."),
+    ("ka", "შეინახე ეს მონაცემი დანართისთვის."),
+    ("ka", "ცისტური ენცეფალომალაცია ცნობილია სამედიცინო ლიტერატურაში."),
+    ("ka", "Duke-ის EAP პროგრამა მუშაობს უპირატესობით."),
+    ("ka", "ვიგაბატრინის გამორეცხვის ფანჯარა აქტიურია."),
+    ("ka", "ნეიროპლასტიკურობის ფანჯარა 0-2 წლის შუალედშია."),
+    # 10 French
+    ("fr", "Cet article mérite d'être discuté avec la clinicienne."),
+    ("fr", "Examiner ce préprint avant la prochaine consultation."),
+    ("fr", "Notez cette étude pour la synthèse hebdomadaire."),
+    ("fr", "Trois études de cohorte indépendantes citent un résultat similaire."),
+    ("fr", "Le coordinateur de l'essai a confirmé la fenêtre d'inclusion."),
+    ("fr", "La méta-analyse récente identifie des fenêtres de neuroplasticité."),
+    ("fr", "Les enfants en bas âge montrent une grande plasticité cérébrale."),
+    ("fr", "Cette recherche est très prometteuse pour les bébés atteints d'HIE."),
+    ("fr", "Nous étudions les protocoles d'élargissement de l'accès."),
+    ("fr", "L'enfant a été examiné dans un hôpital universitaire."),
+)
+
+
 def check_cgm_07(report: Report) -> None:
     if not _module_present("scripts.communicator.language"):
         report.add(
@@ -379,14 +447,32 @@ def check_cgm_07(report: Report) -> None:
             )
         )
         return
-    # Day 3 will populate: 30 sample inputs (10 each EN/FR/KA), assert detect()
-    # returns the right code on ≥ 28/30.
+    from scripts.communicator.language import detect
+
+    correct = 0
+    total = len(_LANG_FIXTURE)
+    failures: list[str] = []
+    by_lang: dict[str, tuple[int, int]] = {"en": (0, 0), "ka": (0, 0), "fr": (0, 0)}
+    for expected, text in _LANG_FIXTURE:
+        got = detect(text).code
+        c, t = by_lang[expected]
+        by_lang[expected] = (c + (1 if got == expected else 0), t + 1)
+        if got == expected:
+            correct += 1
+        else:
+            failures.append(f"want={expected} got={got}: {text[:40]!r}")
+    accuracy = correct / total if total else 0.0
+    ok = correct >= 28 and total == 30
+    per_lang = " ".join(f"{k}={v[0]}/{v[1]}" for k, v in by_lang.items())
+    evidence = f"{correct}/{total} correct ({accuracy:.0%})  {per_lang}"
+    if failures:
+        evidence += f"  first_failure={failures[0]!r}"
     report.add(
         Check(
             "CGM-07",
             "Language detection routes EN/FR/KA correctly",
-            False,
-            "implementation present but check body not wired (Day 3 task)",
+            ok,
+            evidence,
             "CGM-07",
         )
     )
