@@ -307,7 +307,7 @@ def populate_papers_from_ledger() -> dict:
 # ---------------------------------------------------------------------------
 # Main entry point
 # ---------------------------------------------------------------------------
-def run(*, limit: int = 0, only_papers: bool = False) -> dict:
+def run(*, limit: int = 0, only_papers: bool = False, score: bool = True) -> dict:
     load_env()
 
     totals = {
@@ -319,6 +319,9 @@ def run(*, limit: int = 0, only_papers: bool = False) -> dict:
         "papers_inserted": 0,
         "papers_skipped_existing": 0,
         "papers_skipped_no_title": 0,
+        "relevance_scored": 0,
+        "relevance_failed": 0,
+        "relevance_skipped_no_text": 0,
         "errors": 0,
     }
 
@@ -331,6 +334,23 @@ def run(*, limit: int = 0, only_papers: bool = False) -> dict:
     print(
         f"  inserted={p['inserted']}  skipped_existing={p['skipped_existing']}  no_title={p['skipped_no_title']}"
     )
+
+    # 2. Score any papers that still lack a relevance_score (idempotent
+    #    backfill). Cheap (~$0.0002/paper Haiku 4.5). OR-2 fallback contract
+    #    leaves score=NULL on failure; perception ingest is never blocked.
+    if score:
+        print("\n=== score relevance (Haiku 4.5) ===")
+        # Lazy import keeps `--no-score` runs free of the cognition.llm
+        # import chain (which loads anthropic SDK + budget gate).
+        from scripts.scoring.relevance import backfill as _score_backfill
+
+        sb = _score_backfill(limit=200)
+        totals["relevance_scored"] = sb.get("scored", 0)
+        totals["relevance_failed"] = sb.get("failed", 0)
+        totals["relevance_skipped_no_text"] = sb.get("skipped_no_text", 0)
+        print(
+            f"  scored={sb.get('scored', 0)}  failed={sb.get('failed', 0)}  skipped_no_text={sb.get('skipped_no_text', 0)}"
+        )
 
     if only_papers:
         return totals
@@ -396,8 +416,15 @@ def main() -> int:
         action="store_true",
         help="Populate papers table only; skip chunking pass",
     )
+    ap.add_argument(
+        "--no-score",
+        action="store_true",
+        help="Skip the post-populate Haiku 4.5 relevance scoring pass.",
+    )
     args = ap.parse_args()
-    totals = run(limit=args.limit, only_papers=args.only_papers)
+    totals = run(
+        limit=args.limit, only_papers=args.only_papers, score=not args.no_score
+    )
     _print_totals(totals)
     return 0 if totals["errors"] == 0 else 1
 
