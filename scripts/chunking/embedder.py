@@ -63,7 +63,12 @@ def _get_qdrant() -> QdrantClient:
     global _qdrant
     if _qdrant is None:
         load_env()
-        url = os.environ.get("QDRANT_URL", "http://localhost:6333")
+        # Windows resolves `localhost` to IPv6 ::1 first; Qdrant binds 0.0.0.0
+        # and busy containers drop IPv6 handshakes silently. Force IPv4 to
+        # match every other Qdrant/Neo4j helper in this codebase.
+        url = os.environ.get("QDRANT_URL", "http://localhost:6333").replace(
+            "localhost", "127.0.0.1"
+        )
         _qdrant = QdrantClient(url=url)
     return _qdrant
 
