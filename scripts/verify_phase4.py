@@ -201,14 +201,89 @@ def check_ffv_01(report: Report) -> None:
             )
         )
         return
-    # Day 2 will populate: ≥1 row in alerts_log with tier='T1' AND delivered_at
-    # IS NOT NULL produced by the sender.
+
+    # Structural contract: module exists + workflow file present + dispatch
+    # signature behaves correctly under dry_run.
+    workflow_file = ROOT / "workflows" / "telegram_daily_digest.json"
+    workflow_ok = workflow_file.exists()
+
+    # Smoke: dispatch a synthetic T1 decision in dry_run mode, asserting
+    # the contract (no DB row, no Telegram POST, but tier echoed correctly).
+    try:
+        from scripts.communicator.summarize import Claim, SummaryDraft
+        from scripts.communicator.telegram_sender import dispatch
+        from scripts.communicator.tier_router import TierDecision
+
+        synthetic_draft = SummaryDraft(
+            query="phase4_smoke_query",
+            audience="internal",
+            language="en",
+            claims=[
+                Claim(
+                    sentence="Synthetic smoke claim for FFV-01 dry-run.",
+                    citation_ids=["PMID:0000001"],
+                    evidence_grade=2,
+                )
+            ],
+            citations=["PMID:0000001"],
+            raw_text="Synthetic smoke claim for FFV-01 dry-run.",
+        )
+        from scripts.communicator.banned_phrases import BannedPhraseResult
+        from scripts.communicator.phi_redactor import RedactionResult
+
+        synthetic_draft.banned = BannedPhraseResult(passed=True, violations=[])
+        synthetic_draft.redaction = RedactionResult(
+            text="Synthetic smoke claim for FFV-01 dry-run.",
+            redactions=[],
+            blocked=False,
+        )
+        decision = TierDecision(
+            tier="T1",
+            confidence=0.92,
+            reason="smoke_synthetic",
+        )
+        result = dispatch(
+            decision,
+            synthetic_draft,
+            run_id="00000000-0000-0000-0000-000000000000",
+            event_kind="smoke_test",
+            dry_run=True,
+        )
+        smoke_ok = (
+            result.tier == "T1"
+            and result.alerts_log_id is None  # dry_run -> no DB row
+            and result.delivered is False
+        )
+    except Exception as e:
+        smoke_ok = False
+        smoke_err = f"{type(e).__name__}: {str(e)[:100]}"
+    else:
+        smoke_err = ""
+
+    # Production-data check: ≥1 row in alerts_log with tier='T1' AND
+    # delivered_at IS NOT NULL. Stays RED until a real T1 event fires
+    # (this is the FFV-01 success-criterion signal for the 14-day
+    # acceptance window).
+    rows = _pg_query(
+        """
+        SELECT count(*) FROM alerts_log
+        WHERE tier = 'T1' AND delivered_at IS NOT NULL
+        """
+    )
+    n_t1_delivered = int(rows[0][0]) if rows else 0
+    prod_ok = n_t1_delivered >= 1
+
+    ok = workflow_ok and smoke_ok and prod_ok
+    evidence = (
+        f"workflow={workflow_ok} smoke={smoke_ok}{f' err={smoke_err!r}' if smoke_err else ''} "
+        f"prod_t1_delivered={n_t1_delivered}"
+    )
     report.add(
         Check(
             "FFV-01",
             "Confidence-gated Telegram digest reaches family channel",
-            False,
-            "implementation present but check body not wired (Day 2)",
+            ok,
+            evidence,
             "ACD-01",
         )
     )

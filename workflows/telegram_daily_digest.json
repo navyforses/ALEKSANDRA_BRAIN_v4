@@ -1,0 +1,83 @@
+{
+  "name": "telegram-daily-digest",
+  "active": true,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            { "field": "cronExpression", "expression": "0 13 * * *" }
+          ]
+        }
+      },
+      "name": "Daily 13:00 UTC (09:00 ET)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 300],
+      "id": "trigger-daily-09et"
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.PHASE4_DIGEST_WORKER_URL }}/fire-daily-batch",
+        "method": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "X-Auth-Token", "value": "={{ $env.PHASE4_WORKER_AUTH_TOKEN }}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{ \"trigger\": \"telegram_daily_digest\", \"fired_at\": \"{{ $now.toISO() }}\" }",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "name": "Fire daily batch",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300],
+      "id": "fire-batch"
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/runs",
+        "method": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"kind\": \"telegram_daily_digest\",\n  \"agent_id\": \"telegram-daily-digest\",\n  \"exit_status\": \"completed\",\n  \"start_time\": \"{{ $now.toISO() }}\",\n  \"end_time\": \"{{ $now.toISO() }}\",\n  \"token_cost\": 0\n}",
+        "options": {}
+      },
+      "name": "Log workflow run",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 300],
+      "id": "log-run"
+    }
+  ],
+  "connections": {
+    "Daily 13:00 UTC (09:00 ET)": {
+      "main": [[{ "node": "Fire daily batch", "type": "main", "index": 0 }]]
+    },
+    "Fire daily batch": {
+      "main": [[{ "node": "Log workflow run", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "meta": {
+    "description": "Phase 4 ACD-01/ACD-02 — daily 09:00 ET batch dispatcher for T2/T3 alerts queued by telegram_sender. Calls the project worker which runs scripts.communicator.telegram_sender:fire_daily_batch(); worker reads alerts_log WHERE tier IN ('T2','T3') AND delivered_at IS NULL AND COALESCE(payload->>'deferred_until', NULL)::timestamptz <= now() and composes one Telegram message. Quiet-hours rule (22:00-07:00 Boston) is upstream in tier_router: T2/T3 generated overnight get a deferred_until in payload pointing at 08:00 next day, so this 09:00 batch picks them up only after the quiet window closes.",
+    "phase": 4,
+    "requirement": "ACD-01 + ACD-02",
+    "owner_locked": "2026-05-16 daily 09:00 ET, T1 cap 1/day, quiet hours 22:00-07:00"
+  }
+}
