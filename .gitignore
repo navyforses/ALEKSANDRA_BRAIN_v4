@@ -90,3 +90,4 @@ coverage.xml
 
 # Runtime run logs
 scripts/repurposing/run_logs/
+.observer/
