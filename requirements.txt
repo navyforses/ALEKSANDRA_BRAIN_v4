@@ -51,6 +51,13 @@ python-docx>=1.1.0
 biopython>=1.84      # PubMed E-utilities
 nibabel>=5.3.0       # NIfTI medical imaging
 
+# ─── Gmail outreach (Phase 3 Day 5) ──────────────────────
+# Scope locked to gmail.compose only — drafts created, never sent.
+# Send action stays manual via Gmail UI for months 1–6.
+google-api-python-client>=2.150.0
+google-auth>=2.36.0
+google-auth-oauthlib>=1.2.1
+
 # ─── Utilities ───────────────────────────────────────────
 python-dotenv>=1.0.0
 pydantic>=2.9.0

@@ -1,0 +1,116 @@
+{
+  "name": "outreach-review-queue",
+  "active": true,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            { "field": "cronExpression", "expression": "0 18 * * *" }
+          ]
+        }
+      },
+      "name": "Daily 18:00 UTC",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 300],
+      "id": "trigger-daily-18"
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/outreach_log",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "select", "value": "id,contact_id,subject,language,confidence,drafted_at,sent_at,gmail_draft_id" },
+            { "name": "sent_at", "value": "is.null" },
+            { "name": "drafted_at", "value": "=gte.{{ $now.minus({ hours: 36 }).toISO() }}" },
+            { "name": "order", "value": "drafted_at.desc" },
+            { "name": "limit", "value": "20" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Fetch pending drafts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300],
+      "id": "fetch-pending"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build a one-message digest of the day's pending Gmail drafts.\nconst rows = $input.all().map(i => i.json);\nconst pending = Array.isArray(rows[0]) ? rows[0] : rows;\nif (!pending.length) {\n  return [{ json: { skip: true, count: 0 } }];\n}\nconst lines = pending.slice(0, 10).map(r => {\n  const conf = r.confidence != null ? `conf=${Number(r.confidence).toFixed(2)}` : 'conf=n/a';\n  return `• [${r.id.slice(0, 8)}] ${r.subject || '(no subject)'} (${r.language || 'en'}, ${conf})`;\n});\nconst text = [\n  `📨 ${pending.length} outreach draft${pending.length === 1 ? '' : 's'} pending Shako review`,\n  '',\n  ...lines,\n  pending.length > 10 ? `… and ${pending.length - 10} more` : '',\n  '',\n  'Open Gmail → Drafts to review and send. No automatic send.'\n].filter(Boolean).join('\\n');\nreturn [{ json: { skip: false, count: pending.length, text } }];"
+      },
+      "name": "Compose digest",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300],
+      "id": "compose"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "version": 2 },
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ $json.skip }}",
+              "rightValue": false,
+              "operator": { "type": "boolean", "operation": "false" }
+            }
+          ]
+        }
+      },
+      "name": "Has drafts?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [900, 300],
+      "id": "has-drafts"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/sendMessage",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"chat_id\": \"{{ $env.TELEGRAM_CHAT_ID }}\",\n  \"text\": \"{{ $json.text }}\"\n}",
+        "options": {}
+      },
+      "name": "Telegram digest",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1140, 200],
+      "id": "telegram"
+    }
+  ],
+  "connections": {
+    "Daily 18:00 UTC": {
+      "main": [[{ "node": "Fetch pending drafts", "type": "main", "index": 0 }]]
+    },
+    "Fetch pending drafts": {
+      "main": [[{ "node": "Compose digest", "type": "main", "index": 0 }]]
+    },
+    "Compose digest": {
+      "main": [[{ "node": "Has drafts?", "type": "main", "index": 0 }]]
+    },
+    "Has drafts?": {
+      "main": [
+        [{ "node": "Telegram digest", "type": "main", "index": 0 }],
+        []
+      ]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "meta": {
+    "description": "Phase 3 CGM-04 — daily 18:00 UTC Telegram digest of outreach drafts that are pending Shako's manual review/send. Reads outreach_log rows where sent_at IS NULL AND drafted_at >= now-36h. No drafts → no message (avoids alert fatigue).",
+    "phase": 3,
+    "requirement": "CGM-04",
+    "data_source": "supabase.outreach_log"
+  }
+}

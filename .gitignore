@@ -8,6 +8,8 @@
 .env.*.local
 *.pem
 *.key
+.secrets/
+.secrets/*
 
 # Medical imaging (NEVER commit patient data)
 *.nii
