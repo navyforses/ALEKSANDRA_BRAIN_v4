@@ -208,7 +208,7 @@ retries for banned-phrase fix-prompts).
    - **Rule-based first, LLM fallback for ambiguity.**
    - Rules:
      - PHI leak / blocked phrase / source round-trip fail → **T0**.
-     - Confidence < 0.50 → T3 by default.
+     - Confidence < 0.50 → **T4** by default (weekly appendix/internal review).
      - `event.kind` in `{trial_deadline_24h, researcher_reply, med_safety_alert, bmc_urgent}` AND `confidence >= 0.85`
        AND today's T1 count < 1 → **T1**.
      - `event.kind` in T1 list but T1 cap reached today → **T2** with `reason='t1_cap_reached'`.

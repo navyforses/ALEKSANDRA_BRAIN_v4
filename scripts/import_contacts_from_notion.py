@@ -403,8 +403,9 @@ def main() -> int:
             print("[DRY-RUN] no rows written")
             return 0
 
-        # --confirm path: one transaction, all-or-nothing
-        conn.autocommit = False
+        # --confirm path: psycopg2 starts a transaction by default, so the
+        # insert loop below remains all-or-nothing without toggling autocommit
+        # after the earlier dedupe SELECT.
         try:
             for r in new_rows:
                 insert_contact(conn, r)

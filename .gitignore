@@ -94,3 +94,9 @@ briefs/*.pdf
 # Runtime run logs
 scripts/repurposing/run_logs/
 .observer/
+
+# Local imports / contact exports (may contain personal emails)
+data/notion_contacts.csv
+
+# External skill repos (cloned reference material, not source-of-truth)
+external-skills/
