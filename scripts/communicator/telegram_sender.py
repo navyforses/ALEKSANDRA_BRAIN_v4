@@ -130,12 +130,18 @@ def _insert_alerts_log(
     payload: dict[str, Any],
     delivered_at: datetime | None,
     blocked_reason: str | None,
+    originating_run_id: str | None = None,
 ) -> str:
     """Insert one alerts_log row. Returns new id (UUID string).
 
     Every insert is required to be phi_redacted=TRUE by the migration-008
     CHECK constraint. The caller is responsible for ensuring the underlying
     draft passed phi_redactor before reaching this writer.
+
+    `originating_run_id` (migration 010 / OBS-02): the runs.id of the
+    agent execution that produced this dispatch. Stored as an explicit
+    column so verify_phase4 OBS-02 can confirm linkage with a single
+    SQL query. Nullable for legacy/test paths.
     """
     load_env()
     conn = psycopg2.connect(os.environ["SUPABASE_DB_URL"], sslmode="require")
@@ -146,11 +152,11 @@ def _insert_alerts_log(
                 INSERT INTO alerts_log (
                   tier, event_kind, confidence, payload,
                   delivered_at, blocked_reason,
-                  phi_redacted
+                  phi_redacted, originating_run_id
                 ) VALUES (
                   %s, %s, %s, %s::jsonb,
                   %s, %s,
-                  TRUE
+                  TRUE, %s
                 )
                 RETURNING id
                 """,
@@ -161,6 +167,7 @@ def _insert_alerts_log(
                     json.dumps(payload, default=str),
                     delivered_at,
                     blocked_reason,
+                    originating_run_id,
                 ),
             )
             new_id = cur.fetchone()[0]
@@ -219,6 +226,7 @@ def dispatch(
             payload=payload,
             delivered_at=None,
             blocked_reason=decision.blocked_reason or decision.reason,
+            originating_run_id=run_id,
         )
         return DispatchResult(
             tier="T0",
@@ -267,6 +275,7 @@ def dispatch(
             payload={**payload, "telegram_message_id": msg_id, "text_len": len(text)},
             delivered_at=datetime.now(timezone.utc),
             blocked_reason=None,
+            originating_run_id=run_id,
         )
         return DispatchResult(
             tier="T1",
@@ -296,6 +305,7 @@ def dispatch(
             payload=payload,
             delivered_at=None,
             blocked_reason=None,
+            originating_run_id=run_id,
         )
         return DispatchResult(
             tier=decision.tier,

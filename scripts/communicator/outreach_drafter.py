@@ -89,6 +89,7 @@ class OutreachDraft:
     block_reason: str | None = None
     gmail_draft_id: str | None = None  # set after Gmail API success
     outreach_log_id: str | None = None  # set after DB insert
+    originating_run_id: str | None = None  # OBS-02: runs.id that produced this draft
     dry_run: bool = False
     drafted_at: str = ""
 
@@ -383,7 +384,13 @@ def _lookup_contact_email(contact_id: str) -> str | None:
 
 
 def _insert_outreach_log(draft: OutreachDraft) -> str:
-    """Persist an outreach_log row. Returns the new id (UUID string)."""
+    """Persist an outreach_log row. Returns the new id (UUID string).
+
+    Migration 010 / OBS-02: writes `originating_run_id` from
+    `draft.originating_run_id`. Callers that produced the draft from
+    an agent run set this; legacy / fixture paths leave it None and
+    the column stays NULL (column is nullable, so this is safe).
+    """
     load_env()
     conn = psycopg2.connect(os.environ["SUPABASE_DB_URL"], sslmode="require")
     try:
@@ -394,12 +401,12 @@ def _insert_outreach_log(draft: OutreachDraft) -> str:
                   contact_id, subject, body, language,
                   trigger_kind, evidence_refs, confidence,
                   phi_redacted, phi_redactions_count, gmail_draft_id,
-                  drafted_at
+                  drafted_at, originating_run_id
                 ) VALUES (
                   %s, %s, %s, %s,
                   %s, %s, %s,
                   TRUE, %s, %s,
-                  NOW()
+                  NOW(), %s
                 )
                 RETURNING id
                 """,
@@ -413,6 +420,7 @@ def _insert_outreach_log(draft: OutreachDraft) -> str:
                     draft.confidence,
                     len(draft.redaction.redactions) if draft.redaction else 0,
                     draft.gmail_draft_id,
+                    draft.originating_run_id,
                 ),
             )
             new_id = cur.fetchone()[0]

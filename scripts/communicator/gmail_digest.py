@@ -219,12 +219,16 @@ def _insert_weekly_digest_row(
     citations: list[str],
     gmail_draft_id: str | None,
     redactions_count: int,
+    originating_run_id: str | None = None,
 ) -> str:
     """Persist outreach_log row for the weekly digest.
 
     Uses contact_id = NULL semantics by inserting against a system
-    "family-self" contact. Day 5 + Day 6 may revisit this if we want to
-    route through a real `contacts` row keyed to the family Gmail.
+    "family-self" contact.
+
+    Migration 010 / OBS-02: `originating_run_id` links back to the
+    runs row that produced the weekly_brief render. Callers pass
+    `weekly_brief_run_id` when known; None on legacy / fixture paths.
     """
     load_env()
     family_contact_id = os.environ.get("FAMILY_CONTACT_ID", "").strip()
@@ -244,12 +248,12 @@ def _insert_weekly_digest_row(
                   contact_id, subject, body, language,
                   trigger_kind, evidence_refs, confidence,
                   phi_redacted, phi_redactions_count, gmail_draft_id,
-                  drafted_at
+                  drafted_at, originating_run_id
                 ) VALUES (
                   %s, %s, %s, 'en',
                   'weekly_digest', %s, NULL,
                   TRUE, %s, %s,
-                  NOW()
+                  NOW(), %s
                 )
                 RETURNING id
                 """,
@@ -260,6 +264,7 @@ def _insert_weekly_digest_row(
                     citations,
                     redactions_count,
                     gmail_draft_id,
+                    originating_run_id,
                 ),
             )
             new_id = cur.fetchone()[0]
