@@ -1,0 +1,76 @@
+{
+  "name": "daily-spend-report",
+  "active": false,
+  "_phase_4_note": "Phase 4 OBS-03. Fires once per day at 12:00 UTC (08:00 ET during EDT, 07:00 ET during EST). The body of the message is yesterday's spend, so the 1-hour wobble between EST/EDT is fine. Activated as part of Step B operator activation (see docs/PHASE_4_OPERATOR_RUNBOOK.md). Until activated, the Day 5 verifier flips green via a manual run of scripts.observer.daily_spend_report.",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 12 * * *"
+            }
+          ]
+        }
+      },
+      "name": "Daily 12:00 UTC (08:00 ET EDT)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 300],
+      "id": "trigger-daily"
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.PERCEPTION_WORKER_URL }}/daily-spend-report",
+        "method": "POST",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "name": "Run daily_spend_report",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300],
+      "id": "spend-report-call",
+      "_comment": "Calls the Railway HTTP worker route added in scripts/perception_worker.py. The worker itself sends the Telegram message + writes the audit row; this workflow only triggers the worker. No fan-out node needed."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Surface the exit_status and message for n8n's execution log.\n// The Telegram message has already been sent by the Python worker.\nconst r = $input.first().json;\nconst status = r.exit_status || 'unknown';\nconst preview = (r.message || '').split('\\n')[0] || '(no message)';\nreturn [{ json: { status, preview, summary: r.summary || {} } }];"
+      },
+      "name": "Log result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300],
+      "id": "log-result"
+    }
+  ],
+  "connections": {
+    "Daily 12:00 UTC (08:00 ET EDT)": {
+      "main": [
+        [
+          {
+            "node": "Run daily_spend_report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run daily_spend_report": {
+      "main": [
+        [
+          {
+            "node": "Log result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

@@ -77,14 +77,16 @@ class _Handler(BaseHTTPRequestHandler):
         _json_response(self, 404, {"error": "not_found", "path": self.path})
 
     def do_POST(self) -> None:  # noqa: N802
-        # Three POST endpoints, all behind the same budget gate.
-        # /perception-tick    → fetchers (PRC-01..07; LLM-free)
-        # /chunking-tick      → process_ledger (chunk + embed + relevance score)
-        # /extraction-tick    → batch_ingest (Graphiti entity extraction)
+        # Four POST endpoints. The first three sit behind a budget gate
+        # because they trigger LLM-using pipelines. The fourth
+        # (/daily-spend-report) is LLM-free and runs even when the budget
+        # is exhausted — visibility into spend is most valuable when
+        # spend is high.
         if self.path not in (
             "/perception-tick",
             "/chunking-tick",
             "/extraction-tick",
+            "/daily-spend-report",
         ):
             _json_response(self, 404, {"error": "not_found", "path": self.path})
             return
@@ -92,6 +94,11 @@ class _Handler(BaseHTTPRequestHandler):
         body = self._parse_body()
         if body is None:
             return  # already responded with 400
+
+        if self.path == "/daily-spend-report":
+            # No budget gate. Pure SQL aggregation + Telegram send.
+            self._handle_daily_spend_report(body)
+            return
 
         # Defence-in-depth budget gate (HC-2/HC-4) BEFORE any pipeline.
         try:
@@ -200,6 +207,27 @@ class _Handler(BaseHTTPRequestHandler):
                 500,
                 {
                     "error": "chunking_failed",
+                    "detail": f"{type(e).__name__}: {e}",
+                    "trace": traceback.format_exc(limit=5),
+                },
+            )
+            return
+        _json_response(self, 200, result)
+
+    def _handle_daily_spend_report(self, body: dict[str, Any]) -> None:
+        """Phase 4 OBS-03. Aggregate prior 24h spend, send Telegram, audit."""
+        dry_run = bool(body.get("dry_run", False))
+        try:
+            from scripts.observer.daily_spend_report import run as spend_run  # noqa: PLC0415
+
+            result = spend_run(dry_run=dry_run)
+        except Exception as e:
+            LOG.exception("daily_spend_report.run raised")
+            _json_response(
+                self,
+                500,
+                {
+                    "error": "daily_spend_report_failed",
                     "detail": f"{type(e).__name__}: {e}",
                     "trace": traceback.format_exc(limit=5),
                 },
