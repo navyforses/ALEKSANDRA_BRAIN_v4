@@ -82,10 +82,28 @@ def _database_id() -> str:
     return db_id
 
 
+def _data_source_id(notion: Client, db_id: str) -> str:
+    """Resolve the data_source_id for a database.
+
+    notion-client 3.x moved querying from `databases.query()` to
+    `data_sources.query()`. Each database has a `data_sources` array
+    on its retrieve response — we use the first one (databases created
+    via API have exactly one).
+    """
+    db = notion.databases.retrieve(database_id=db_id)
+    sources = db.get("data_sources") or []
+    if not sources:
+        raise NotionArchiverError(
+            f"Database {db_id} has no data_sources; cannot query."
+        )
+    return sources[0]["id"]
+
+
 def _find_by_run_id(notion: Client, db_id: str, run_id: str) -> dict | None:
     """Return the existing page for `run_id`, or None."""
-    resp = notion.databases.query(
-        database_id=db_id,
+    ds_id = _data_source_id(notion, db_id)
+    resp = notion.data_sources.query(
+        data_source_id=ds_id,
         filter={
             "property": PROP_RUN_ID,
             "rich_text": {"equals": run_id},
@@ -181,8 +199,9 @@ def archive_count() -> int:
     try:
         notion = _client()
         db_id = _database_id()
+        ds_id = _data_source_id(notion, db_id)
         # Walk one page (max page_size=100) — sufficient for "at least N" checks.
-        resp = notion.databases.query(database_id=db_id, page_size=100)
+        resp = notion.data_sources.query(data_source_id=ds_id, page_size=100)
         results = resp.get("results", []) or []
         # If has_more, we know it's >=100 — caller's "≥1" check passes anyway.
         return len(results)

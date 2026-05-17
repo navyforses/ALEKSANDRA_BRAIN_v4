@@ -31,7 +31,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "{\n  \"kind\": \"weekly_brief_trigger\",\n  \"agent_id\": \"weekly-brief\",\n  \"exit_status\": \"queued\",\n  \"start_time\": \"{{ $now.toISO() }}\",\n  \"end_time\": \"{{ $now.toISO() }}\",\n  \"token_cost\": 0\n}",
+        "jsonBody": "={\n  \"kind\": \"weekly_brief_trigger\",\n  \"agent_id\": \"weekly-brief\",\n  \"exit_status\": \"queued\",\n  \"start_time\": \"{{ $now.toISO() }}\",\n  \"end_time\": \"{{ $now.toISO() }}\",\n  \"token_cost\": 0\n}",
         "options": {}
       },
       "name": "Log brief trigger",
@@ -45,7 +45,7 @@
         "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/sendMessage",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "{\n  \"chat_id\": \"{{ $env.TELEGRAM_CHAT_ID }}\",\n  \"text\": \"📑 Weekly Brief queued for {{ $now.toFormat('yyyy-MM-dd') }}. A worker will render the PDF, upload to R2, stage a Gmail digest draft, and reply with the link. No automatic email — Shako reviews before sending.\"\n}",
+        "jsonBody": "={\n  \"chat_id\": \"{{ $env.TELEGRAM_CHAT_ID }}\",\n  \"text\": \"📑 Weekly Brief queued for {{ $now.toFormat('yyyy-MM-dd') }}. A worker will render the PDF, upload to R2, stage a Gmail digest draft, and reply with the link. No automatic email — Shako reviews before sending.\"\n}",
         "options": {}
       },
       "name": "Telegram notify",
@@ -56,25 +56,27 @@
     },
     {
       "parameters": {
-        "url": "={{ $env.PHASE4_DIGEST_WORKER_URL }}/render-weekly-brief",
+        "url": "={{ $env.PHASE4_DIGEST_WORKER_URL || 'https://placeholder.invalid' }}/render-weekly-brief",
         "method": "POST",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             { "name": "Content-Type", "value": "application/json" },
-            { "name": "X-Auth-Token", "value": "={{ $env.PHASE4_WORKER_AUTH_TOKEN }}" }
+            { "name": "X-Auth-Token", "value": "={{ $env.PHASE4_WORKER_AUTH_TOKEN || '' }}" }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "{ \"trigger\": \"weekly_brief\", \"fired_at\": \"{{ $now.toISO() }}\", \"stage_gmail_digest\": true }",
+        "jsonBody": "={ \"trigger\": \"weekly_brief\", \"fired_at\": \"{{ $now.toISO() }}\", \"stage_gmail_digest\": true }",
         "options": { "timeout": 300000 }
       },
       "name": "Fire brief render + Gmail digest",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [900, 300],
-      "id": "fire-render"
+      "id": "fire-render",
+      "onError": "continueRegularOutput",
+      "notes": "Requires PHASE4_DIGEST_WORKER_URL env var (Python worker on Railway). Until deployed, this node fails gracefully; Telegram notify still fires so Shako knows the brief slot has arrived."
     }
   ],
   "connections": {
