@@ -45,7 +45,7 @@
         "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/sendMessage",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "{\n  \"chat_id\": \"{{ $env.TELEGRAM_CHAT_ID }}\",\n  \"text\": \"📑 Weekly Brief queued for {{ $now.toFormat('yyyy-MM-dd') }}. A worker will render the PDF, upload to R2, and reply with the link. No automatic email — Shako reviews before forwarding.\"\n}",
+        "jsonBody": "{\n  \"chat_id\": \"{{ $env.TELEGRAM_CHAT_ID }}\",\n  \"text\": \"📑 Weekly Brief queued for {{ $now.toFormat('yyyy-MM-dd') }}. A worker will render the PDF, upload to R2, stage a Gmail digest draft, and reply with the link. No automatic email — Shako reviews before sending.\"\n}",
         "options": {}
       },
       "name": "Telegram notify",
@@ -53,6 +53,28 @@
       "typeVersion": 4.2,
       "position": [680, 300],
       "id": "telegram-notify"
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.PHASE4_DIGEST_WORKER_URL }}/render-weekly-brief",
+        "method": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "X-Auth-Token", "value": "={{ $env.PHASE4_WORKER_AUTH_TOKEN }}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{ \"trigger\": \"weekly_brief\", \"fired_at\": \"{{ $now.toISO() }}\", \"stage_gmail_digest\": true }",
+        "options": { "timeout": 300000 }
+      },
+      "name": "Fire brief render + Gmail digest",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 300],
+      "id": "fire-render"
     }
   ],
   "connections": {
@@ -61,13 +83,16 @@
     },
     "Log brief trigger": {
       "main": [[{ "node": "Telegram notify", "type": "main", "index": 0 }]]
+    },
+    "Telegram notify": {
+      "main": [[{ "node": "Fire brief render + Gmail digest", "type": "main", "index": 0 }]]
     }
   },
   "settings": { "executionOrder": "v1" },
   "meta": {
-    "description": "Phase 3 CGM-05 — Sunday 09:00 ET (13:00 UTC) weekly brief trigger. Logs a 'weekly_brief_trigger' runs row and pings Telegram so Shako knows the brief is incoming. The actual PDF render runs on the project worker via `python -m scripts.communicator.weekly_brief --week-start <next-sunday>` and uploads to R2; a follow-up Telegram message with the R2 link is sent by that worker.",
-    "phase": 3,
-    "requirement": "CGM-05",
+    "description": "Phase 3 CGM-05 + Phase 4 ACD-03 — Sunday 09:00 ET (13:00 UTC) weekly brief trigger. Logs a 'weekly_brief_trigger' runs row, pings Telegram so Shako knows the brief is incoming, then calls the project worker which (1) renders the PDF via scripts.communicator.weekly_brief, (2) uploads to R2 via scripts.ledger.upload_artifact, (3) stages a Gmail digest draft via scripts.communicator.gmail_digest.stage_weekly_digest. Manual-send mode: every Gmail digest stays in Drafts; Shako reviews and sends.",
+    "phase": "3+4",
+    "requirement": "CGM-05 + ACD-03",
     "owner_locked": "2026-05-16 Sunday 09:00 local (ET while in Boston/Durham)"
   }
 }

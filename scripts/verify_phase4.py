@@ -353,14 +353,72 @@ def check_ffv_03(report: Report) -> None:
             )
         )
         return
-    # Day 4 will populate: ≥1 row in outreach_log with trigger_kind='weekly_digest'
-    # AND gmail_draft_id IS NOT NULL.
+    from datetime import date as _date
+
+    from scripts.communicator.gmail_digest import (
+        stage_weekly_digest,
+    )
+
+    # Structural smoke: subject + body render from fixture sections without
+    # touching Gmail API or DB. Asserts body is non-empty, contains the
+    # citation appendix line, and the safety net doesn't block.
+    try:
+        result = stage_weekly_digest(
+            week_start=_date(2026, 5, 17),
+            pdf_r2_path="briefs/2026-05-17.pdf",
+            notion_database_id=os.environ.get("NOTION_DATABASE_ID") or None,
+            dry_run=True,
+            fixture=True,
+        )
+        subject_ok = result.subject.startswith("ALEKSANDRA_BRAIN Weekly Brief")
+        body_ok = (
+            not result.blocked
+            and "This week, in short" in result.body
+            and "Citation appendix" in result.body
+            and len(result.body) > 500
+        )
+        smoke_ok = subject_ok and body_ok
+        smoke_evidence = (
+            f"subject_ok={subject_ok} body_len={len(result.body)} "
+            f"blocked={result.blocked}"
+            + (f" reason={result.block_reason!r}" if result.block_reason else "")
+        )
+    except Exception as e:
+        smoke_ok = False
+        smoke_evidence = f"raised: {type(e).__name__}: {str(e)[:120]}"
+
+    # Workflow file extended to call the Gmail digest step
+    workflow_file = ROOT / "workflows" / "weekly_brief.json"
+    workflow_ok = False
+    if workflow_file.exists():
+        try:
+            text = workflow_file.read_text(encoding="utf-8")
+            workflow_ok = "stage_gmail_digest" in text or "gmail_digest" in text
+        except OSError:
+            workflow_ok = False
+
+    # Production-data check: ≥1 row with trigger_kind='weekly_digest'
+    # AND gmail_draft_id NOT NULL — RED until first Sunday brief lands.
+    rows = _pg_query(
+        """
+        SELECT count(*) FROM outreach_log
+        WHERE trigger_kind = 'weekly_digest' AND gmail_draft_id IS NOT NULL
+        """
+    )
+    n_prod = int(rows[0][0]) if rows else 0
+    prod_ok = n_prod >= 1
+
+    ok = smoke_ok and workflow_ok and prod_ok
+    evidence = (
+        f"smoke={smoke_ok} ({smoke_evidence})  workflow_extended={workflow_ok}  "
+        f"prod_weekly_drafts={n_prod}"
+    )
     report.add(
         Check(
             "FFV-03",
             "Weekly Gmail digest renders + stages as draft",
-            False,
-            "implementation present but check body not wired (Day 4)",
+            ok,
+            evidence,
             "ACD-03",
         )
     )
