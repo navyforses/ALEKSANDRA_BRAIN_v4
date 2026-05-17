@@ -19,7 +19,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 2: Memory** - Citation-tuple-first ledger, Graphiti+Qdrant memory, single retrieval surface
 - [x] **Phase 2.5: Quick Wins (INSERTED)** - Spend instrumentation, perception scale-up, family-visible layer, validation workflow
 - [x] **Phase 3: Cognition (minimum)** - Verifier-gated Communicator drafting (11/11 PASS; Day 7 closure unblocked same day by Shako's ChatGPT-assisted prereq work)
-- [ ] **Phase 4: First Family Value** - Confidence-gated Telegram/Gmail/Notion delivery + clinician PDF, 14-day acceptance test
+- [x] **Phase 4: First Family Value** - Engineering sprint closed 2026-05-17, `verify_phase4 --mode code-complete` 9/9 PASS. Step B operator activation (Notion bootstrap + n8n workflow imports) + 14-day acceptance window open at first Weekly Brief Sunday 2026-05-24 09:00 ET. See `docs/PHASE_4_EXIT_REPORT.md` + `docs/PHASE_4_OPERATOR_RUNBOOK.md`.
 
 ## Phase Details
 

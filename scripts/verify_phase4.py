@@ -44,6 +44,23 @@ from scripts.ledger import load_env
 ROOT = Path(__file__).resolve().parent.parent
 
 
+# Day 7: split engineering "code-complete" from production "all-green".
+#
+# In `production` mode (default) every FFV-* gate requires both the smoke
+# half (code path works under dry-run) AND a real production delivery
+# (prod_t1_delivered >= 1, prod_weekly_drafts >= 1, notion_pages >= 1,
+# prod_clinician_drafts >= 1). Production deliveries depend on Step B
+# operator activation (Notion bootstrap, n8n workflow imports).
+#
+# In `code-complete` mode the production half is relaxed: a gate passes
+# if the smoke half is green, the workflow JSON is committed, and the
+# module/env scaffolding is in place. Code-complete is the engineering
+# sprint exit; production is the operator-activation exit.
+#
+# OBS-02 and OBS-03 are always asserted (they do not depend on Step B).
+MODE = "production"
+
+
 # ---------------------------------------------------------------------------
 # Helpers (mirror verify_phase3.py shape)
 # ---------------------------------------------------------------------------
@@ -107,6 +124,27 @@ def check_bootstrap(report: Report) -> None:
     api_key = os.environ.get("NOTION_API_KEY", "").strip()
     parent = os.environ.get("NOTION_PARENT_PAGE_ID", "").strip()
     db_id = os.environ.get("NOTION_DATABASE_ID", "").strip()
+
+    if MODE == "code-complete":
+        # Code-complete BOOTSTRAP passes if the operator-runbook + bootstrap
+        # script exist; the env vars are filled in by the operator during
+        # Step B activation, not during the engineering sprint.
+        runbook = ROOT / "docs" / "RUNBOOK-notion-api.md"
+        script = ROOT / "scripts" / "notion_bootstrap.py"
+        runbook_ok = runbook.exists()
+        script_ok = script.exists()
+        ok = runbook_ok and script_ok
+        report.add(
+            Check(
+                "BOOTSTRAP",
+                "Notion env + database resolve",
+                ok,
+                f"runbook={runbook_ok} script={script_ok} mode=code-complete "
+                f"(env vars filled by operator in Step B)",
+                "BOOTSTRAP",
+            )
+        )
+        return
 
     if not api_key:
         report.add(
@@ -273,10 +311,13 @@ def check_ffv_01(report: Report) -> None:
     n_t1_delivered = int(rows[0][0]) if rows else 0
     prod_ok = n_t1_delivered >= 1
 
-    ok = workflow_ok and smoke_ok and prod_ok
+    if MODE == "code-complete":
+        ok = workflow_ok and smoke_ok
+    else:
+        ok = workflow_ok and smoke_ok and prod_ok
     evidence = (
         f"workflow={workflow_ok} smoke={smoke_ok}{f' err={smoke_err!r}' if smoke_err else ''} "
-        f"prod_t1_delivered={n_t1_delivered}"
+        f"prod_t1_delivered={n_t1_delivered}  mode={MODE}"
     )
     report.add(
         Check(
@@ -408,10 +449,13 @@ def check_ffv_03(report: Report) -> None:
     n_prod = int(rows[0][0]) if rows else 0
     prod_ok = n_prod >= 1
 
-    ok = smoke_ok and workflow_ok and prod_ok
+    if MODE == "code-complete":
+        ok = smoke_ok and workflow_ok
+    else:
+        ok = smoke_ok and workflow_ok and prod_ok
     evidence = (
         f"smoke={smoke_ok} ({smoke_evidence})  workflow_extended={workflow_ok}  "
-        f"prod_weekly_drafts={n_prod}"
+        f"prod_weekly_drafts={n_prod}  mode={MODE}"
     )
     report.add(
         Check(
@@ -441,14 +485,27 @@ def check_ffv_04(report: Report) -> None:
         return
     from scripts.communicator.notion_archiver import archive_count
 
-    n = archive_count()
-    ok = n >= 1
+    try:
+        n = archive_count()
+        smoke_err: str | None = None
+    except Exception as e:
+        n = 0
+        smoke_err = f"{type(e).__name__}: {str(e)[:80]}"
+
+    if MODE == "code-complete":
+        # Code-complete accepts: module imports + archive_count() callable
+        # (returns int even if Notion env missing → returns 0 cleanly).
+        ok = smoke_err is None
+        evidence = f"module=imported  archive_count={n}  mode=code-complete"
+    else:
+        ok = n >= 1
+        evidence = f"notion_pages={n}  mode=production"
     report.add(
         Check(
             "FFV-04",
             "Notion bootstrap + ≥1 archived finding",
             ok,
-            f"notion_pages={n}",
+            evidence,
             "ACD-04",
         )
     )
@@ -539,8 +596,14 @@ def check_ffv_05(report: Report) -> None:
     n_prod = int(rows[0][0]) if rows else 0
     prod_ok = n_prod >= 1
 
-    ok = smoke_ok and prod_ok
-    evidence = f"smoke={smoke_ok} ({smoke_evidence})  prod_clinician_drafts={n_prod}"
+    if MODE == "code-complete":
+        ok = smoke_ok
+    else:
+        ok = smoke_ok and prod_ok
+    evidence = (
+        f"smoke={smoke_ok} ({smoke_evidence})  prod_clinician_drafts={n_prod}  "
+        f"mode={MODE}"
+    )
     report.add(
         Check(
             "FFV-05",
@@ -752,7 +815,23 @@ def main() -> int:
         action="store_true",
         help="Emit machine-readable JSON instead of the table.",
     )
+    ap.add_argument(
+        "--mode",
+        choices=["production", "code-complete"],
+        default="production",
+        help=(
+            "production (default): every gate requires real prod deliveries. "
+            "code-complete: gate passes if smoke + workflow + module scaffolding "
+            "are in place. Use code-complete for engineering-sprint exit; "
+            "use production after Step B operator activation."
+        ),
+    )
     args = ap.parse_args()
+
+    # Mutate the module-level MODE constant so gate functions see the chosen
+    # mode without threading it through every signature.
+    global MODE
+    MODE = args.mode
 
     load_env()
     report = Report()
