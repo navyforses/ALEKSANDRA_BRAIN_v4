@@ -20,6 +20,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 2.5: Quick Wins (INSERTED)** - Spend instrumentation, perception scale-up, family-visible layer, validation workflow
 - [x] **Phase 3: Cognition (minimum)** - Verifier-gated Communicator drafting (11/11 PASS; Day 7 closure unblocked same day by Shako's ChatGPT-assisted prereq work)
 - [x] **Phase 4: First Family Value** - Engineering sprint closed 2026-05-17, `verify_phase4 --mode code-complete` 9/9 PASS. Step B operator activation (Notion bootstrap + n8n workflow imports) + 14-day acceptance window open at first Weekly Brief Sunday 2026-05-24 09:00 ET. See `docs/PHASE_4_EXIT_REPORT.md` + `docs/PHASE_4_OPERATOR_RUNBOOK.md`.
+- [x] **Phase 5: BRAIN AI Manager Assistant** - Engineering sprint closed 2026-05-18, `verify_phase5 --mode code-complete` 13/13 PASS · ALL GREEN. 5 capabilities live: Smart Drop Zone (PDF/photo/voice/email/text intake), Persistent Activity Log, Morning Briefing (Sun 09:00 ET), Voice-First Input (OpenAI Whisper), Email Drafting (Gmail compose-only). Migration 011 applied (manager_actions + intake_drops + RLS + PHI CHECK). 78/78 cumulative verifier coverage. Phase 5 LLM spend $0 / $15 cap. See `docs/PHASE_5_EXIT_REPORT.md` + `docs/PHASE_5_COMPLETION_KA.md` + `docs/PHASE_5_OPERATOR_RUNBOOK.md`.
 
 ## Phase Details
 
