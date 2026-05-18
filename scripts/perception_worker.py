@@ -123,6 +123,7 @@ class _Handler(BaseHTTPRequestHandler):
             "/daily-spend-report",
             "/voice-transcribe",
             "/apply-actions",
+            "/undo-action",
         ):
             _json_response(self, 404, {"error": "not_found", "path": self.path})
             return
@@ -147,6 +148,10 @@ class _Handler(BaseHTTPRequestHandler):
             # No LLM budget gate — pure DB writes. The trust gate is
             # the per-action allow-list in apply_action.
             self._handle_apply_actions(body)
+            return
+
+        if self.path == "/undo-action":
+            self._handle_undo_action(body)
             return
 
         # Defence-in-depth budget gate (HC-2/HC-4) BEFORE any pipeline.
@@ -420,6 +425,70 @@ class _Handler(BaseHTTPRequestHandler):
                     }
                     for r in result.results
                 ],
+            },
+        )
+
+    def _handle_undo_action(self, body: dict[str, Any]) -> None:
+        """Phase 5 MNG-09. Reverse one manager_actions row."""
+        expected_token = os.environ.get("PHASE5_WORKER_AUTH_TOKEN", "").strip()
+        if expected_token:
+            got = (self.headers.get("X-Auth-Token") or "").strip()
+            if got != expected_token:
+                _json_response(self, 401, {"error": "unauthorized"})
+                return
+
+        manager_action_id = body.get("manager_action_id")
+        manager_user_id = body.get("manager_user_id")
+        if not manager_action_id or not manager_user_id:
+            _json_response(
+                self,
+                400,
+                {
+                    "error": "missing_fields",
+                    "detail": "manager_action_id + manager_user_id required",
+                },
+            )
+            return
+
+        try:
+            from scripts.manager.activity.undo import (  # noqa: PLC0415
+                UndoError,
+                UndoNotAllowed,
+                undo,
+            )
+        except Exception as e:
+            _json_response(
+                self,
+                500,
+                {"error": "import_failed", "detail": f"{type(e).__name__}: {e}"},
+            )
+            return
+
+        try:
+            result = undo(manager_action_id, manager_user_id=manager_user_id)
+        except UndoNotAllowed as e:
+            _json_response(self, 409, {"error": "undo_not_allowed", "detail": str(e)})
+            return
+        except UndoError as e:
+            _json_response(self, 422, {"error": "undo_failed", "detail": str(e)})
+            return
+        except Exception as e:
+            LOG.exception("undo raised")
+            _json_response(
+                self,
+                500,
+                {"error": "undo_failed", "detail": f"{type(e).__name__}: {e}"},
+            )
+            return
+
+        _json_response(
+            self,
+            200,
+            {
+                "reverse_action_id": result.reverse_action_id,
+                "original_action_id": result.original_action_id,
+                "target_table": result.target_table,
+                "target_action_taken": result.target_action_taken,
             },
         )
 

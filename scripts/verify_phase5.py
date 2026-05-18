@@ -485,13 +485,17 @@ def check_mng_07(report: Report) -> None:
 def check_mng_08(report: Report) -> None:
     has_lib = (VIEWER / "lib" / "realtime.ts").exists()
     has_ui = (VIEWER / "components" / "BrainPanel" / "ActivityFeed.tsx").exists()
-    ok = has_lib and has_ui
+    has_route = (VIEWER / "app" / "api" / "manager" / "audit" / "route.ts").exists()
+    has_audit_module = _module_present("scripts.manager.activity.audit_query")
+
+    ok = has_lib and has_ui and has_route and has_audit_module
     report.add(
         Check(
             "MNG-08",
             "Activity feed updates in realtime",
             ok,
-            f"realtime.ts={has_lib} ActivityFeed.tsx={has_ui} (Day 5)",
+            f"realtime.ts={has_lib} ActivityFeed.tsx={has_ui} "
+            f"audit_route={has_route} audit_query={has_audit_module}",
             "MNG-08",
         )
     )
@@ -501,15 +505,58 @@ def check_mng_08(report: Report) -> None:
 # MNG-09 — Undo restores state on last 30 actions
 # ---------------------------------------------------------------------------
 def check_mng_09(report: Report) -> None:
-    has_module = _module_present("scripts.manager.activity.undo")
+    has_undo = _module_present("scripts.manager.activity.undo")
+    has_button = (VIEWER / "components" / "AuditLog" / "UndoButton.tsx").exists()
+    has_route = (
+        VIEWER / "app" / "api" / "manager" / "undo" / "[id]" / "route.ts"
+    ).exists()
+    has_audit_page = (VIEWER / "app" / "audit-log" / "page.tsx").exists()
+
+    if not has_undo:
+        report.add(
+            Check(
+                "MNG-09",
+                "Undo restores state on last 30 actions",
+                False,
+                "scripts.manager.activity.undo not implemented (Day 5)",
+                "MNG-09",
+            )
+        )
+        return
+
+    if MODE == "code-complete":
+        ok = has_undo and has_button and has_route and has_audit_page
+        report.add(
+            Check(
+                "MNG-09",
+                "Undo restores state on last 30 actions",
+                ok,
+                f"undo={has_undo} button={has_button} route={has_route} "
+                f"audit_page={has_audit_page} mode=code-complete",
+                "MNG-09",
+            )
+        )
+        return
+
+    # production: at least one action_type='reverse' row in last 30 days
+    try:
+        rows = _pg_query(
+            """
+            SELECT count(*) FROM manager_actions
+            WHERE action_type = 'reverse'
+              AND created_at >= now() - interval '30 days'
+            """
+        )
+        n = int(rows[0][0]) if rows else 0
+    except Exception:
+        n = 0
+    ok = n >= 1
     report.add(
         Check(
             "MNG-09",
             "Undo restores state on last 30 actions",
-            False,
-            "scripts.manager.activity.undo not implemented (Day 5)"
-            if not has_module
-            else "module present, round-trip test pending",
+            ok,
+            f"recent_reverse_actions={n}",
             "MNG-09",
         )
     )

@@ -1,6 +1,8 @@
-// Phase 5 BRAIN panel scaffold (Gemini design integration, Day 0 cleanup).
-// Inert in Day 0 — wired to live data starting Day 1 (manager_actions
-// activity feed) and Day 3 (voice + drop zone input bar).
+// Phase 5 BRAIN panel.
+// Day 0: scaffold + inert input.
+// Day 5: live activity feed via /api/manager/audit polling.
+
+import ActivityFeed from '@/components/BrainPanel/ActivityFeed'
 
 export default function BrainPanel() {
   return (
@@ -17,9 +19,7 @@ export default function BrainPanel() {
         <div className="text-xs text-center text-slate-400 my-4 uppercase tracking-wider font-medium">
           Activity Log
         </div>
-        <div className="bg-white border border-slate-200 rounded-md p-3 shadow-sm text-sm text-slate-700 leading-relaxed">
-          Waiting for multi-modal input or voice command...
-        </div>
+        <ActivityFeed />
       </div>
 
       <div className="p-4 bg-slate-50 border-t border-slate-200">
