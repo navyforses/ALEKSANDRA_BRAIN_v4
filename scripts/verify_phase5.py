@@ -396,15 +396,19 @@ def check_mng_05(report: Report) -> None:
 # MNG-06 — Preview cards show before/after diff
 # ---------------------------------------------------------------------------
 def check_mng_06(report: Report) -> None:
-    has_module = _module_present("scripts.manager.routing.preview_builder")
+    has_router = _module_present("scripts.manager.routing.entity_router")
+    has_preview = _module_present("scripts.manager.routing.preview_builder")
     has_ui = (VIEWER / "components" / "ActionPreview" / "PreviewCardList.tsx").exists()
-    ok = has_module and has_ui
+    has_card = (VIEWER / "components" / "ActionPreview" / "ActionCard.tsx").exists()
+    has_diff = (VIEWER / "components" / "ActionPreview" / "FieldDiff.tsx").exists()
+    ok = has_router and has_preview and has_ui and has_card and has_diff
     report.add(
         Check(
             "MNG-06",
             "Preview cards show before/after diff before apply",
             ok,
-            f"preview_builder={has_module} PreviewCardList.tsx={has_ui} (Day 4)",
+            f"router={has_router} preview_builder={has_preview} "
+            f"PreviewCardList={has_ui} ActionCard={has_card} FieldDiff={has_diff}",
             "MNG-06",
         )
     )
@@ -414,15 +418,62 @@ def check_mng_06(report: Report) -> None:
 # MNG-07 — One-click Apply-all writes to correct tables
 # ---------------------------------------------------------------------------
 def check_mng_07(report: Report) -> None:
-    has_module = _module_present("scripts.manager.routing.apply_batch")
+    has_batch = _module_present("scripts.manager.routing.apply_batch")
+    has_action = _module_present("scripts.manager.routing.apply_action")
+    has_button = (
+        VIEWER / "components" / "ActionPreview" / "BatchApplyButton.tsx"
+    ).exists()
+    has_route = (VIEWER / "app" / "api" / "manager" / "apply" / "route.ts").exists()
+    has_lib = (VIEWER / "lib" / "brain" / "apply.ts").exists()
+
+    if not (has_batch and has_action):
+        report.add(
+            Check(
+                "MNG-07",
+                "One-click Apply-all writes to correct tables",
+                False,
+                "scripts.manager.routing.apply_batch / apply_action not implemented (Day 4)",
+                "MNG-07",
+            )
+        )
+        return
+
+    if MODE == "code-complete":
+        ok = has_batch and has_action and has_button and has_route and has_lib
+        report.add(
+            Check(
+                "MNG-07",
+                "One-click Apply-all writes to correct tables",
+                ok,
+                f"batch={has_batch} action={has_action} button={has_button} "
+                f"route={has_route} lib={has_lib} mode=code-complete",
+                "MNG-07",
+            )
+        )
+        return
+
+    # production: at least one manager_actions row with action_type IN
+    # ('add_event','add_milestone','create','update','add_contact') in
+    # the last 30 days.
+    try:
+        rows = _pg_query(
+            """
+            SELECT count(*) FROM manager_actions
+            WHERE action_type IN ('add_event','add_milestone','create',
+                                  'update','add_contact')
+              AND created_at >= now() - interval '30 days'
+            """
+        )
+        n = int(rows[0][0]) if rows else 0
+    except Exception:
+        n = 0
+    ok = n >= 1
     report.add(
         Check(
             "MNG-07",
             "One-click Apply-all writes to correct tables",
-            False,
-            "scripts.manager.routing.apply_batch not implemented (Day 4)"
-            if not has_module
-            else "module present, batch apply test pending",
+            ok,
+            f"recent_manager_actions={n}",
             "MNG-07",
         )
     )

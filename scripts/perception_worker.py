@@ -122,6 +122,7 @@ class _Handler(BaseHTTPRequestHandler):
             "/extraction-tick",
             "/daily-spend-report",
             "/voice-transcribe",
+            "/apply-actions",
         ):
             _json_response(self, 404, {"error": "not_found", "path": self.path})
             return
@@ -140,6 +141,12 @@ class _Handler(BaseHTTPRequestHandler):
         if self.path == "/daily-spend-report":
             # No budget gate. Pure SQL aggregation + Telegram send.
             self._handle_daily_spend_report(body)
+            return
+
+        if self.path == "/apply-actions":
+            # No LLM budget gate — pure DB writes. The trust gate is
+            # the per-action allow-list in apply_action.
+            self._handle_apply_actions(body)
             return
 
         # Defence-in-depth budget gate (HC-2/HC-4) BEFORE any pipeline.
@@ -353,6 +360,66 @@ class _Handler(BaseHTTPRequestHandler):
                 "duration_sec": result.duration_sec,
                 "language": result.language,
                 "redactions_count": result.redactions_count,
+            },
+        )
+
+    def _handle_apply_actions(self, body: dict[str, Any]) -> None:
+        """Phase 5 MNG-07. Apply N approved ActionCards atomically."""
+        expected_token = os.environ.get("PHASE5_WORKER_AUTH_TOKEN", "").strip()
+        if expected_token:
+            got = (self.headers.get("X-Auth-Token") or "").strip()
+            if got != expected_token:
+                _json_response(self, 401, {"error": "unauthorized"})
+                return
+
+        cards = body.get("cards")
+        if not isinstance(cards, list) or not cards:
+            _json_response(
+                self, 400, {"error": "cards_missing", "detail": "cards[] required"}
+            )
+            return
+
+        try:
+            from scripts.manager.routing.apply_batch import apply_many  # noqa: PLC0415
+            from scripts.manager.routing.preview_builder import card_to_action  # noqa: PLC0415
+            from scripts.manager.intake._shared import get_manager_user_id  # noqa: PLC0415
+
+            actions = [card_to_action(c) for c in cards if isinstance(c, dict)]
+        except Exception as e:
+            LOG.exception("apply_actions card coerce failed")
+            _json_response(
+                self,
+                400,
+                {"error": "card_coerce_failed", "detail": f"{type(e).__name__}: {e}"},
+            )
+            return
+
+        try:
+            result = apply_many(actions, manager_user_id=get_manager_user_id())
+        except Exception as e:
+            LOG.exception("apply_many raised")
+            _json_response(
+                self,
+                500,
+                {"error": "apply_failed", "detail": f"{type(e).__name__}: {e}"},
+            )
+            return
+
+        _json_response(
+            self,
+            200 if result.committed else 500,
+            {
+                "committed": result.committed,
+                "error": result.error,
+                "results": [
+                    {
+                        "manager_action_id": r.manager_action_id,
+                        "target_record_id": r.target_record_id,
+                        "action_type": r.action_type,
+                        "target_table": r.target_table,
+                    }
+                    for r in result.results
+                ],
             },
         )
 
