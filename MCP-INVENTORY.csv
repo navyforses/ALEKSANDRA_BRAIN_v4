@@ -23,3 +23,5 @@ atlas,brain atlas region lookup,viewer,7,visualization,VIS-03 — region ids onl
 bonbid,neonatal segmentation runner,viewer,8,visualization,VIS-05 — accepts job descriptors only, NEVER voxel arguments (v2)
 tvb,brain simulation sandbox,viewer,9,visualization,SIM-01 — TVB Docker (v2)
 code-review-graph,project knowledge graph for Claude Code,*,0,dev-tools,Editor-side only; not invoked by runtime agents
+openai-whisper-mcp,OpenAI Whisper transcription wrapper,manager,5,voice,Voice-First Input — cloud transcription only; transcripts only persisted (no raw audio)
+manager-intake-mcp,FastMCP server exposing intake parsers,manager,5,manager,Phase 5 BRAIN backend — PDF/OCR/email/text routing
