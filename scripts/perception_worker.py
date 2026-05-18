@@ -124,6 +124,8 @@ class _Handler(BaseHTTPRequestHandler):
             "/voice-transcribe",
             "/apply-actions",
             "/undo-action",
+            "/morning-briefing",
+            "/email-intent",
         ):
             _json_response(self, 404, {"error": "not_found", "path": self.path})
             return
@@ -152,6 +154,14 @@ class _Handler(BaseHTTPRequestHandler):
 
         if self.path == "/undo-action":
             self._handle_undo_action(body)
+            return
+
+        if self.path == "/morning-briefing":
+            self._handle_morning_briefing(body)
+            return
+
+        if self.path == "/email-intent":
+            self._handle_email_intent(body)
             return
 
         # Defence-in-depth budget gate (HC-2/HC-4) BEFORE any pipeline.
@@ -491,6 +501,90 @@ class _Handler(BaseHTTPRequestHandler):
                 "target_action_taken": result.target_action_taken,
             },
         )
+
+    def _handle_morning_briefing(self, body: dict[str, Any]) -> None:
+        """Phase 5 MNG-10. Compose + send the Sunday morning briefing."""
+        expected_token = os.environ.get("PHASE5_WORKER_AUTH_TOKEN", "").strip()
+        if expected_token:
+            got = (self.headers.get("X-Auth-Token") or "").strip()
+            if got != expected_token:
+                _json_response(self, 401, {"error": "unauthorized"})
+                return
+        dry_run = bool(body.get("dry_run", False))
+        try:
+            from scripts.manager.briefing import run as briefing_run  # noqa: PLC0415
+
+            result = briefing_run(dry_run=dry_run)
+        except Exception as e:
+            LOG.exception("briefing.run raised")
+            _json_response(
+                self,
+                500,
+                {"error": "briefing_failed", "detail": f"{type(e).__name__}: {e}"},
+            )
+            return
+        _json_response(self, 200, result)
+
+    def _handle_email_intent(self, body: dict[str, Any]) -> None:
+        """Phase 5 MNG-11. Parse 'write to X about Y' -> Gmail draft."""
+        expected_token = os.environ.get("PHASE5_WORKER_AUTH_TOKEN", "").strip()
+        if expected_token:
+            got = (self.headers.get("X-Auth-Token") or "").strip()
+            if got != expected_token:
+                _json_response(self, 401, {"error": "unauthorized"})
+                return
+        text = (body.get("text") or "").strip()
+        dry_run = bool(body.get("dry_run", False))
+        if not text:
+            _json_response(self, 400, {"error": "text_missing"})
+            return
+        try:
+            from scripts.manager.email_draft import draft_from_intent  # noqa: PLC0415
+
+            result = draft_from_intent(text, dry_run=dry_run)
+        except Exception as e:
+            LOG.exception("draft_from_intent raised")
+            _json_response(
+                self,
+                500,
+                {"error": "email_intent_failed", "detail": f"{type(e).__name__}: {e}"},
+            )
+            return
+        # Hand-serialize so the response shape is stable in JSON.
+        payload = {
+            "matched": result.matched,
+            "blocked": result.blocked,
+            "block_reason": result.block_reason,
+            "intent": {
+                "recipient_hint": result.intent.recipient_hint,
+                "topic": result.intent.topic,
+            }
+            if result.intent
+            else None,
+            "contact_id": result.contact_id,
+            "contact_name": result.contact_name,
+            "fuzzy_score": result.fuzzy_score,
+            "draft": {
+                "subject": result.draft.subject if result.draft else None,
+                "body_excerpt": (result.draft.body or "")[:240]
+                if result.draft
+                else None,
+                "gmail_draft_id": result.draft.gmail_draft_id if result.draft else None,
+                "outreach_log_id": result.draft.outreach_log_id
+                if result.draft
+                else None,
+                "confidence": (
+                    float(result.draft.confidence)
+                    if result.draft and result.draft.confidence is not None
+                    else None
+                ),
+            }
+            if result.draft
+            else None,
+            "dry_run": result.dry_run,
+            "created_at": result.created_at,
+        }
+        _json_response(self, 200, payload)
 
     def _handle_extraction(self, body: dict[str, Any]) -> None:
         import asyncio  # noqa: PLC0415

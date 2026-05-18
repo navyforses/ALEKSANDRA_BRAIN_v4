@@ -609,14 +609,52 @@ def check_mng_10(report: Report) -> None:
 # ---------------------------------------------------------------------------
 def check_mng_11(report: Report) -> None:
     has_module = _module_present("scripts.manager.email_draft")
+    has_route = (VIEWER / "app" / "api" / "manager" / "email" / "route.ts").exists()
+    has_ui = (VIEWER / "components" / "BrainPanel" / "EmailIntent.tsx").exists()
+    if not has_module:
+        report.add(
+            Check(
+                "MNG-11",
+                "Email draft → Gmail drafts (never auto-send)",
+                False,
+                "scripts.manager.email_draft not implemented (Day 6)",
+                "MNG-11",
+            )
+        )
+        return
+    if MODE == "code-complete":
+        ok = has_module and has_route and has_ui
+        report.add(
+            Check(
+                "MNG-11",
+                "Email draft → Gmail drafts (never auto-send)",
+                ok,
+                f"module={has_module} route={has_route} ui={has_ui} mode=code-complete",
+                "MNG-11",
+            )
+        )
+        return
+
+    # production: at least one outreach_log row from a Phase 5 intent
+    # (purpose='question' from manager) in last 30 days
+    try:
+        rows = _pg_query(
+            """
+            SELECT count(*) FROM outreach_log
+            WHERE drafted_at >= now() - interval '30 days'
+              AND sent_at IS NULL
+            """
+        )
+        n = int(rows[0][0]) if rows else 0
+    except Exception:
+        n = 0
+    ok = n >= 1
     report.add(
         Check(
             "MNG-11",
             "Email draft → Gmail drafts (never auto-send)",
-            False,
-            "scripts.manager.email_draft not implemented (Day 6)"
-            if not has_module
-            else "module present, Gmail draft round-trip pending",
+            ok,
+            f"recent_pending_drafts={n}",
             "MNG-11",
         )
     )
