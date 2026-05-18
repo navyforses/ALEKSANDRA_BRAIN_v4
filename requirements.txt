@@ -71,6 +71,12 @@ PyYAML>=6.0
 # See docs/RUNBOOK-notion-api.md for the setup contract.
 notion-client>=2.2.1
 
+# ─── Phase 5 BRAIN Manager intake ────────────────────────
+# Multi-modal intake parsers: PDF (pdfplumber above), photos (PIL +
+# pytesseract), voice (openai Whisper — added Day 3).
+pillow>=10.0.0
+pytesseract>=0.3.10
+
 # ─── Utilities ───────────────────────────────────────────
 python-dotenv>=1.0.0
 pydantic>=2.9.0
