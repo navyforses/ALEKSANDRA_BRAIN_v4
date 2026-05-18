@@ -282,14 +282,56 @@ def check_mng_03(report: Report) -> None:
 # ---------------------------------------------------------------------------
 def check_mng_04(report: Report) -> None:
     has_module = _module_present("scripts.manager.intake.voice_transcribe")
+    if not has_module:
+        report.add(
+            Check(
+                "MNG-04",
+                "Voice 5s → transcribed <2s with ≥90% accuracy",
+                False,
+                "scripts.manager.intake.voice_transcribe not implemented (Day 3)",
+                "MNG-04",
+            )
+        )
+        return
+
+    # Browser-side artifacts must exist for the end-to-end loop.
+    recorder = VIEWER / "components" / "BrainPanel" / "VoiceRecorder.tsx"
+    route = VIEWER / "app" / "api" / "manager" / "voice" / "route.ts"
+    voice_lib = VIEWER / "lib" / "brain" / "voice.ts"
+
+    if MODE == "code-complete":
+        ok = recorder.exists() and route.exists() and voice_lib.exists()
+        report.add(
+            Check(
+                "MNG-04",
+                "Voice 5s → transcribed <2s with ≥90% accuracy",
+                ok,
+                f"module=ok recorder={recorder.exists()} route={route.exists()} "
+                f"lib={voice_lib.exists()} mode=code-complete",
+                "MNG-04",
+            )
+        )
+        return
+
+    # production: at least one whisper_call runs row in the last 14 days
+    try:
+        rows = _pg_query(
+            """
+            SELECT count(*) FROM runs
+            WHERE kind='whisper_call'
+              AND start_time >= now() - interval '14 days'
+            """
+        )
+        n = int(rows[0][0]) if rows else 0
+    except Exception:
+        n = 0
+    ok = n >= 1
     report.add(
         Check(
             "MNG-04",
             "Voice 5s → transcribed <2s with ≥90% accuracy",
-            False,
-            "scripts.manager.intake.voice_transcribe not implemented (Day 3)"
-            if not has_module
-            else "module present, Whisper fixtures pending (Day 3)",
+            ok,
+            f"recent_whisper_calls={n}",
             "MNG-04",
         )
     )

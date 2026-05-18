@@ -54,6 +54,40 @@ LOG = logging.getLogger("perception_worker")
 DEFAULT_PORT = 8000
 
 
+def _parse_audio_from_multipart(
+    raw: bytes, content_type: str
+) -> tuple[bytes | None, str, str]:
+    """Extract the 'audio' field from a multipart/form-data body.
+
+    Uses email.parser so multipart-MIME corner cases (CRLF normalization,
+    charset, multiple parts) are handled correctly without pulling in
+    python-multipart. Returns (bytes, filename, mime); bytes=None if the
+    audio field is absent.
+    """
+    from email import message_from_bytes  # noqa: PLC0415
+    from email import policy  # noqa: PLC0415
+
+    # email.parser expects the headers + body together; prepend a synthetic
+    # Content-Type header carrying the boundary.
+    blob = (
+        f"Content-Type: {content_type}\r\n\r\n".encode("ascii", errors="ignore") + raw
+    )
+    msg = message_from_bytes(blob, policy=policy.default)
+    if not msg.is_multipart():
+        return None, "clip.webm", "audio/webm"
+    for part in msg.walk():
+        if part.is_multipart():
+            continue
+        cd = part.get("Content-Disposition") or ""
+        if 'name="audio"' not in cd and "name=audio" not in cd:
+            continue
+        filename = part.get_filename() or "clip.webm"
+        mime = part.get_content_type() or "audio/webm"
+        payload = part.get_payload(decode=True) or b""
+        return payload, filename, mime
+    return None, "clip.webm", "audio/webm"
+
+
 def _json_response(
     handler: BaseHTTPRequestHandler, status: int, body: dict[str, Any]
 ) -> None:
@@ -87,8 +121,16 @@ class _Handler(BaseHTTPRequestHandler):
             "/chunking-tick",
             "/extraction-tick",
             "/daily-spend-report",
+            "/voice-transcribe",
         ):
             _json_response(self, 404, {"error": "not_found", "path": self.path})
+            return
+
+        # /voice-transcribe is multipart/form-data, not JSON. Handle it
+        # before the JSON body parser. The budget gate runs INSIDE
+        # transcribe() via check_daily_budget(raise_on_over=True).
+        if self.path == "/voice-transcribe":
+            self._handle_voice_transcribe()
             return
 
         body = self._parse_body()
@@ -234,6 +276,85 @@ class _Handler(BaseHTTPRequestHandler):
             )
             return
         _json_response(self, 200, result)
+
+    def _handle_voice_transcribe(self) -> None:
+        """Phase 5 MNG-04. Multipart audio → Whisper → redacted transcript."""
+        # Optional shared-secret auth so the Railway URL isn't an open relay.
+        expected_token = os.environ.get("PHASE5_WORKER_AUTH_TOKEN", "").strip()
+        if expected_token:
+            got = (self.headers.get("X-Auth-Token") or "").strip()
+            if got != expected_token:
+                _json_response(self, 401, {"error": "unauthorized"})
+                return
+
+        content_type = self.headers.get("Content-Type") or ""
+        if "multipart/form-data" not in content_type:
+            _json_response(
+                self,
+                400,
+                {
+                    "error": "expected_multipart",
+                    "got_content_type": content_type[:120],
+                },
+            )
+            return
+
+        length = int(self.headers.get("Content-Length") or 0)
+        if length <= 0:
+            _json_response(self, 400, {"error": "empty_body"})
+            return
+        # Cap upload at 25 MB — Whisper's own limit. Anything bigger is a
+        # configuration error.
+        if length > 25 * 1024 * 1024:
+            _json_response(self, 413, {"error": "payload_too_large", "bytes": length})
+            return
+
+        raw = self.rfile.read(length)
+        audio_bytes, audio_name, audio_mime = _parse_audio_from_multipart(
+            raw, content_type
+        )
+        if audio_bytes is None:
+            _json_response(self, 400, {"error": "audio_field_missing"})
+            return
+
+        try:
+            from scripts.manager.intake.voice_transcribe import transcribe  # noqa: PLC0415
+
+            result = transcribe(audio_bytes, mime=audio_mime, filename=audio_name)
+        except BudgetExceeded as e:
+            _json_response(
+                self,
+                429,
+                {
+                    "error": "budget_exceeded",
+                    "today_spend_usd": e.today_spend_usd,
+                    "cap_usd": e.threshold_usd,
+                },
+            )
+            return
+        except Exception as e:
+            LOG.exception("voice_transcribe.transcribe raised")
+            _json_response(
+                self,
+                500,
+                {
+                    "error": "voice_transcribe_failed",
+                    "detail": f"{type(e).__name__}: {e}",
+                    "trace": traceback.format_exc(limit=5),
+                },
+            )
+            return
+
+        _json_response(
+            self,
+            200,
+            {
+                "text": result.text,
+                "duration_sec": result.duration_sec,
+                "language": result.language,
+                "redactions_count": result.redactions_count,
+            },
+        )
 
     def _handle_extraction(self, body: dict[str, Any]) -> None:
         import asyncio  # noqa: PLC0415
