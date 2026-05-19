@@ -127,7 +127,9 @@ def _qdrant_collection_info(name: str) -> dict:
     url = os.environ.get("QDRANT_URL", "http://127.0.0.1:6333").replace(
         "localhost", "127.0.0.1"
     )
-    r = httpx.get(f"{url}/collections/{name}", timeout=10)
+    api_key = os.environ.get("QDRANT_API_KEY")
+    headers = {"api-key": api_key} if api_key else {}
+    r = httpx.get(f"{url}/collections/{name}", headers=headers, timeout=10)
     r.raise_for_status()
     return r.json().get("result", {})
 

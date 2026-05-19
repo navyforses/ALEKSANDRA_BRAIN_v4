@@ -63,7 +63,8 @@ def main() -> int:
         os.environ.setdefault(k, v)
 
     url = os.environ.get("QDRANT_URL", "http://localhost:6333")
-    client = QdrantClient(url=url)
+    api_key = os.environ.get("QDRANT_API_KEY") or None
+    client = QdrantClient(url=url, api_key=api_key)
 
     # 1. Create / upsert collections
     existing = {c.name for c in client.get_collections().collections}

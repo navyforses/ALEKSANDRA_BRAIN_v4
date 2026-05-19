@@ -100,3 +100,10 @@ data/notion_contacts.csv
 
 # External skill repos (cloned reference material, not source-of-truth)
 external-skills/
+
+# Per-deploy raw-paste blocks (secrets — never commit)
+.planning/RAILWAY_ENV_BLOCK.txt
+.planning/VERCEL_ENV_BLOCK.txt
+
+# Neo4j Aura download files contain plaintext passwords
+Neo4j-*-Created-*.txt

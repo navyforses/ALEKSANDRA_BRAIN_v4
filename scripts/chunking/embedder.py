@@ -69,7 +69,8 @@ def _get_qdrant() -> QdrantClient:
         url = os.environ.get("QDRANT_URL", "http://localhost:6333").replace(
             "localhost", "127.0.0.1"
         )
-        _qdrant = QdrantClient(url=url)
+        api_key = os.environ.get("QDRANT_API_KEY") or None
+        _qdrant = QdrantClient(url=url, api_key=api_key)
     return _qdrant
 
 

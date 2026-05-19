@@ -90,7 +90,10 @@ def run(dry_run: bool = False) -> dict:
     load_env()
     import os
 
-    qclient = QdrantClient(url=os.environ.get("QDRANT_URL", "http://localhost:6333"))
+    qclient = QdrantClient(
+        url=os.environ.get("QDRANT_URL", "http://localhost:6333"),
+        api_key=os.environ.get("QDRANT_API_KEY") or None,
+    )
 
     stamped = 0
     skipped_already = 0

@@ -136,9 +136,12 @@ def _qdrant_search(query_vec: list[float], top_k: int, min_score: float) -> list
         "with_payload": True,
         "with_vector": False,
     }
+    api_key = os.environ.get("QDRANT_API_KEY")
+    headers = {"api-key": api_key} if api_key else {}
     r = httpx.post(
         f"{_qdrant_url()}/collections/{QDRANT_COLLECTION}/points/search",
         json=body,
+        headers=headers,
         timeout=30,
     )
     r.raise_for_status()
