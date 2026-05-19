@@ -1,0 +1,84 @@
+{
+  "comparison": "swarm_healthy_vs_damaged",
+  "healthy": {
+    "name": "HEALTHY BASELINE",
+    "path": "tests/fixtures/healthy_brain_128.nii.gz",
+    "shape": [
+      128,
+      128,
+      128
+    ],
+    "total_chunks": 343,
+    "successful_chunks": 343,
+    "failed_chunks": 0,
+    "elapsed_sec": 3.47,
+    "mean_intensity": 22.34,
+    "std_intensity": 11.66,
+    "lesion_chunks": 255,
+    "total_lesions": 255,
+    "global_stats": {
+      "mean_mean": 22.3360982369049,
+      "mean_std": 45.94004123722136,
+      "std_mean": 11.663463887190652,
+      "std_std": 18.737707218672835,
+      "min_mean": 4.2523745823184536,
+      "min_std": 19.535594478939107,
+      "max_mean": 57.47719860911022,
+      "max_std": 78.4066067429531,
+      "median_mean": 20.969329845105943,
+      "median_std": 49.29227619151581,
+      "nonzero_mean": 1360.725947521866,
+      "nonzero_std": 2614.745750891444,
+      "gradient_mean_mean": 3.012590932701534,
+      "gradient_mean_std": 4.964997123872547,
+      "gradient_max_mean": 50.833436828089866,
+      "gradient_max_std": 68.34582709916197,
+      "total_suspected_lesions": 255.0,
+      "total_chunks_processed": 343.0,
+      "total_chunks_failed": 0.0
+    }
+  },
+  "damaged": {
+    "name": "DAMAGED (HIE)",
+    "path": "tests/fixtures/damaged_brain_128.nii.gz",
+    "shape": [
+      128,
+      128,
+      128
+    ],
+    "total_chunks": 343,
+    "successful_chunks": 343,
+    "failed_chunks": 0,
+    "elapsed_sec": 2.94,
+    "mean_intensity": 10.4,
+    "std_intensity": 6.6,
+    "lesion_chunks": 274,
+    "total_lesions": 274,
+    "global_stats": {
+      "mean_mean": 10.396267652216181,
+      "mean_std": 23.42112105474798,
+      "std_mean": 6.598356657981349,
+      "std_std": 11.024770391713458,
+      "min_mean": 0.9976055712463557,
+      "min_std": 5.31268643942669,
+      "max_mean": 35.420393818669,
+      "max_std": 54.63184973684161,
+      "median_mean": 9.476071149197681,
+      "median_std": 24.455256939759227,
+      "nonzero_mean": 1155.0758017492712,
+      "nonzero_std": 2432.152912580223,
+      "gradient_mean_mean": 2.558560032068158,
+      "gradient_mean_std": 5.028561390047667,
+      "gradient_max_mean": 30.666570299902013,
+      "gradient_max_std": 46.10081437568314,
+      "total_suspected_lesions": 274.0,
+      "total_chunks_processed": 343.0,
+      "total_chunks_failed": 0.0
+    }
+  },
+  "swarm_detected_difference": {
+    "intensity_drop": 11.94,
+    "lesion_increase": 19,
+    "conclusion": "Damaged brain shows significant intensity reduction and lesion detection vs healthy baseline."
+  }
+}

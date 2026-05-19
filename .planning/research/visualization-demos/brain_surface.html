@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="ka">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ალექსანდრას ტვინი — Surface 3D</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #050510;
+            overflow: hidden;
+            color: white;
+        }
+        #canvas-container { width: 100vw; height: 100vh; position: relative; }
+        #info-panel {
+            position: absolute; top: 20px; left: 20px;
+            background: rgba(5,5,16,0.92); padding: 18px;
+            border-radius: 12px; max-width: 300px;
+            border: 1px solid rgba(100,150,255,0.15);
+            backdrop-filter: blur(10px);
+        }
+        #info-panel h1 { font-size: 15px; margin-bottom: 6px; color: #8ec5e3; }
+        #info-panel p { font-size: 10px; line-height: 1.5; color: #888; }
+        #controls {
+            position: absolute; bottom: 20px; left: 50%;
+            transform: translateX(-50%); display: flex;
+            gap: 8px; flex-wrap: wrap; justify-content: center;
+        }
+        button {
+            background: rgba(80,130,200,0.12);
+            border: 1px solid rgba(80,130,200,0.3);
+            color: #8ec5e3; padding: 8px 14px;
+            border-radius: 20px; cursor: pointer;
+            font-size: 11px; transition: all 0.3s;
+        }
+        button:hover { background: rgba(80,130,200,0.25); }
+        button.active { background: rgba(80,130,200,0.35); border-color: #8ec5e3; }
+        #legend {
+            position: absolute; top: 20px; right: 20px;
+            background: rgba(5,5,16,0.92); padding: 12px;
+            border-radius: 8px; font-size: 10px;
+            border: 1px solid rgba(100,150,255,0.15);
+        }
+        .legend-item { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; }
+        .legend-color { width: 10px; height: 10px; border-radius: 2px; }
+        #stats {
+            position: absolute; bottom: 70px; right: 20px;
+            background: rgba(5,5,16,0.85); padding: 10px;
+            border-radius: 6px; font-size: 10px; color: #888;
+        }
+        #stats span { color: #8ec5e3; }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    <div id="info-panel">
+        <h1>🧠 ალექსანდრას ტვინის 3D Surface</h1>
+        <p>12,000 surface voxels with normal-based shading<br>
+        WM = creamy white | GM = warm gray | CSF = translucent blue<br>
+        Each point = one voxel on the brain's outer surface</p>
+    </div>
+    <div id="legend">
+        <div class="legend-item"><div class="legend-color" style="background:#e8e0d5;"></div><span>თეთრი ნივთიერება</span></div>
+        <div class="legend-item"><div class="legend-color" style="background:#b89570;"></div><span>რუხი ნივთიერება</span></div>
+        <div class="legend-item"><div class="legend-color" style="background:#2a5a8a;"></div><span>თხიელი ნივთიერება</span></div>
+    </div>
+    <div id="stats">
+        <div>Points: <span id="pointCount">0</span></div>
+        <div>FPS: <span id="fps">0</span></div>
+    </div>
+    <div id="controls">
+        <button onclick="setMode('full')" id="btn-full" class="active">🧠 Full</button>
+        <button onclick="setMode('wm')" id="btn-wm">⚪ WM</button>
+        <button onclick="setMode('gm')" id="btn-gm">🟤 GM</button>
+        <button onclick="setMode('csf')" id="btn-csf">🔷 CSF</button>
+        <button onclick="toggleRotate()" id="btn-rot">🔄 Rotate</button>
+        <button onclick="resetCam()">🏠 Reset</button>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="brain_surface.js"></script>
+
+    <script>
+        // Scene
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x050510);
+        scene.fog = new THREE.Fog(0x050510, 100, 300);
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 1000);
+        camera.position.set(100, 70, 140);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.target.set(64, 58, 55);
+
+        // Lights (used in shader calculations)
+        const lightDir = new THREE.Vector3(0.4, 0.8, 0.3).normalize();
+
+        // Custom shaders
+        const vertexShader = `
+            attribute float intensity;
+            attribute vec3 normal;
+            attribute float pointSize;
+            varying vec3 vColor;
+            varying vec3 vNormal;
+            varying float vIntensity;
+            varying float vDepth;
+
+            vec3 tissueColor(float i) {
+                if (i < 30.0) return vec3(0.12, 0.28, 0.50); // CSF - deep blue
+                if (i < 80.0) return vec3(0.55, 0.42, 0.30); // GM - warm brown
+                if (i < 130.0) return vec3(0.78, 0.74, 0.68); // WM - off-white
+                return vec3(0.92, 0.90, 0.86); // Bright WM
+            }
+
+            void main() {
+                vIntensity = intensity;
+                vNormal = normalize(normal);
+
+                vec3 baseColor = tissueColor(intensity);
+
+                // Lambert shading
+                vec3 lightDir = normalize(vec3(0.4, 0.8, 0.3));
+                float diff = max(0.3, dot(vNormal, lightDir));
+
+                // Rim lighting
+                vec3 viewDir = normalize(cameraPosition - position);
+                float rim = 1.0 - max(0.0, dot(viewDir, vNormal));
+                rim = pow(rim, 3.0) * 0.3;
+
+                vColor = baseColor * diff + vec3(0.6, 0.75, 0.9) * rim;
+
+                vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+                vDepth = -mvPosition.z;
+                gl_PointSize = pointSize * (300.0 / -mvPosition.z);
+                gl_Position = projectionMatrix * mvPosition;
+            }
+        `;
+
+        const fragmentShader = `
+            varying vec3 vColor;
+            varying vec3 vNormal;
+            varying float vIntensity;
+            varying float vDepth;
+
+            void main() {
+                // Circular point
+                vec2 coord = gl_PointCoord - vec2(0.5);
+                float dist = length(coord);
+                if (dist > 0.5) discard;
+
+                // Soft edge
+                float alpha = 1.0 - smoothstep(0.35, 0.5, dist);
+
+                // Depth fade
+                float depthFade = smoothstep(250.0, 50.0, vDepth);
+                alpha *= 0.7 + 0.3 * depthFade;
+
+                // CSF more translucent
+                if (vIntensity < 30.0) alpha *= 0.6;
+
+                gl_FragColor = vec4(vColor, alpha);
+            }
+        `;
+
+        let pointsMesh = null;
+        let currentMode = 'full';
+
+        function createPoints(mode) {
+            if (!BRAIN_SURFACE || BRAIN_SURFACE.length === 0) return;
+
+            let pts = BRAIN_SURFACE;
+            if (mode === 'wm') pts = pts.filter(p => p.i > 100);
+            else if (mode === 'gm') pts = pts.filter(p => p.i > 30 && p.i <= 100);
+            else if (mode === 'csf') pts = pts.filter(p => p.i <= 30);
+
+            const geometry = new THREE.BufferGeometry();
+            const positions = [];
+            const intensities = [];
+            const normals = [];
+            const sizes = [];
+
+            for (const p of pts) {
+                positions.push(p.x, p.y, p.z);
+                intensities.push(p.i);
+                normals.push(p.nx || 0, p.ny || 0, p.nz || 1);
+                // Larger points for surface detail
+                sizes.push(p.i < 30 ? 3.0 : (p.i > 100 ? 2.2 : 2.5));
+            }
+
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+            geometry.setAttribute('intensity', new THREE.Float32BufferAttribute(intensities, 1));
+            geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+            geometry.setAttribute('pointSize', new THREE.Float32BufferAttribute(sizes, 1));
+
+            const material = new THREE.ShaderMaterial({
+                vertexShader: vertexShader,
+                fragmentShader: fragmentShader,
+                transparent: true,
+                depthWrite: false,
+                blending: THREE.NormalBlending,
+            });
+
+            if (pointsMesh) {
+                scene.remove(pointsMesh);
+                pointsMesh.geometry.dispose();
+                pointsMesh.material.dispose();
+            }
+
+            pointsMesh = new THREE.Points(geometry, material);
+            scene.add(pointsMesh);
+            document.getElementById('pointCount').textContent = pts.length.toLocaleString();
+        }
+
+        function setMode(m) {
+            currentMode = m;
+            document.querySelectorAll('#controls button').forEach(b => b.classList.remove('active'));
+            document.getElementById('btn-' + m).classList.add('active');
+            createPoints(m);
+        }
+
+        function toggleRotate() {
+            controls.autoRotate = !controls.autoRotate;
+            document.getElementById('btn-rot').classList.toggle('active');
+        }
+
+        function resetCam() {
+            camera.position.set(100, 70, 140);
+            controls.target.set(64, 58, 55);
+            controls.update();
+        }
+
+        // Init
+        window.addEventListener('load', () => setTimeout(() => createPoints('full'), 300));
+
+        // Animate
+        let lastTime = 0, fc = 0;
+        function animate(t) {
+            requestAnimationFrame(animate);
+            fc++;
+            if (t - lastTime > 1000) {
+                document.getElementById('fps').textContent = fc;
+                fc = 0; lastTime = t;
+            }
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        animate(0);
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>

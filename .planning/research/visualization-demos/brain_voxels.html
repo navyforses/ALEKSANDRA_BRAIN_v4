@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="ka">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ტვინის ვოქსელური მოდელი — ALEKSANDRA_BRAIN</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f0f23 0%, #1a1a3e 100%);
+            overflow: hidden;
+            color: white;
+        }
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+        #info-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.85);
+            padding: 20px;
+            border-radius: 12px;
+            max-width: 340px;
+            border: 1px solid rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+        }
+        #info-panel h1 {
+            font-size: 18px;
+            margin-bottom: 8px;
+            color: #4ECDC4;
+        }
+        #info-panel p {
+            font-size: 12px;
+            line-height: 1.5;
+            color: #aaa;
+            margin-bottom: 10px;
+        }
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        button {
+            background: rgba(78, 205, 196, 0.2);
+            border: 1px solid #4ECDC4;
+            color: #4ECDC4;
+            padding: 10px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.3s;
+        }
+        button:hover {
+            background: rgba(78, 205, 196, 0.4);
+        }
+        button:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 2px;
+            margin-top: 10px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4ECDC4, #FFE66D);
+            width: 0%;
+            transition: width 0.3s;
+        }
+        #stats {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.8);
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 12px;
+            color: #ccc;
+            min-width: 180px;
+        }
+        #stats span { color: #4ECDC4; font-weight: bold; }
+        input[type="file"] {
+            display: none;
+        }
+        .file-label {
+            display: inline-block;
+            background: rgba(255, 107, 107, 0.2);
+            border: 1px solid #FF6B6B;
+            color: #FF6B6B;
+            padding: 10px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.3s;
+            margin-bottom: 10px;
+        }
+        .file-label:hover {
+            background: rgba(255, 107, 107, 0.4);
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+
+    <div id="info-panel">
+        <h1>🧠 ტვინის ვოქსელური მოდელი</h1>
+        <p>თითოეული წერტილი = ერთი ვოქსელი = ერთი უჯრედი<br>
+        მილიონობით ნეირონისგან შედგება ტვინი</p>
+
+        <label class="file-label" for="fileInput">📁 აირჩიე NIfTI ფაილი (.nii.gz)</label>
+        <input type="file" id="fileInput" accept=".nii,.nii.gz">
+
+        <div class="progress-bar">
+            <div class="progress-fill" id="progress"></div>
+        </div>
+
+        <p style="margin-top:10px; font-size:11px; color:#888;">
+            🖱️ მარცხენა ღილაკით შებრუნეთ<br>
+            🖱️ სკროლით გადიდეთ/დააპატარავეთ<br>
+            ⚡ "აწყობა" — ტვინი ზემოდან ქვემოთ იშლება
+        </p>
+    </div>
+
+    <div id="stats">
+        <div>ვოქსელები: <span id="voxelCount">0</span></div>
+        <div>Slice: <span id="sliceInfo">-</span></div>
+        <div>FPS: <span id="fps">0</span></div>
+    </div>
+
+    <div id="controls">
+        <button onclick="loadDemo('healthy')">🟢 ჯანსაღი ტვინი</button>
+        <button onclick="loadDemo('damaged')">🔴 დაზიანებული</button>
+        <button onclick="startBuild()">🔨 აწყობა (ნაწილ-ნაწილ)</button>
+        <button onclick="resetView()">🔄 თავიდან</button>
+        <button onclick="toggleRotation()">🔄 ბრუნვა</button>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pako@2.0.4/dist/pako.min.js"></script>
+    <script src="demo_points.js"></script>
+
+    <script>
+        // Scene setup
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0f0f23);
+        scene.fog = new THREE.Fog(0x0f0f23, 50, 300);
+
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(100, 80, 150);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.target.set(64, 64, 64);
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+        scene.add(ambientLight);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.6);
+        dirLight.position.set(100, 200, 100);
+        scene.add(dirLight);
+
+        // Point cloud variables
+        let pointsMesh = null;
+        let allPoints = [];
+        let isBuilding = false;
+        let buildIndex = 0;
+        let autoRotate = false;
+
+        // Color mapping
+        function intensityToColor(intensity) {
+            if (intensity < 30) {
+                return new THREE.Color(0.4, 0.6, 1.0); // CSF — blue
+            } else if (intensity < 80) {
+                const t = (intensity - 30) / 50;
+                return new THREE.Color(0.2 + t * 0.3, 0.6 + t * 0.4, 0.6 + t * 0.2); // GM
+            } else if (intensity < 130) {
+                const t = (intensity - 80) / 50;
+                return new THREE.Color(0.8 + t * 0.2, 0.8 + t * 0.2, 0.4 + t * 0.6); // WM
+            } else {
+                return new THREE.Color(1.0, 1.0, 0.9); // Bright WM
+            }
+        }
+
+        // Create point cloud from voxel data
+        function createPointCloud(voxels, step = 2) {
+            // voxels: array of {x, y, z, intensity}
+            const geometry = new THREE.BufferGeometry();
+            const positions = [];
+            const colors = [];
+            const sizes = [];
+
+            let count = 0;
+            for (let i = 0; i < voxels.length; i += step) {
+                const v = voxels[i];
+                positions.push(v.x, v.y, v.z);
+
+                const color = intensityToColor(v.intensity);
+                colors.push(color.r, color.g, color.b);
+
+                // Lesions (very low intensity in damaged brain) appear larger
+                const size = v.intensity < 20 ? 1.5 : 0.8;
+                sizes.push(size);
+
+                count++;
+            }
+
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+            geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+            geometry.setAttribute('size', new THREE.Float32BufferAttribute(sizes, 1));
+
+            const material = new THREE.PointsMaterial({
+                size: 0.8,
+                vertexColors: true,
+                sizeAttenuation: true,
+                transparent: true,
+                opacity: 0.9,
+                blending: THREE.AdditiveBlending,
+            });
+
+            if (pointsMesh) {
+                scene.remove(pointsMesh);
+                pointsMesh.geometry.dispose();
+                pointsMesh.material.dispose();
+            }
+
+            pointsMesh = new THREE.Points(geometry, material);
+            scene.add(pointsMesh);
+
+            document.getElementById('voxelCount').textContent = count.toLocaleString();
+
+            return count;
+        }
+
+        // Layer-by-layer build animation
+        function startBuild() {
+            if (allPoints.length === 0) return;
+
+            isBuilding = true;
+            buildIndex = 0;
+
+            // Sort by z (top to bottom)
+            allPoints.sort((a, b) => b.z - a.z);
+
+            // Start with empty geometry
+            if (pointsMesh) {
+                scene.remove(pointsMesh);
+                pointsMesh.geometry.dispose();
+            }
+
+            const geometry = new THREE.BufferGeometry();
+            const maxPoints = Math.ceil(allPoints.length / 2); // step=2
+
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(maxPoints * 3), 3));
+            geometry.setAttribute('color', new THREE.Float32BufferAttribute(new Float32Array(maxPoints * 3), 3));
+
+            const material = new THREE.PointsMaterial({
+                size: 1.0,
+                vertexColors: true,
+                sizeAttenuation: true,
+                transparent: true,
+                opacity: 0.9,
+                blending: THREE.AdditiveBlending,
+            });
+
+            pointsMesh = new THREE.Points(geometry, material);
+            scene.add(pointsMesh);
+
+            // Animate adding layers
+            let currentLayer = 127;
+            const layersPerFrame = 2;
+
+            function addLayer() {
+                if (!isBuilding || currentLayer < 0) {
+                    isBuilding = false;
+                    return;
+                }
+
+                const positions = [];
+                const colors = [];
+
+                // Add all points from current layer down
+                for (let i = 0; i < allPoints.length; i += 2) {
+                    const v = allPoints[i];
+                    if (v.z >= currentLayer) {
+                        positions.push(v.x, v.y, v.z);
+                        const color = intensityToColor(v.intensity);
+                        colors.push(color.r, color.g, color.b);
+                    }
+                }
+
+                const geo = new THREE.BufferGeometry();
+                geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+                geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+
+                pointsMesh.geometry.dispose();
+                pointsMesh.geometry = geo;
+
+                document.getElementById('sliceInfo').textContent = `${currentLayer}/128`;
+                document.getElementById('progress').style.width = `${(1 - currentLayer/128) * 100}%`;
+
+                currentLayer -= layersPerFrame;
+                requestAnimationFrame(addLayer);
+            }
+
+            addLayer();
+        }
+
+        // Read NIfTI file
+        function readNifti(arrayBuffer) {
+            const dataView = new DataView(arrayBuffer);
+
+            // Check if gzipped
+            let headerBytes = new Uint8Array(arrayBuffer, 0, Math.min(arrayBuffer.byteLength, 4));
+            let isGzipped = (headerBytes[0] === 0x1f && headerBytes[1] === 0x8b);
+
+            let bytes = new Uint8Array(arrayBuffer);
+            if (isGzipped) {
+                bytes = pako.inflate(bytes);
+            }
+
+            // Parse NIfTI header (simplified)
+            const dv = new DataView(bytes.buffer);
+            const dim_info = dv.getInt16(40, true);
+            const dims = [];
+            for (let i = 0; i < 8; i++) {
+                dims.push(dv.getInt16(42 + i * 2, true));
+            }
+
+            const nx = dims[1] || 1;
+            const ny = dims[2] || 1;
+            const nz = dims[3] || 1;
+            const datatype = dv.getInt16(70, true);
+
+            const headerSize = 352; // NIfTI-1 header
+            let offset = headerSize;
+
+            // Simple datatype handling
+            const voxels = [];
+            let idx = 0;
+
+            for (let z = 0; z < nz; z++) {
+                for (let y = 0; y < ny; y++) {
+                    for (let x = 0; x < nx; x++) {
+                        let val = 0;
+                        if (datatype === 16) { // FLOAT32
+                            val = dv.getFloat32(offset + idx * 4, true);
+                        } else if (datatype === 64) { // FLOAT64
+                            val = dv.getFloat64(offset + idx * 8, true);
+                        } else if (datatype === 8) { // INT32
+                            val = dv.getInt32(offset + idx * 4, true);
+                        } else {
+                            val = dv.getUint8(offset + idx);
+                        }
+
+                        if (val > 5) {
+                            voxels.push({ x, y, z, intensity: val });
+                        }
+                        idx++;
+                    }
+                }
+            }
+
+            return voxels;
+        }
+
+        // File input handler
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const arrayBuffer = event.target.result;
+                allPoints = readNifti(arrayBuffer);
+                createPointCloud(allPoints, 2);
+                document.getElementById('voxelCount').textContent = allPoints.length.toLocaleString();
+            };
+            reader.readAsArrayBuffer(file);
+        });
+
+        // Load inline demo data (works without HTTP server)
+        function loadDemo(type) {
+            if (typeof DEMO_POINTS === 'undefined') {
+                alert('DEMO_POINTS not loaded. Please check demo_points.js exists next to this HTML file.');
+                return;
+            }
+
+            allPoints = DEMO_POINTS.map(p => ({
+                x: p.x,
+                y: p.y,
+                z: p.z,
+                intensity: p.i
+            }));
+
+            createPointCloud(allPoints, 1);
+            document.getElementById('voxelCount').textContent = allPoints.length.toLocaleString();
+            document.getElementById('sliceInfo').textContent = type === 'healthy' ? 'Healthy Demo' : 'Damaged Demo';
+        }
+
+        function resetView() {
+            camera.position.set(100, 80, 150);
+            controls.target.set(64, 64, 64);
+            controls.update();
+            isBuilding = false;
+        }
+
+        function toggleRotation() {
+            autoRotate = !autoRotate;
+        }
+
+        // Auto-load demo on page open
+        window.addEventListener('load', () => {
+            setTimeout(() => loadDemo('healthy'), 500);
+        });
+
+        // Animation loop
+        let lastTime = 0;
+        let frameCount = 0;
+
+        function animate(time) {
+            requestAnimationFrame(animate);
+
+            frameCount++;
+            if (time - lastTime > 1000) {
+                document.getElementById('fps').textContent = frameCount;
+                frameCount = 0;
+                lastTime = time;
+            }
+
+            if (autoRotate && pointsMesh) {
+                pointsMesh.rotation.y += 0.002;
+            }
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        animate(0);
+
+        // Resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>

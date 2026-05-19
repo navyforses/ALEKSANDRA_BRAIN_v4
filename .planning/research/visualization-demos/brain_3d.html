@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="ka">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ალექსანდრას ტვინი — 3D მოდელი</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0a0a1a;
+            overflow: hidden;
+            color: white;
+        }
+        #canvas-container { width: 100vw; height: 100vh; position: relative; }
+        #info-panel {
+            position: absolute; top: 20px; left: 20px;
+            background: rgba(10,10,30,0.9); padding: 20px;
+            border-radius: 12px; max-width: 320px;
+            border: 1px solid rgba(100,150,255,0.2);
+            backdrop-filter: blur(10px);
+        }
+        #info-panel h1 { font-size: 16px; margin-bottom: 8px; color: #7ec8e3; }
+        #info-panel p { font-size: 11px; line-height: 1.5; color: #aaa; margin-bottom: 8px; }
+        #controls {
+            position: absolute; bottom: 20px; left: 50%;
+            transform: translateX(-50%); display: flex;
+            gap: 10px; flex-wrap: wrap; justify-content: center;
+        }
+        button {
+            background: rgba(100,150,255,0.15);
+            border: 1px solid rgba(100,150,255,0.4);
+            color: #7ec8e3; padding: 10px 18px;
+            border-radius: 25px; cursor: pointer;
+            font-size: 12px; transition: all 0.3s;
+        }
+        button:hover { background: rgba(100,150,255,0.3); }
+        button.active { background: rgba(100,150,255,0.4); border-color: #7ec8e3; }
+        #legend {
+            position: absolute; top: 20px; right: 20px;
+            background: rgba(10,10,30,0.9); padding: 15px;
+            border-radius: 10px; font-size: 11px;
+            border: 1px solid rgba(100,150,255,0.2);
+        }
+        .legend-item { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+        .legend-color { width: 12px; height: 12px; border-radius: 2px; }
+        #stats {
+            position: absolute; bottom: 80px; right: 20px;
+            background: rgba(10,10,30,0.85); padding: 12px;
+            border-radius: 8px; font-size: 11px; color: #aaa;
+        }
+        #stats span { color: #7ec8e3; }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+
+    <div id="info-panel">
+        <h1>🧠 ალექსანდრას ტვინის 3D მოდელი</h1>
+        <p>სინთეტიკური ნეონატალური ტვინი ანატომიური სტრუქტურებით:<br>
+        frontal lobe, parietal lobe, temporal lobe, occipital lobe,<br>
+        cerebellum, brainstem, corpus callosum, ventricles</p>
+        <p style="font-size:10px; color:#666;">
+        🖱️ მარცხენა ღილაკით შებრუნეთ<br>
+        🖱️ სკროლით გადიდეთ/დააპატარავეთ<br>
+        🖱️ მარჯვენა ღილაკით გადაადგილეთ
+        </p>
+    </div>
+
+    <div id="legend">
+        <div class="legend-item">
+            <div class="legend-color" style="background:#f5f0e8;"></div>
+            <span>თეთრი ნივთიერება (WM)</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background:#c4956a;"></div>
+            <span>რუხი ნივთიერება (GM)</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background:#4a90d9;"></div>
+            <span>თხიელი ნივთიერება (CSF)</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background:#e74c3c;"></div>
+            <span>კისტები / დაზიანება</span>
+        </div>
+    </div>
+
+    <div id="stats">
+        <div>ვოქსელები: <span id="voxelCount">0</span></div>
+        <div>FPS: <span id="fps">0</span></div>
+    </div>
+
+    <div id="controls">
+        <button onclick="setView('full')" id="btn-full" class="active">🧠 მთელი ტვინი</button>
+        <button onclick="setView('wm')" id="btn-wm">⚪ თეთრი ნივთიერება</button>
+        <button onclick="setView('gm')" id="btn-gm">🟤 რუხი ნივთიერება</button>
+        <button onclick="setView('ventricles')" id="btn-ventricles">🔷 ვენტრიკულები</button>
+        <button onclick="toggleRotation()" id="btn-rotate">🔄 ბრუნვა</button>
+        <button onclick="toggleSliceMode()" id="btn-slice">🔪 ჭრა</button>
+        <button onclick="resetView()">🏠 ცენტრი</button>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="brain_data.js"></script>
+
+    <script>
+        // Scene
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0a0a1a);
+        scene.fog = new THREE.Fog(0x0a0a1a, 80, 250);
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(120, 80, 160);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.target.set(64, 60, 55);
+        controls.autoRotate = false;
+        controls.autoRotateSpeed = 1.0;
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        scene.add(ambientLight);
+
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.7);
+        dirLight.position.set(80, 150, 80);
+        scene.add(dirLight);
+
+        const dirLight2 = new THREE.DirectionalLight(0x7ec8e3, 0.3);
+        dirLight2.position.set(-80, 50, -80);
+        scene.add(dirLight2);
+
+        const backLight = new THREE.DirectionalLight(0xffaa77, 0.2);
+        backLight.position.set(0, -50, -100);
+        scene.add(backLight);
+
+        // Point cloud
+        let pointsMesh = null;
+        let allPoints = [];
+        let currentFilter = 'full';
+        let slicePlane = null;
+        let isSliceMode = false;
+        let sliceZ = 64;
+
+        function tissueColor(intensity, nx, ny, nz) {
+            // Base tissue color
+            let base;
+            if (intensity < 25) {
+                base = new THREE.Color(0.15, 0.35, 0.65); // CSF - deep blue
+            } else if (intensity < 80) {
+                base = new THREE.Color(0.45, 0.32, 0.22); // GM - brownish
+            } else if (intensity < 130) {
+                base = new THREE.Color(0.72, 0.68, 0.62); // WM - off-white
+            } else {
+                base = new THREE.Color(0.92, 0.90, 0.86); // Bright WM - creamy white
+            }
+
+            // Apply normal-based shading (simple Lambert)
+            const lightDir = new THREE.Vector3(0.5, 1.0, 0.3).normalize();
+            const normal = new THREE.Vector3(nx, ny, nz).normalize();
+            const dot = Math.max(0.2, normal.dot(lightDir));
+
+            // Shade: darker where normal points away from light
+            const shade = 0.4 + 0.6 * dot;
+            base.r *= shade;
+            base.g *= shade;
+            base.b *= shade;
+
+            // Ambient occlusion simulation: lower voxels = darker
+            const ao = 0.7 + 0.3 * (intensity / 200);
+            base.r *= ao;
+            base.g *= ao;
+            base.b *= ao;
+
+            return base;
+        }
+
+        function createPointCloud(filter = 'full') {
+            if (!BRAIN_VOXELS || BRAIN_VOXELS.length === 0) return;
+
+            let voxels = BRAIN_VOXELS;
+
+            // Apply tissue filter
+            if (filter === 'wm') {
+                voxels = voxels.filter(v => v.i > 100);
+            } else if (filter === 'gm') {
+                voxels = voxels.filter(v => v.i > 30 && v.i <= 100);
+            } else if (filter === 'ventricles') {
+                voxels = voxels.filter(v => v.i <= 30);
+            }
+
+            // Apply slice if enabled
+            if (isSliceMode) {
+                voxels = voxels.filter(v => v.z <= sliceZ);
+            }
+
+            const geometry = new THREE.BufferGeometry();
+            const positions = [];
+            const colors = [];
+            const sizes = [];
+
+            for (const v of voxels) {
+                positions.push(v.x, v.y, v.z);
+
+                const color = tissueColor(v.i, v.nx || 0, v.ny || 0, v.nz || 1);
+                colors.push(color.r, color.g, color.b);
+
+                // Size based on tissue type and depth
+                const size = v.i < 25 ? 2.5 : (v.i > 100 ? 1.8 : 1.5);
+                sizes.push(size);
+            }
+
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+            geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+            geometry.setAttribute('size', new THREE.Float32BufferAttribute(sizes, 1));
+
+            const material = new THREE.PointsMaterial({
+                size: 2.0,
+                vertexColors: true,
+                sizeAttenuation: true,
+                transparent: true,
+                opacity: 0.85,
+                blending: THREE.NormalBlending,
+            });
+
+            if (pointsMesh) {
+                scene.remove(pointsMesh);
+                pointsMesh.geometry.dispose();
+                pointsMesh.material.dispose();
+            }
+
+            pointsMesh = new THREE.Points(geometry, material);
+            scene.add(pointsMesh);
+
+            document.getElementById('voxelCount').textContent = voxels.length.toLocaleString();
+        }
+
+        function setView(mode) {
+            currentFilter = mode;
+            document.querySelectorAll('#controls button').forEach(b => b.classList.remove('active'));
+            document.getElementById('btn-' + mode).classList.add('active');
+            createPointCloud(mode);
+        }
+
+        function toggleRotation() {
+            controls.autoRotate = !controls.autoRotate;
+            document.getElementById('btn-rotate').classList.toggle('active');
+        }
+
+        function toggleSliceMode() {
+            isSliceMode = !isSliceMode;
+            document.getElementById('btn-slice').classList.toggle('active');
+            createPointCloud(currentFilter);
+        }
+
+        function resetView() {
+            camera.position.set(120, 80, 160);
+            controls.target.set(64, 60, 55);
+            controls.update();
+        }
+
+        // Keyboard controls for slicing
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowUp') {
+                sliceZ = Math.min(127, sliceZ + 3);
+                if (isSliceMode) createPointCloud(currentFilter);
+            } else if (e.key === 'ArrowDown') {
+                sliceZ = Math.max(0, sliceZ - 3);
+                if (isSliceMode) createPointCloud(currentFilter);
+            }
+        });
+
+        // Mouse wheel for slice
+        document.addEventListener('wheel', (e) => {
+            if (isSliceMode && e.ctrlKey) {
+                e.preventDefault();
+                sliceZ += e.deltaY > 0 ? -2 : 2;
+                sliceZ = Math.max(0, Math.min(127, sliceZ));
+                createPointCloud(currentFilter);
+            }
+        }, { passive: false });
+
+        // Init
+        window.addEventListener('load', () => {
+            setTimeout(() => createPointCloud('full'), 300);
+        });
+
+        // Animation
+        let lastTime = 0, frameCount = 0;
+        function animate(time) {
+            requestAnimationFrame(animate);
+            frameCount++;
+            if (time - lastTime > 1000) {
+                document.getElementById('fps').textContent = frameCount;
+                frameCount = 0;
+                lastTime = time;
+            }
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        animate(0);
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>

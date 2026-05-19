@@ -107,3 +107,8 @@ external-skills/
 
 # Neo4j Aura download files contain plaintext passwords
 Neo4j-*-Created-*.txt
+
+# Large Phase 6 swarm fixture point-clouds — Git LFS / regenerate-on-demand pending decision (R3 flag)
+tests/fixtures/damaged_brain_points.json
+tests/fixtures/healthy_brain_points.json
+tests/fixtures/test_brain_128_swarm_result.json

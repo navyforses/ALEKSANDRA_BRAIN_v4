@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="ka">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ალექსანდრას ტვინი — ჯანსაღი vs დაზიანებული</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #050510;
+            overflow: hidden;
+            color: white;
+        }
+        #canvas-container { width: 100vw; height: 100vh; position: relative; }
+        #info-panel {
+            position: absolute; top: 20px; left: 20px;
+            background: rgba(5,5,16,0.92); padding: 16px;
+            border-radius: 12px; max-width: 340px;
+            border: 1px solid rgba(100,150,255,0.15);
+        }
+        #info-panel h1 { font-size: 14px; margin-bottom: 4px; color: #8ec5e3; }
+        #info-panel .subtitle { font-size: 10px; color: #888; margin-bottom: 10px; }
+        .comparison-row {
+            display: flex; gap: 12px; margin-bottom: 8px;
+            font-size: 10px;
+        }
+        .comp-label { color: #aaa; width: 80px; }
+        .comp-healthy { color: #6ecf99; flex: 1; }
+        .comp-damaged { color: #e06c6c; flex: 1; }
+        #controls {
+            position: absolute; bottom: 20px; left: 50%;
+            transform: translateX(-50%); display: flex;
+            gap: 8px; flex-wrap: wrap; justify-content: center;
+        }
+        button {
+            background: rgba(80,130,200,0.12);
+            border: 1px solid rgba(80,130,200,0.3);
+            color: #8ec5e3; padding: 8px 14px;
+            border-radius: 20px; cursor: pointer;
+            font-size: 11px; transition: all 0.3s;
+        }
+        button:hover { background: rgba(80,130,200,0.25); }
+        button.active { background: rgba(80,130,200,0.4); border-color: #8ec5e3; }
+        button.toggle-healthy { border-color: #6ecf99; color: #6ecf99; }
+        button.toggle-damaged { border-color: #e06c6c; color: #e06c6c; }
+        button.toggle-healthy.active { background: rgba(110,207,153,0.3); }
+        button.toggle-damaged.active { background: rgba(224,108,108,0.3); }
+        #legend {
+            position: absolute; top: 20px; right: 20px;
+            background: rgba(5,5,16,0.92); padding: 12px;
+            border-radius: 8px; font-size: 10px;
+            border: 1px solid rgba(100,150,255,0.15);
+        }
+        .legend-item { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+        .legend-color { width: 10px; height: 10px; border-radius: 2px; }
+        #stats {
+            position: absolute; bottom: 70px; right: 20px;
+            background: rgba(5,5,16,0.85); padding: 10px;
+            border-radius: 6px; font-size: 10px; color: #888;
+        }
+        #stats span { color: #8ec5e3; }
+    </style>
+</head>
+<body>
+    <div id="canvas-container"></div>
+    <div id="info-panel">
+        <h1>🧠 ალექსანდრას ტვინის შედარება</h1>
+        <div class="subtitle">HIE (Hypoxic-Ischemic Encephalopathy) დაზიანების ვიზუალიზაცია</div>
+        <div class="comparison-row">
+            <span class="comp-label">თეთრი ნივთიერება:</span>
+            <span class="comp-healthy">✓ ნორმალური</span>
+            <span class="comp-damaged">✗ 25% შემცირებული</span>
+        </div>
+        <div class="comparison-row">
+            <span class="comp-label">ვენტრიკულები:</span>
+            <span class="comp-healthy">✓ ნორმალური</span>
+            <span class="comp-damaged">✗ გაფართოებული</span>
+        </div>
+        <div class="comparison-row">
+            <span class="comp-label">სიმეტრია:</span>
+            <span class="comp-healthy">✓ თანაბარი</span>
+            <span class="comp-damaged">✗ მარცხენა შემცირებული</span>
+        </div>
+        <div class="comparison-row">
+            <span class="comp-label">კისტები:</span>
+            <span class="comp-healthy">✓ არ არის</span>
+            <span class="comp-damaged">✗ 35+ დიფუზური</span>
+        </div>
+        <div class="comparison-row">
+            <span class="comp-label">Brainstem:</span>
+            <span class="comp-healthy">✓ ნორმალური</span>
+            <span class="comp-damaged">✓ შენარჩუნებული</span>
+        </div>
+    </div>
+    <div id="legend">
+        <div class="legend-item"><div class="legend-color" style="background:#e8e0d5;"></div><span>WM</span></div>
+        <div class="legend-item"><div class="legend-color" style="background:#b89570;"></div><span>GM</span></div>
+        <div class="legend-item"><div class="legend-color" style="background:#2a5a8a;"></div><span>CSF</span></div>
+        <div class="legend-item"><div class="legend-color" style="background:#cc3333;"></div><span>კისტები</span></div>
+    </div>
+    <div id="stats">
+        <div>Points: <span id="pointCount">0</span></div>
+        <div>FPS: <span id="fps">0</span></div>
+    </div>
+    <div id="controls">
+        <button onclick="setBrain('healthy')" id="btn-healthy" class="toggle-healthy active">🟢 ჯანსაღი ტვინი</button>
+        <button onclick="setBrain('damaged')" id="btn-damaged" class="toggle-damaged">🔴 დაზიანებული</button>
+        <button onclick="setFilter('full')" id="btn-full" class="active">🧠 Full</button>
+        <button onclick="setFilter('wm')" id="btn-wm">⚪ WM</button>
+        <button onclick="setFilter('gm')" id="btn-gm">🟤 GM</button>
+        <button onclick="toggleRotate()" id="btn-rot">🔄 Rotate</button>
+        <button onclick="resetCam()">🏠 Reset</button>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="brain_surface.js"></script>
+    <script src="brain_surface_damaged.js"></script>
+
+    <script>
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x050510);
+        scene.fog = new THREE.Fog(0x050510, 100, 300);
+
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 1000);
+        camera.position.set(100, 70, 140);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.target.set(64, 58, 55);
+
+        const vertexShader = `
+            attribute float intensity;
+            attribute vec3 normal;
+            attribute float pointSize;
+            attribute float isCyst;
+            varying vec3 vColor;
+            varying float vAlpha;
+            varying float vIsCyst;
+
+            vec3 tissueColor(float i, float cyst) {
+                if (cyst > 0.5) return vec3(0.85, 0.15, 0.15); // Cysts - red
+                if (i < 30.0) return vec3(0.12, 0.28, 0.50); // CSF
+                if (i < 80.0) return vec3(0.55, 0.42, 0.30); // GM
+                if (i < 130.0) return vec3(0.78, 0.74, 0.68); // WM
+                return vec3(0.92, 0.90, 0.86); // Bright WM
+            }
+
+            void main() {
+                vec3 n = normalize(normal);
+                vec3 lightDir = normalize(vec3(0.4, 0.8, 0.3));
+                float diff = max(0.25, dot(n, lightDir));
+
+                vec3 viewDir = normalize(cameraPosition - position);
+                float rim = pow(1.0 - max(0.0, dot(viewDir, n)), 3.0) * 0.25;
+
+                vec3 base = tissueColor(intensity, isCyst);
+                vColor = base * diff + vec3(0.5, 0.7, 0.9) * rim;
+                vIsCyst = isCyst;
+
+                vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
+                gl_PointSize = pointSize * (280.0 / -mvPos.z);
+                gl_Position = projectionMatrix * mvPos;
+            }
+        `;
+
+        const fragmentShader = `
+            varying vec3 vColor;
+            varying float vIsCyst;
+
+            void main() {
+                vec2 c = gl_PointCoord - vec2(0.5);
+                float d = length(c);
+                if (d > 0.5) discard;
+
+                float alpha = 1.0 - smoothstep(0.3, 0.5, d);
+                if (vIsCyst > 0.5) alpha = 0.9;
+                else alpha *= 0.8;
+
+                gl_FragColor = vec4(vColor, alpha);
+            }
+        `;
+
+        let pointsMesh = null;
+        let currentBrain = 'healthy';
+        let currentFilter = 'full';
+
+        function createPoints(brainType, filter) {
+            const data = brainType === 'healthy' ? BRAIN_SURFACE : BRAIN_SURFACE_DAMAGED;
+            if (!data || data.length === 0) return;
+
+            let pts = data;
+            if (filter === 'wm') pts = pts.filter(p => p.i > 100);
+            else if (filter === 'gm') pts = pts.filter(p => p.i > 30 && p.i <= 100);
+
+            const geo = new THREE.BufferGeometry();
+            const pos = [], intens = [], norms = [], sizes = [], cysts = [];
+
+            for (const p of pts) {
+                pos.push(p.x, p.y, p.z);
+                intens.push(p.i);
+                norms.push(p.nx || 0, p.ny || 0, p.nz || 1);
+                sizes.push(p.i < 30 ? 3.2 : (p.i > 100 ? 2.2 : 2.6));
+                // Mark cysts (very low intensity inside brain tissue)
+                cysts.push(p.i < 15 ? 1.0 : 0.0);
+            }
+
+            geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+            geo.setAttribute('intensity', new THREE.Float32BufferAttribute(intens, 1));
+            geo.setAttribute('normal', new THREE.Float32BufferAttribute(norms, 3));
+            geo.setAttribute('pointSize', new THREE.Float32BufferAttribute(sizes, 1));
+            geo.setAttribute('isCyst', new THREE.Float32BufferAttribute(cysts, 1));
+
+            const mat = new THREE.ShaderMaterial({
+                vertexShader, fragmentShader,
+                transparent: true, depthWrite: false, blending: THREE.NormalBlending,
+            });
+
+            if (pointsMesh) {
+                scene.remove(pointsMesh);
+                pointsMesh.geometry.dispose();
+                pointsMesh.material.dispose();
+            }
+
+            pointsMesh = new THREE.Points(geo, mat);
+            scene.add(pointsMesh);
+            document.getElementById('pointCount').textContent = pts.length.toLocaleString();
+        }
+
+        function setBrain(type) {
+            currentBrain = type;
+            document.querySelectorAll('.toggle-healthy, .toggle-damaged').forEach(b => b.classList.remove('active'));
+            document.getElementById('btn-' + type).classList.add('active');
+            createPoints(type, currentFilter);
+        }
+
+        function setFilter(f) {
+            currentFilter = f;
+            document.querySelectorAll('#controls button:not(.toggle-healthy):not(.toggle-damaged):not(#btn-rot)').forEach(b => b.classList.remove('active'));
+            document.getElementById('btn-' + f).classList.add('active');
+            createPoints(currentBrain, f);
+        }
+
+        function toggleRotate() {
+            controls.autoRotate = !controls.autoRotate;
+            document.getElementById('btn-rot').classList.toggle('active');
+        }
+
+        function resetCam() {
+            camera.position.set(100, 70, 140);
+            controls.target.set(64, 58, 55);
+            controls.update();
+        }
+
+        window.addEventListener('load', () => setTimeout(() => createPoints('healthy', 'full'), 300));
+
+        let lastTime = 0, fc = 0;
+        function animate(t) {
+            requestAnimationFrame(animate);
+            fc++;
+            if (t - lastTime > 1000) {
+                document.getElementById('fps').textContent = fc;
+                fc = 0; lastTime = t;
+            }
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        animate(0);
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>

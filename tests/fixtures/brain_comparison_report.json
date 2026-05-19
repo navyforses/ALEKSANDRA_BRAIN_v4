@@ -1,0 +1,401 @@
+{
+  "status": "success",
+  "comparison_type": "healthy_baseline_vs_damaged",
+  "volume_shape": [
+    128,
+    128,
+    128
+  ],
+  "global_statistics": {
+    "healthy": {
+      "mean": 131.31871720434563,
+      "std": 30.992580180320353,
+      "min": 12.46496295928955,
+      "max": 194.1023406982422,
+      "total_voxels": 2097152,
+      "brain_voxels": 466729
+    },
+    "damaged": {
+      "mean": 72.00405470513262,
+      "std": 22.507247995280174,
+      "min": 3.6803717613220215,
+      "max": 173.9130401611328,
+      "total_voxels": 2097152,
+      "brain_voxels": 396191
+    }
+  },
+  "volume_loss": {
+    "voxels": 70538,
+    "percentage": 15.11
+  },
+  "anomaly_detection": {
+    "threshold": 30.0,
+    "anomaly_voxels": 417564,
+    "anomaly_percentage": 89.47
+  },
+  "regional_findings": {
+    "total_chunks": 2197,
+    "abnormal_chunks": 675,
+    "high_severity": 381,
+    "medium_severity": 294,
+    "findings": [
+      {
+        "chunk_id": 239,
+        "coords": {
+          "x_start": 50,
+          "x_end": 60,
+          "y_start": 50,
+          "y_end": 60,
+          "z_start": 10,
+          "z_end": 20
+        },
+        "healthy_mean": 100.62,
+        "damaged_mean": 0.0,
+        "mean_diff": 100.62,
+        "cyst_voxels": 15,
+        "volume_loss_voxels": 15,
+        "severity": "medium"
+      },
+      {
+        "chunk_id": 240,
+        "coords": {
+          "x_start": 60,
+          "x_end": 70,
+          "y_start": 50,
+          "y_end": 60,
+          "z_start": 10,
+          "z_end": 20
+        },
+        "healthy_mean": 100.35,
+        "damaged_mean": 0.0,
+        "mean_diff": 100.35,
+        "cyst_voxels": 64,
+        "volume_loss_voxels": 64,
+        "severity": "high"
+      },
+      {
+        "chunk_id": 241,
+        "coords": {
+          "x_start": 70,
+          "x_end": 80,
+          "y_start": 50,
+          "y_end": 60,
+          "z_start": 10,
+          "z_end": 20
+        },
+        "healthy_mean": 98.99,
+        "damaged_mean": 0.0,
+        "mean_diff": 98.99,
+        "cyst_voxels": 10,
+        "volume_loss_voxels": 10,
+        "severity": "medium"
+      },
+      {
+        "chunk_id": 252,
+        "coords": {
+          "x_start": 50,
+          "x_end": 60,
+          "y_start": 60,
+          "y_end": 70,
+          "z_start": 10,
+          "z_end": 20
+        },
+        "healthy_mean": 97.63,
+        "damaged_mean": 0.0,
+        "mean_diff": 97.63,
+        "cyst_voxels": 49,
+        "volume_loss_voxels": 49,
+        "severity": "high"
+      },
+      {
+        "chunk_id": 253,
+        "coords": {
+          "x_start": 60,
+          "x_end": 70,
+          "y_start": 60,
+          "y_end": 70,
+          "z_start": 10,
+          "z_end": 20
+        },
+        "healthy_mean": 100.4,
+        "damaged_mean": 0.0,
+        "mean_diff": 100.4,
+        "cyst_voxels": 127,
+        "volume_loss_voxels": 127,
+        "severity": "high"
+      },
+      {
+        "chunk_id": 254,
+        "coords": {
+          "x_start": 70,
+          "x_end": 80,
+          "y_start": 60,
+          "y_end": 70,
+          "z_start": 10,
+          "z_end": 20
+        },
+        "healthy_mean": 99.57,
+        "damaged_mean": 0.0,
+        "mean_diff": 99.57,
+        "cyst_voxels": 39,
+        "volume_loss_voxels": 39,
+        "severity": "high"
+      },
+      {
+        "chunk_id": 265,
+        "coords": {
+          "x_start": 50,
+          "x_end": 60,
+          "y_start": 70,
+          "y_end": 80,
+          "z_start": 10,
+          "z_end": 20
+        },
+        "healthy_mean": 98.05,
+        "damaged_mean": 0.0,
+        "mean_diff": 98.05,
+        "cyst_voxels": 11,
+        "volume_loss_voxels": 11,
+        "severity": "medium"
+      },
+      {
+        "chunk_id": 266,
+        "coords": {
+          "x_start": 60,
+          "x_end": 70,
+          "y_start": 70,
+          "y_end": 80,
+          "z_start": 10,
+          "z_end": 20
+        },
+        "healthy_mean": 100.99,
+        "damaged_mean": 0.0,
+        "mean_diff": 100.99,
+        "cyst_voxels": 54,
+        "volume_loss_voxels": 54,
+        "severity": "high"
+      },
+      {
+        "chunk_id": 267,
+        "coords": {
+          "x_start": 70,
+          "x_end": 80,
+          "y_start": 70,
+          "y_end": 80,
+          "z_start": 10,
+          "z_end": 20
+        },
+        "healthy_mean": 98.14,
+        "damaged_mean": 0.0,
+        "mean_diff": 98.14,
+        "cyst_voxels": 7,
+        "volume_loss_voxels": 7,
+        "severity": "medium"
+      },
+      {
+        "chunk_id": 381,
+        "coords": {
+          "x_start": 40,
+          "x_end": 50,
+          "y_start": 30,
+          "y_end": 40,
+          "z_start": 20,
+          "z_end": 30
+        },
+        "healthy_mean": 99.76,
+        "damaged_mean": 0.0,
+        "mean_diff": 99.76,
+        "cyst_voxels": 31,
+        "volume_loss_voxels": 31,
+        "severity": "high"
+      },
+      {
+        "chunk_id": 382,
+        "coords": {
+          "x_start": 50,
+          "x_end": 60,
+          "y_start": 30,
+          "y_end": 40,
+          "z_start": 20,
+          "z_end": 30
+        },
+        "healthy_mean": 100.41,
+        "damaged_mean": 51.14,
+        "mean_diff": 49.26,
+        "cyst_voxels": 185,
+        "volume_loss_voxels": 185,
+        "severity": "high"
+      },
+      {
+        "chunk_id": 383,
+        "coords": {
+          "x_start": 60,
+          "x_end": 70,
+          "y_start": 30,
+          "y_end": 40,
+          "z_start": 20,
+          "z_end": 30
+        },
+        "healthy_mean": 99.75,
+        "damaged_mean": 63.85,
+        "mean_diff": 35.9,
+        "cyst_voxels": 235,
+        "volume_loss_voxels": 235,
+        "severity": "high"
+      },
+      {
+        "chunk_id": 384,
+        "coords": {
+          "x_start": 70,
+          "x_end": 80,
+          "y_start": 30,
+          "y_end": 40,
+          "z_start": 20,
+          "z_end": 30
+        },
+        "healthy_mean": 99.97,
+        "damaged_mean": 66.93,
+        "mean_diff": 33.05,
+        "cyst_voxels": 172,
+        "volume_loss_voxels": 172,
+        "severity": "high"
+      },
+      {
+        "chunk_id": 385,
+        "coords": {
+          "x_start": 80,
+          "x_end": 90,
+          "y_start": 30,
+          "y_end": 40,
+          "z_start": 20,
+          "z_end": 30
+        },
+        "healthy_mean": 100.8,
+        "damaged_mean": 0.0,
+        "mean_diff": 100.8,
+        "cyst_voxels": 21,
+        "volume_loss_voxels": 21,
+        "severity": "high"
+      },
+      {
+        "chunk_id": 393,
+        "coords": {
+          "x_start": 30,
+          "x_end": 40,
+          "y_start": 40,
+          "y_end": 50,
+          "z_start": 20,
+          "z_end": 30
+        },
+        "healthy_mean": 99.46,
+        "damaged_mean": 0.0,
+        "mean_diff": 99.46,
+        "cyst_voxels": 8,
+        "volume_loss_voxels": 8,
+        "severity": "medium"
+      },
+      {
+        "chunk_id": 394,
+        "coords": {
+          "x_start": 40,
+          "x_end": 50,
+          "y_start": 40,
+          "y_end": 50,
+          "z_start": 20,
+          "z_end": 30
+        },
+        "healthy_mean": 100.14,
+        "damaged_mean": 51.94,
+        "mean_diff": 48.2,
+        "cyst_voxels": 244,
+        "volume_loss_voxels": 244,
+        "severity": "high"
+      },
+      {
+        "chunk_id": 395,
+        "coords": {
+          "x_start": 50,
+          "x_end": 60,
+          "y_start": 40,
+          "y_end": 50,
+          "z_start": 20,
+          "z_end": 30
+        },
+        "healthy_mean": 100.44,
+        "damaged_mean": 52.27,
+        "mean_diff": 48.17,
+        "cyst_voxels": 279,
+        "volume_loss_voxels": 279,
+        "severity": "high"
+      },
+      {
+        "chunk_id": 396,
+        "coords": {
+          "x_start": 60,
+          "x_end": 70,
+          "y_start": 40,
+          "y_end": 50,
+          "z_start": 20,
+          "z_end": 30
+        },
+        "healthy_mean": 101.58,
+        "damaged_mean": 63.17,
+        "mean_diff": 38.41,
+        "cyst_voxels": 265,
+        "volume_loss_voxels": 265,
+        "severity": "high"
+      },
+      {
+        "chunk_id": 397,
+        "coords": {
+          "x_start": 70,
+          "x_end": 80,
+          "y_start": 40,
+          "y_end": 50,
+          "z_start": 20,
+          "z_end": 30
+        },
+        "healthy_mean": 100.61,
+        "damaged_mean": 69.62,
+        "mean_diff": 30.99,
+        "cyst_voxels": 281,
+        "volume_loss_voxels": 281,
+        "severity": "high"
+      },
+      {
+        "chunk_id": 398,
+        "coords": {
+          "x_start": 80,
+          "x_end": 90,
+          "y_start": 40,
+          "y_end": 50,
+          "z_start": 20,
+          "z_end": 30
+        },
+        "healthy_mean": 100.15,
+        "damaged_mean": 71.1,
+        "mean_diff": 29.05,
+        "cyst_voxels": 221,
+        "volume_loss_voxels": 221,
+        "severity": "high"
+      }
+    ]
+  },
+  "ventricles": {
+    "healthy_voxels": 458,
+    "damaged_voxels": 2314,
+    "change_voxels": 1856,
+    "change_percentage": 405.2
+  },
+  "asymmetry": {
+    "healthy_percent": 0.14,
+    "damaged_percent": 28.76
+  },
+  "clinical_summary": {
+    "diagnosis": "Severe HIE with diffuse cystic encephalomalacia",
+    "volume_loss_percent": 15.1,
+    "cyst_count_estimate": 398,
+    "ventricle_enlargement": "YES",
+    "asymmetry_present": "YES"
+  }
+}
