@@ -83,7 +83,7 @@ export default async function PapersPage() {
               Papers
             </h1>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-stone-600">
-              Read-only view of ingested literature and trial records ranked by relevance to Aleksandra's research context.
+              Read-only view of ingested literature and trial records ranked by relevance to Aleksandra&apos;s research context.
             </p>
           </div>
           <div className="grid min-w-72 grid-cols-3 gap-3">

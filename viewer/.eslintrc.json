@@ -1,5 +1,4 @@
 {
-  "_comment": "FND-01 — server-side code under viewer/ may not import client-side imaging libraries. MRI must never leave the browser.",
   "extends": "next/core-web-vitals",
   "overrides": [
     {

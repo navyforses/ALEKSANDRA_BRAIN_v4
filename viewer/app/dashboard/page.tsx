@@ -103,7 +103,7 @@ export default async function DashboardPage() {
             </h1>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-stone-600">
               A compact family view of ingestion, memory growth, alerts, and validation status.
-              Clinical decisions stay with Aleksandra's doctors; this view tracks research workflow state.
+              Clinical decisions stay with Aleksandra&apos;s doctors; this view tracks research workflow state.
             </p>
           </div>
           <div className="rounded-md border border-stone-200 bg-white p-4">
