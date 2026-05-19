@@ -126,6 +126,8 @@ class _Handler(BaseHTTPRequestHandler):
             "/undo-action",
             "/morning-briefing",
             "/email-intent",
+            "/fire-daily-batch",
+            "/render-weekly-brief",
         ):
             _json_response(self, 404, {"error": "not_found", "path": self.path})
             return
@@ -162,6 +164,18 @@ class _Handler(BaseHTTPRequestHandler):
 
         if self.path == "/email-intent":
             self._handle_email_intent(body)
+            return
+
+        if self.path == "/fire-daily-batch":
+            # Phase 4 ACD-01: daily Telegram digest + urgent alert.
+            # No LLM budget gate — PHI-free SQL aggregation only.
+            self._handle_fire_daily_batch(body)
+            return
+
+        if self.path == "/render-weekly-brief":
+            # Phase 4 ACD-03: Sunday Gmail weekly digest staging.
+            # No LLM budget gate — composes pre-existing BriefSections.
+            self._handle_render_weekly_brief(body)
             return
 
         # Defence-in-depth budget gate (HC-2/HC-4) BEFORE any pipeline.
@@ -298,6 +312,75 @@ class _Handler(BaseHTTPRequestHandler):
             )
             return
         _json_response(self, 200, result)
+
+    def _handle_fire_daily_batch(self, body: dict[str, Any]) -> None:
+        """Phase 4 ACD-01. n8n telegram_daily_digest.json POSTs here daily
+        13:00 UTC. Composes PHI-free daily summary + urgent alert, sends
+        Telegram, appends two `runs` rows.
+
+        Body: {"telegram": true|false}. Default telegram=true (production).
+        """
+        telegram = bool(body.get("telegram", True))
+        try:
+            from scripts.family_visibility.fire_workflows import run as fire_run  # noqa: PLC0415
+
+            exit_code = fire_run(telegram=telegram)
+        except Exception as e:
+            LOG.exception("fire_workflows.run raised")
+            _json_response(
+                self,
+                500,
+                {
+                    "error": "fire_daily_batch_failed",
+                    "detail": f"{type(e).__name__}: {e}",
+                    "trace": traceback.format_exc(limit=5),
+                },
+            )
+            return
+        _json_response(
+            self, 200, {"status": "ok", "exit_code": exit_code, "telegram": telegram}
+        )
+
+    def _handle_render_weekly_brief(self, body: dict[str, Any]) -> None:
+        """Phase 4 ACD-03. n8n weekly_brief.json POSTs here Sunday 13:00 UTC.
+        Renders weekly Gmail digest, stages a compose-only draft, writes an
+        outreach_log row with trigger_kind='weekly_digest'.
+
+        Body: {"dry_run": false, "fixture": false}. Default both false
+        (production); fixture=true uses BriefSections fixture (FFV-03 path).
+        """
+        dry_run = bool(body.get("dry_run", False))
+        fixture = bool(body.get("fixture", False))
+        try:
+            from scripts.communicator.gmail_digest import stage_weekly_digest  # noqa: PLC0415
+
+            result = stage_weekly_digest(dry_run=dry_run, fixture=fixture)
+        except Exception as e:
+            LOG.exception("stage_weekly_digest raised")
+            _json_response(
+                self,
+                500,
+                {
+                    "error": "render_weekly_brief_failed",
+                    "detail": f"{type(e).__name__}: {e}",
+                    "trace": traceback.format_exc(limit=5),
+                },
+            )
+            return
+        # WeeklyDigestResult is a dataclass; coerce to dict for JSON.
+        payload: dict[str, Any] = {}
+        for field_name in (
+            "week_start",
+            "subject",
+            "recipient",
+            "draft_id",
+            "outreach_log_id",
+            "skipped",
+            "skip_reason",
+        ):
+            val = getattr(result, field_name, None)
+            payload[field_name] = val.isoformat() if hasattr(val, "isoformat") else val
+        _json_response(self, 200, payload)
 
     def _handle_voice_transcribe(self) -> None:
         """Phase 5 MNG-04. Multipart audio → Whisper → redacted transcript."""
