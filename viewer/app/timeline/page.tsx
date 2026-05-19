@@ -28,33 +28,6 @@ function typeCounts(events: TimelineEvent[]) {
   }, {});
 }
 
-function Nav() {
-  return (
-    <nav className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-200 pb-4">
-      <Link href="/" className="font-mono text-sm font-semibold tracking-normal">
-        ALEKSANDRA_BRAIN
-      </Link>
-      <div className="flex flex-wrap items-center gap-2 text-sm">
-        <Link className="rounded-md px-3 py-2 text-stone-700 hover:bg-white" href="/dashboard">
-          Dashboard
-        </Link>
-        <Link className="rounded-md px-3 py-2 text-stone-700 hover:bg-white" href="/hypotheses">
-          Hypotheses
-        </Link>
-        <Link className="rounded-md px-3 py-2 text-stone-700 hover:bg-white" href="/papers">
-          Papers
-        </Link>
-        <Link className="rounded-md px-3 py-2 text-stone-700 hover:bg-white" href="/therapies">
-          Therapies
-        </Link>
-        <Link className="rounded-md bg-white px-3 py-2 text-stone-900 ring-1 ring-stone-200" href="/timeline">
-          Timeline
-        </Link>
-      </div>
-    </nav>
-  );
-}
-
 export default async function TimelinePage() {
   const events = await getRows<TimelineEvent>("aleksandra_timeline", {
     select: "id,event_date,event_type,title,description,institution,location,created_at,updated_at",
@@ -66,8 +39,6 @@ export default async function TimelinePage() {
   return (
     <main className="min-h-screen bg-stone-50 text-stone-950">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-5 py-6 sm:px-8">
-        <Nav />
-
         <header className="grid gap-4 lg:grid-cols-[1fr_auto]">
           <div>
             <p className="font-mono text-xs uppercase text-cyan-700">Clinical context</p>

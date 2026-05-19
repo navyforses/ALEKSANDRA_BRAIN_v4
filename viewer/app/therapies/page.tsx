@@ -45,31 +45,22 @@ function listValue(values: string[] | null) {
   return values && values.length > 0 ? values.join(", ") : "not listed";
 }
 
-function Nav() {
-  return (
-    <nav className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-200 pb-4">
-      <Link href="/" className="font-mono text-sm font-semibold tracking-normal">
-        ALEKSANDRA_BRAIN
-      </Link>
-      <div className="flex flex-wrap items-center gap-2 text-sm">
-        <Link className="rounded-md px-3 py-2 text-stone-700 hover:bg-white" href="/dashboard">
-          Dashboard
-        </Link>
-        <Link className="rounded-md px-3 py-2 text-stone-700 hover:bg-white" href="/hypotheses">
-          Hypotheses
-        </Link>
-        <Link className="rounded-md px-3 py-2 text-stone-700 hover:bg-white" href="/papers">
-          Papers
-        </Link>
-        <Link className="rounded-md bg-white px-3 py-2 text-stone-900 ring-1 ring-stone-200" href="/therapies">
-          Therapies
-        </Link>
-        <Link className="rounded-md px-3 py-2 text-stone-700 hover:bg-white" href="/timeline">
-          Timeline
-        </Link>
-      </div>
-    </nav>
-  );
+// Defensive parser: some `ai_assessment` rows are stringified dossier objects
+// (e.g. {"source_hypothesis_id":..., "dossier":"..."}) due to upstream pipeline
+// drift. Extract the actual `dossier` text when present; otherwise hide.
+function extractAssessmentText(raw: string | null): string | null {
+  if (!raw) return null;
+  const trimmed = raw.trim();
+  if (!trimmed.startsWith("{")) return raw; // plain text — render as-is
+  try {
+    const parsed = JSON.parse(trimmed);
+    if (parsed && typeof parsed === "object" && typeof parsed.dossier === "string") {
+      return parsed.dossier;
+    }
+    return null; // JSON without dossier — hide rather than dump raw object
+  } catch {
+    return null; // malformed JSON — hide
+  }
 }
 
 export default async function TherapiesPage() {
@@ -89,8 +80,6 @@ export default async function TherapiesPage() {
   return (
     <main className="min-h-screen bg-stone-50 text-stone-950">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-5 py-6 sm:px-8">
-        <Nav />
-
         <header className="grid gap-4 lg:grid-cols-[1fr_auto]">
           <div>
             <p className="font-mono text-xs uppercase text-cyan-700">Therapy tracker</p>
@@ -196,19 +185,24 @@ export default async function TherapiesPage() {
                 </div>
               </div>
 
-              {therapy.evidence_summary || therapy.ai_assessment || therapy.aleksandra_notes ? (
-                <div className="mt-4 grid gap-3 border-t border-stone-100 pt-4">
-                  {therapy.evidence_summary ? (
-                    <p className="text-sm leading-6 text-stone-700">{therapy.evidence_summary}</p>
-                  ) : null}
-                  {therapy.ai_assessment ? (
-                    <p className="text-sm leading-6 text-stone-700">{therapy.ai_assessment}</p>
-                  ) : null}
-                  {therapy.aleksandra_notes ? (
-                    <p className="text-sm leading-6 text-stone-700">{therapy.aleksandra_notes}</p>
-                  ) : null}
-                </div>
-              ) : null}
+              {(() => {
+                const assessment = extractAssessmentText(therapy.ai_assessment);
+                const hasAny = therapy.evidence_summary || assessment || therapy.aleksandra_notes;
+                if (!hasAny) return null;
+                return (
+                  <div className="mt-4 grid gap-3 border-t border-stone-100 pt-4">
+                    {therapy.evidence_summary ? (
+                      <p className="text-sm leading-6 text-stone-700">{therapy.evidence_summary}</p>
+                    ) : null}
+                    {assessment ? (
+                      <p className="text-sm leading-6 text-stone-700">{assessment}</p>
+                    ) : null}
+                    {therapy.aleksandra_notes ? (
+                      <p className="text-sm leading-6 text-stone-700">{therapy.aleksandra_notes}</p>
+                    ) : null}
+                  </div>
+                );
+              })()}
             </article>
           ))}
           {therapies.rows.length === 0 ? (

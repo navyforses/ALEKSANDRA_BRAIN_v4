@@ -5,12 +5,15 @@ import Link from 'next/link'
 // route /today exists for Days 1+ but Today tab keeps "/" semantics).
 
 export default function TopNav() {
+  // Five live routes only. Brain (Phase 6 — not yet mounted) and Knowledge
+  // ("coming soon") removed per external visual review 2026-05-19 — no nav
+  // pointers to unbuilt destinations.
   const tabs = [
     { name: 'Today', href: '/' },
-    { name: 'Brain', href: '/brain' },
-    { name: 'Knowledge', href: '/knowledge' },
+    { name: 'Hypotheses', href: '/hypotheses' },
     { name: 'Therapies', href: '/therapies' },
     { name: 'Timeline', href: '/timeline' },
+    { name: 'Audit', href: '/audit' },
   ]
 
   return (

@@ -64,7 +64,7 @@ export default function EmailIntent() {
           type="text"
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder='Try: "write to Sydney about Duke timing"'
+          placeholder="Write to … about …"
           className="flex-1 px-2 py-1 text-sm bg-white border border-slate-300 rounded-md outline-none placeholder:text-slate-400 text-slate-800"
           disabled={status === 'pending'}
         />
