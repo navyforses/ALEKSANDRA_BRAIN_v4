@@ -16,30 +16,37 @@ jobs:
   trust-boundary:
     name: viewer/ imaging boundary
     runs-on: ubuntu-latest
+    env:
+      # Opt in to Node.js 24 runtime for JS actions ahead of the
+      # 2026-06-02 forced cutover (Node 20 deprecated 2025-09-19).
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
-      - name: Setup Node 20
-        uses: actions/setup-node@v4
+      - name: Setup Node 24
+        uses: actions/setup-node@v5
         with:
-          node-version: 20
+          node-version: 24
 
-      - name: Install deps (skip ESLint when viewer/ empty)
+      - name: Install viewer deps (skip when viewer/ has no TS/TSX)
+        working-directory: viewer
         run: |
-          # Phase 0 — viewer/ has only .gitkeep so far. We install only when
-          # there is something to lint to avoid requiring a package-lock.json
-          # before the Next.js app is scaffolded (Phase 7 deliverable).
-          if find viewer -maxdepth 4 \( -name '*.ts' -o -name '*.tsx' \) 2>/dev/null | grep -q .; then
+          # Phase 0 — viewer/ started empty; install only when there is
+          # something to lint. The Next.js package.json lives in viewer/,
+          # NOT at the repo root (root package.json was removed in
+          # f4b8d72 to unblock the Railway Python builder).
+          if find . -maxdepth 4 \( -name '*.ts' -o -name '*.tsx' \) 2>/dev/null | grep -q .; then
             npm install --no-audit --no-fund
           else
             echo "viewer/ is empty — skipping npm install (no lint targets)"
           fi
 
       - name: ESLint — no imaging imports in server routes (FND-01)
+        working-directory: viewer
         run: |
-          if find viewer -maxdepth 4 \( -name '*.ts' -o -name '*.tsx' \) 2>/dev/null | grep -q .; then
-            npx eslint viewer --max-warnings 0
+          if find . -maxdepth 4 \( -name '*.ts' -o -name '*.tsx' \) 2>/dev/null | grep -q .; then
+            npx eslint . --max-warnings 0
           else
             echo "viewer/ has no TS/TSX yet — skipping ESLint."
           fi

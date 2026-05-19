@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { getRows } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
