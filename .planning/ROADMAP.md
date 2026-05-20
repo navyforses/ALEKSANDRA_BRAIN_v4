@@ -103,10 +103,22 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 **v1 release gate (the project's existence test):** Phase 4 ships when criterion 1 is observed at least once and criteria 2-5 are continuously true.
 
+### Phase 5: BRAIN AI Manager Assistant
+**Goal**: By the end of this phase, the manager (Shako) has a persistent UX layer that intakes content from 5 channels (PDF/photo/voice/email/text), produces preview cards with transactional batch apply + 30-action undo, emits a Sunday morning briefing, accepts voice-first input via OpenAI Whisper, and drafts compose-only Gmail outreach — all routed through a manager_actions audit log under RLS.
+**Depends on**: Phase 4 (engineering sprint closed; Phase 4 acceptance window may still be open)
+**Requirements**: Verification gates A-M in `scripts.verify_phase5` (see docs/PHASE_5_EXIT_REPORT.md for full coverage)
+**Status**: Engineering sprint closed 2026-05-18, 13/13 PASS · ALL GREEN. 78/78 cumulative verifier coverage. Phase 5 LLM spend $0 / $15 cap. Production activation needs ~45min Shako work (MANAGER_USER_ID env + Railway worker deploy + OPENAI_API_KEY + optional Tesseract) — see docs/PHASE_5_OPERATOR_RUNBOOK.md.
+**Success Criteria** (what must be TRUE):
+  1. Migration 011 applied: `manager_actions` + `intake_drops` tables exist with PHI CHECK constraint and RLS policies that deny non-manager identities.
+  2. Smart Drop Zone parses PDF (PyMuPDF), photo (Tesseract OCR if installed), voice (Whisper), email (raw text), and short text into typed entity previews.
+  3. Activity Log + Undo: 24-hour window × 30-action ring buffer; undo reverses both DB and Notion side effects atomically.
+  4. Sunday morning briefing assembles deterministic prose (no LLM cost by default) from the prior week of `manager_actions` + `briefs`.
+  5. Voice-first input transports `.mp3`/`.m4a` to OpenAI Whisper API behind `check_daily_budget()`; transcript becomes the entity router input.
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 0 → 1 → 2 → 2.5 → 3 → 4
+Phases execute in numeric order: 0 → 1 → 2 → 2.5 → 3 → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -115,7 +127,8 @@ Phases execute in numeric order: 0 → 1 → 2 → 2.5 → 3 → 4
 | 2. Memory | 0/TBD | Closed — 19/19 PASS | 2026-05-15 |
 | 2.5 Quick Wins (INSERTED) | 0/TBD | Closed — 16/16 PASS | 2026-05-16 |
 | 3. Cognition (minimum) | 0/TBD | Closed — 11/11 PASS | 2026-05-16 |
-| 4. First Family Value | 0/TBD | Not started | - |
+| 4. First Family Value | 0/TBD | Engineering closed 9/9 PASS; 14-day acceptance window in progress (closes ~2026-06-07) | 2026-05-17 (engineering) |
+| 5. BRAIN AI Manager Assistant | 0/TBD | Closed — 13/13 PASS · ALL GREEN | 2026-05-18 |
 
 ## Coverage
 
@@ -144,6 +157,16 @@ Phases execute in numeric order: 0 → 1 → 2 → 2.5 → 3 → 4
 | MRI leak (CATASTROPHIC, viewer half) | Client-side-only viewer, CSP, dcm2niix.wasm, segmentation on family-local Docker | **v2 (VIS-* requirements — not in v1)** |
 | Cost runaway (HIGH) | `/stop` kill-switch + code-side `check_daily_budget()` + n8n daily spend gate at $1.50/day; n8n JSON-body fix still needs live confirmation | Phase 0 (FND-03, FND-04) + Phase 2.5A |
 | Shared-memory poisoning (HIGH) | `derived_from_source_ids[]` write contract + per-`agent_id` mem0 scoping | Phase 2 (MEM-03) + Phase 3 (CGM-09) |
+
+### Phase 6: Bilingual System (i18n): full site + dynamic data bilingual support (en/ka). Frontend static localization, Supabase JSONB for dynamic content, AI agents emit en+ka pairs, Telegram/Gmail audience routing. Seed: docs/I18N_PLAN.md.
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 5
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 6 to break down)
 
 ---
 

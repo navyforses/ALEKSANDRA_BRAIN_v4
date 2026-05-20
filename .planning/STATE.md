@@ -41,6 +41,11 @@ Progress: [░░░░░░░░░░] 0%
 
 ## Accumulated Context
 
+### Roadmap Evolution
+
+- 2026-05-20: Phase 6 added — Bilingual System (i18n): full site + dynamic data bilingual support (en/ka). Frontend static localization, Supabase JSONB for dynamic content, AI agents emit en+ka pairs, Telegram/Gmail audience routing. Seed: docs/I18N_PLAN.md.
+- 2026-05-20: Phase 5 retro-added to Phase Details section (engineering closed 2026-05-18, 13/13 PASS); Progress table refreshed to reflect Phase 4 + 5 closure.
+
 ### Decisions
 
 Decisions are logged in PROJECT.md Key Decisions table.
