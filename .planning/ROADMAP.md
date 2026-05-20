@@ -172,7 +172,7 @@ Phases execute in numeric order: 0 → 1 → 2 → 2.5 → 3 → 4 → 5 → 6
 
 Plans:
 **Wave 1**
-- [ ] 06-01-PLAN.md — Install next-intl@4 + rename middleware.ts → proxy.ts (Next.js 16 convention) + author i18n module files + relocate messages
+- [x] 06-01-PLAN.md — Install next-intl@4 + rename middleware.ts → proxy.ts (Next.js 16 convention) + author i18n module files + relocate messages
 - [ ] 06-02-PLAN.md — Phase 6 verifier scaffold (scripts/verify_phase6.py) + 10-entry Georgian PHI fixture + 30-entry bilingual digest sample set
 - [ ] 06-03-PLAN.md — Move 7 family-facing routes under viewer/app/[locale]/ with Next.js 16 async-params signature
 - [ ] 06-04-PLAN.md — viewer/lib/i18n.ts displayField helper + unit test + LanguageSwitcher typed-nav polish
