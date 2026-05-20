@@ -106,22 +106,23 @@ body {
   content: '';
 }
 
-/* SVG Chart Micro-Interactions */
-svg circle {
+/* SVG Chart Micro-Interactions (scoped to .group wrappers so the donut
+   center circle and other bare SVG primitives are not affected). */
+svg .group circle {
   transition: r 0.25s cubic-bezier(0.4, 0, 0.2, 1), stroke-width 0.25s ease;
 }
 
-svg circle:hover {
+svg .group:hover circle {
   r: 6;
   stroke-width: 2.5;
   cursor: pointer;
 }
 
-svg rect {
+svg .group rect {
   transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), fill 0.2s ease;
   transform-origin: bottom;
 }
 
-svg rect:hover {
+svg .group:hover rect {
   transform: scaleY(1.03);
 }
