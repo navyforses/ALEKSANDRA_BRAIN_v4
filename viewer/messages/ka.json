@@ -1,0 +1,13 @@
+{
+  "Common": {
+    "save": "შენახვა",
+    "cancel": "გაუქმება",
+    "loading": "იტვირთება..."
+  },
+  "Navigation": {
+    "dashboard": "მართვის პანელი",
+    "timeline": "ქრონოლოგია",
+    "papers": "სტატიები",
+    "therapies": "თერაპიები"
+  }
+}
