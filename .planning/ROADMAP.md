@@ -21,6 +21,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 3: Cognition (minimum)** - Verifier-gated Communicator drafting (11/11 PASS; Day 7 closure unblocked same day by Shako's ChatGPT-assisted prereq work)
 - [x] **Phase 4: First Family Value** - Engineering sprint closed 2026-05-17, `verify_phase4 --mode code-complete` 9/9 PASS. Step B operator activation (Notion bootstrap + n8n workflow imports) + 14-day acceptance window open at first Weekly Brief Sunday 2026-05-24 09:00 ET. See `docs/PHASE_4_EXIT_REPORT.md` + `docs/PHASE_4_OPERATOR_RUNBOOK.md`.
 - [x] **Phase 5: BRAIN AI Manager Assistant** - Engineering sprint closed 2026-05-18, `verify_phase5 --mode code-complete` 13/13 PASS · ALL GREEN. 5 capabilities live: Smart Drop Zone (PDF/photo/voice/email/text intake), Persistent Activity Log, Morning Briefing (Sun 09:00 ET), Voice-First Input (OpenAI Whisper), Email Drafting (Gmail compose-only). Migration 011 applied (manager_actions + intake_drops + RLS + PHI CHECK). 78/78 cumulative verifier coverage. Phase 5 LLM spend $0 / $15 cap. See `docs/PHASE_5_EXIT_REPORT.md` + `docs/PHASE_5_COMPLETION_KA.md` + `docs/PHASE_5_OPERATOR_RUNBOOK.md`.
+- [ ] **Phase 6: Bilingual System (i18n)** - Full English+Georgian bilingualism: 7 family-facing routes under `/en/*` and `/ka/*`, 4 dynamic-content tables converted to JSONB en+ka via migration 012, Communicator + Phase 5 composer emit `{en, ka}` pairs via Anthropic strict tool_use, Telegram→ka / Gmail→en audience routing in Python worker layer. 15 plans across 6 wave-groups (0/1/2/3a/3b/4) — post plan-checker iteration 1. Seed: docs/I18N_PLAN.md.
 
 ## Phase Details
 
@@ -118,7 +119,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 0 → 1 → 2 → 2.5 → 3 → 4 → 5
+Phases execute in numeric order: 0 → 1 → 2 → 2.5 → 3 → 4 → 5 → 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -129,6 +130,7 @@ Phases execute in numeric order: 0 → 1 → 2 → 2.5 → 3 → 4 → 5
 | 3. Cognition (minimum) | 0/TBD | Closed — 11/11 PASS | 2026-05-16 |
 | 4. First Family Value | 0/TBD | Engineering closed 9/9 PASS; 14-day acceptance window in progress (closes ~2026-06-07) | 2026-05-17 (engineering) |
 | 5. BRAIN AI Manager Assistant | 0/TBD | Closed — 13/13 PASS · ALL GREEN | 2026-05-18 |
+| 6. Bilingual System (i18n) | 0/15 | Planned — awaiting execute-phase (Shako pause checkpoint) | — |
 
 ## Coverage
 
@@ -144,7 +146,8 @@ Phases execute in numeric order: 0 → 1 → 2 → 2.5 → 3 → 4 → 5
 | Phase 2 | MEM-01, MEM-02, MEM-03, MEM-04, MEM-05, MEM-06, MEM-07, MEM-08 | 8 |
 | Phase 3 | CGM-01, CGM-02, CGM-03, CGM-04, CGM-05, CGM-06, CGM-07, CGM-08, CGM-09, CGM-10 | 10 |
 | Phase 4 | ACD-01, ACD-02, ACD-03, ACD-04, ACD-05, OBS-02, OBS-03 | 8 |
-| **Total** | | **41** |
+| Phase 6 | I18N-01, I18N-02, I18N-03, I18N-04, I18N-05, I18N-06, I18N-07, I18N-08, I18N-09, I18N-10, I18N-11 | 11 |
+| **Total** | | **52** |
 
 ## Catastrophic Pitfall Gates Summary
 
@@ -157,20 +160,45 @@ Phases execute in numeric order: 0 → 1 → 2 → 2.5 → 3 → 4 → 5
 | MRI leak (CATASTROPHIC, viewer half) | Client-side-only viewer, CSP, dcm2niix.wasm, segmentation on family-local Docker | **v2 (VIS-* requirements — not in v1)** |
 | Cost runaway (HIGH) | `/stop` kill-switch + code-side `check_daily_budget()` + n8n daily spend gate at $1.50/day; n8n JSON-body fix still needs live confirmation | Phase 0 (FND-03, FND-04) + Phase 2.5A |
 | Shared-memory poisoning (HIGH) | `derived_from_source_ids[]` write contract + per-`agent_id` mem0 scoping | Phase 2 (MEM-03) + Phase 3 (CGM-09) |
+| PHI leak in Georgian half of bilingual pair (HIGH) | redact_bilingual + 10-fixture Georgian PHI test set + imperative-verb lint Georgian extension (D-05) | Phase 6 (I18N-10) |
+| Migration 012 RLS drop (HIGH) | Pre/post `\d table` policy snapshots; programmatic diff in 06-07 task 2; ALTER COLUMN TYPE does not drop policies on PG 15 | Phase 6 (I18N-05) |
 
-### Phase 6: Bilingual System (i18n): full site + dynamic data bilingual support (en/ka). Frontend static localization, Supabase JSONB for dynamic content, AI agents emit en+ka pairs, Telegram/Gmail audience routing. Seed: docs/I18N_PLAN.md.
+### Phase 6: Bilingual System (i18n)
 
-**Goal:** [To be planned]
-**Requirements**: TBD
-**Depends on:** Phase 5
-**Plans:** 0 plans
+**Goal:** By the end of this phase, every family-facing viewer route is reachable under `/en/*` and `/ka/*` URL segments and renders fully in the matching language; the 4 family-visible dynamic tables (`aleksandra_timeline`, `hypotheses`, `therapies`, `briefs`) store en+ka pairs in JSONB columns with English fallback; the Communicator and Phase 5 composer emit `{en, ka}` pairs for all newly-created family-visible content; and Telegram delivery uses `.ka` while Gmail delivery uses `.en`.
+**Depends on:** Phase 5 (does not block on Phase 5 production activation; the two run independently)
+**Requirements**: I18N-01, I18N-02, I18N-03, I18N-04, I18N-05, I18N-06, I18N-07, I18N-08, I18N-09, I18N-10, I18N-11
+**Plans:** 13 plans (across 5 waves: 0 foundation, 1 frontend, 2 database, 3 agent output, 4 delivery + regression)
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 6 to break down)
+**Wave 1**
+- [ ] 06-01-PLAN.md — Install next-intl@4 + rename middleware.ts → proxy.ts (Next.js 16 convention) + author i18n module files + relocate messages
+- [ ] 06-02-PLAN.md — Phase 6 verifier scaffold (scripts/verify_phase6.py) + 10-entry Georgian PHI fixture + 30-entry bilingual digest sample set
+- [ ] 06-03-PLAN.md — Move 7 family-facing routes under viewer/app/[locale]/ with Next.js 16 async-params signature
+- [ ] 06-04-PLAN.md — viewer/lib/i18n.ts displayField helper + unit test + LanguageSwitcher typed-nav polish
+- [ ] 06-05-PLAN.md — Expand viewer/messages/{en,ka}.json from 7 keys to ~60–80 keys + insert t() refs across 9 pages + locale-aware TopNav
+
+**Wave 2** *(blocked on Wave 1 completion)*
+- [ ] 06-06-PLAN.md — Author scripts/migrations/012_i18n_jsonb.sql + per-table pg_dump rollback artifacts + RLS policy snapshots + operator runbook
+- [ ] 06-07-PLAN.md — [BLOCKING][autonomous=false] Apply migration 012 to production Supabase (Shako maintenance window) + capture post-apply RLS diff
+- [ ] 06-08-PLAN.md — Update manager apply route to write JSONB shape + Timeline/Therapies/Hypotheses pages render via displayField
+
+**Wave 3** *(blocked on Wave 2 completion)*
+- [ ] 06-09-PLAN.md — scripts/communicator/bilingual.py compose_bilingual helper (Anthropic strict tool_use) + weekly_brief Option-A mirror + Communicator/manager_briefing JSONB emission
+- [ ] 06-10-PLAN.md — phi_redactor.py bilingual-aware (Mkhedruli suffix glue) + redact_bilingual helper + 13-test pytest suite over the 10 Georgian PHI fixtures
+- [ ] 06-11-PLAN.md — banned_phrases.py D-05 lexicon extension (8 new Georgian imperative-verb entries) + 39-test regression suite + Shako review checkpoint
+
+**Wave 4** *(blocked on Wave 3 completion)*
+- [ ] 06-12-PLAN.md — _bilingual_read.py display_field_py helper + telegram_sender reads .ka + gmail_digest reads .en + n8n zero-touch documentation
+- [ ] 06-13-PLAN.md — Finalize verify_phase6.py + production-mode 11/11 sweep + verify_phase4 9/9 + verify_phase5 13/13 regression + Phase 6 exit report + STATE/ROADMAP/REQUIREMENTS/CLAUDE updates
+
+**Cross-cutting constraints:**
+- No new remote fetch/axios.post/XMLHttpRequest from viewer/ to non-self origins introduced by this plan (FND-02 trust boundary lint must continue to pass)
 
 ---
 
 *Roadmap created: 2026-05-13*
+*Phase 6 added: 2026-05-20*
 *Granularity: standard*
 *Mode: yolo*
 *v2 phases (Cognition-full, Action interactivity, Visualization, HIPAA posture) live in REQUIREMENTS.md and are explicitly out of v1 scope.*
