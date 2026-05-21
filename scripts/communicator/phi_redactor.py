@@ -326,6 +326,50 @@ def _redact_pattern(
     return new
 
 
+def redact_bilingual(
+    pair: dict[str, str],
+    consent: ConsentFlags | None = None,
+) -> dict:
+    """Run redact() on both halves of a {en, ka} pair and OR-block.
+
+    Returns:
+        {
+          "en": RedactionResult,
+          "ka": RedactionResult,
+          "blocked_or": bool,           # True if EITHER half blocked
+          "blocked_reasons": list[str], # block_reason strings for blocked halves,
+                                        # prefixed with "en:" / "ka:" so callers can
+                                        # tell which side tripped.
+        }
+
+    Callers (agents/communicator.py, scripts/manager/briefing.py per 06-09 Task 3)
+    must check `blocked_or` and raise BEFORE persisting the bilingual pair.
+
+    Phase 6 / I18N-10 — closes RESEARCH.md Pitfall 5 ("PHI redactor scanned only
+    English half"). The single-string `redact()` API is unchanged; this helper
+    is a pure wrapper that calls it twice and aggregates the result.
+    """
+    if consent is None:
+        consent = ConsentFlags()
+
+    en_result = redact(pair.get("en", ""), consent=consent)
+    ka_result = redact(pair.get("ka", ""), consent=consent)
+
+    blocked_or = en_result.blocked or ka_result.blocked
+    blocked_reasons: list[str] = []
+    if en_result.blocked:
+        blocked_reasons.append(f"en: {en_result.block_reason}")
+    if ka_result.blocked:
+        blocked_reasons.append(f"ka: {ka_result.block_reason}")
+
+    return {
+        "en": en_result,
+        "ka": ka_result,
+        "blocked_or": blocked_or,
+        "blocked_reasons": blocked_reasons,
+    }
+
+
 __all__ = [
     "ConsentFlags",
     "Redaction",
@@ -333,4 +377,5 @@ __all__ = [
     "DEFAULT_IDENTITY",
     "load_consent_flags",
     "redact",
+    "redact_bilingual",
 ]
