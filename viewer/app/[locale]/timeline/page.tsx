@@ -1,4 +1,4 @@
-import { setRequestLocale } from "next-intl/server";
+import { setRequestLocale, getTranslations } from "next-intl/server";
 import { getRows } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
@@ -15,12 +15,6 @@ type TimelineEvent = {
   updated_at: string;
 };
 
-function formatDate(value: string | null) {
-  if (!value) return "date pending";
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toISOString().slice(0, 10);
-}
-
 function typeCounts(events: TimelineEvent[]) {
   return events.reduce<Record<string, number>>((acc, event) => {
     acc[event.event_type] = (acc[event.event_type] || 0) + 1;
@@ -35,6 +29,14 @@ export default async function TimelinePage({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
+  const t = await getTranslations("Timeline");
+  const tShared = await getTranslations("Shared");
+
+  function formatDate(value: string | null) {
+    if (!value) return tShared("notListed");
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? value : date.toISOString().slice(0, 10);
+  }
 
   const events = await getRows<TimelineEvent>("aleksandra_timeline", {
     select: "id,event_date,event_type,title,description,institution,location,created_at,updated_at",
@@ -48,21 +50,21 @@ export default async function TimelinePage({
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-5 py-6 sm:px-8">
         <header className="grid gap-4 lg:grid-cols-[1fr_auto]">
           <div>
-            <p className="font-mono text-xs uppercase text-cyan-700">Clinical context</p>
+            <p className="font-mono text-xs uppercase text-cyan-700">{t("phaseLabel")}</p>
             <h1 className="mt-1 text-3xl font-semibold tracking-normal sm:text-4xl">
-              Timeline
+              {t("title")}
             </h1>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-stone-600">
-              Read-only chronological record of key events used for family workflow visibility and research context.
+              {t("subtitle")}
             </p>
           </div>
           <div className="grid min-w-64 grid-cols-2 gap-3">
             <div className="rounded-md border border-stone-200 bg-white p-4">
-              <p className="font-mono text-xs uppercase text-stone-500">Shown</p>
+              <p className="font-mono text-xs uppercase text-stone-500">{t("shown")}</p>
               <p className="mt-2 text-2xl font-semibold">{events.rows.length}</p>
             </div>
             <div className="rounded-md border border-stone-200 bg-white p-4">
-              <p className="font-mono text-xs uppercase text-stone-500">Latest</p>
+              <p className="font-mono text-xs uppercase text-stone-500">{t("latest")}</p>
               <p className="mt-2 text-2xl font-semibold">{formatDate(events.rows[0]?.event_date ?? null)}</p>
             </div>
           </div>
@@ -87,7 +89,7 @@ export default async function TimelinePage({
 
         <section className="rounded-md border border-stone-200 bg-white">
           <div className="border-b border-stone-200 p-4">
-            <h2 className="text-base font-semibold">Events</h2>
+            <h2 className="text-base font-semibold">{t("events")}</h2>
           </div>
           <div className="divide-y divide-stone-100">
             {events.rows.map((event) => (
@@ -108,13 +110,13 @@ export default async function TimelinePage({
                     </p>
                   ) : null}
                   <p className="mt-2 text-xs text-stone-500">
-                    {[event.institution, event.location].filter(Boolean).join(" | ") || "location pending"}
+                    {[event.institution, event.location].filter(Boolean).join(" | ") || t("locationPending")}
                   </p>
                 </div>
               </article>
             ))}
             {events.rows.length === 0 ? (
-              <p className="p-4 text-sm text-stone-500">No timeline rows returned.</p>
+              <p className="p-4 text-sm text-stone-500">{t("emptyList")}</p>
             ) : null}
           </div>
         </section>

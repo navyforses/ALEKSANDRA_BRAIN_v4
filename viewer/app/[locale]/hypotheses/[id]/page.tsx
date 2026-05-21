@@ -1,6 +1,6 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { setRequestLocale } from "next-intl/server";
+import { setRequestLocale, getTranslations } from "next-intl/server";
+import { Link } from "@/i18n/navigation";
 import { reviewHypothesis } from "../actions";
 import { getRows } from "@/lib/supabase";
 
@@ -58,10 +58,6 @@ function tone(status: string | null) {
   return "border-stone-200 bg-white text-stone-900";
 }
 
-function score(value: number | null) {
-  return value == null ? "n/a" : value.toFixed(2);
-}
-
 // PostgREST `in.(...)` filter needs comma-separated UUIDs. Empty array
 // → emit a sentinel UUID that will never match, so getRows returns [].
 function inFilter(ids: string[] | null | undefined): string {
@@ -79,6 +75,14 @@ export default async function HypothesisDetailPage({
 }) {
   const { locale, id } = await params;
   setRequestLocale(locale);
+  const t = await getTranslations("Hypotheses");
+  const tNav = await getTranslations("Navigation");
+  const tPapers = await getTranslations("Papers");
+  const tShared = await getTranslations("Shared");
+
+  function score(value: number | null) {
+    return value == null ? tShared("na") : value.toFixed(2);
+  }
 
   const hypotheses = await getRows<HypothesisDetail>("hypotheses", {
     select:
@@ -131,13 +135,13 @@ export default async function HypothesisDetailPage({
               className="rounded-md px-3 py-2 text-stone-700 hover:bg-white"
               href="/dashboard"
             >
-              Dashboard
+              {tNav("dashboard")}
             </Link>
             <Link
               className="rounded-md px-3 py-2 text-stone-700 hover:bg-white"
               href="/hypotheses"
             >
-              Hypotheses
+              {tNav("hypotheses")}
             </Link>
           </div>
         </nav>
@@ -147,25 +151,25 @@ export default async function HypothesisDetailPage({
             href="/hypotheses"
             className="font-mono text-xs uppercase text-cyan-700 hover:underline"
           >
-            ← Back to hypotheses
+            ← {t("backToList")}
           </Link>
           <div className="flex flex-wrap items-center gap-2">
             <span
               className={`rounded-md border px-2 py-1 font-mono text-xs ${tone(hypothesis.status)}`}
             >
-              {hypothesis.status || "new"}
+              {hypothesis.status || t("statusNew")}
             </span>
             <span className="font-mono text-xs text-stone-500">
-              {hypothesis.hypothesis_type || "other"}
+              {hypothesis.hypothesis_type || t("typeOther")}
             </span>
             {hypothesis.urgency ? (
               <span className="font-mono text-xs text-stone-500">
-                · urgency: {hypothesis.urgency}
+                · {t("urgencyPrefix")}: {hypothesis.urgency}
               </span>
             ) : null}
             {hypothesis.generated_by ? (
               <span className="font-mono text-xs text-stone-500">
-                · gen: {hypothesis.generated_by}
+                · {t("genPrefix")}: {hypothesis.generated_by}
               </span>
             ) : null}
           </div>
@@ -180,15 +184,15 @@ export default async function HypothesisDetailPage({
         <section className="grid gap-3 sm:grid-cols-3">
           <div className="rounded-md border border-stone-200 bg-white p-4">
             <p className="font-mono text-xs uppercase text-stone-500">
-              Confidence
+              {t("confidence")}
             </p>
             <p className="mt-2 text-xl font-semibold">
-              {hypothesis.confidence_level || "n/a"}
+              {hypothesis.confidence_level || tShared("na")}
             </p>
           </div>
           <div className="rounded-md border border-stone-200 bg-white p-4">
             <p className="font-mono text-xs uppercase text-stone-500">
-              Novelty
+              {t("novelty")}
             </p>
             <p className="mt-2 text-xl font-semibold">
               {score(hypothesis.novelty_score)}
@@ -196,7 +200,7 @@ export default async function HypothesisDetailPage({
           </div>
           <div className="rounded-md border border-stone-200 bg-white p-4">
             <p className="font-mono text-xs uppercase text-stone-500">
-              Feasibility
+              {t("feasibility")}
             </p>
             <p className="mt-2 text-xl font-semibold">
               {score(hypothesis.feasibility_score)}
@@ -207,7 +211,7 @@ export default async function HypothesisDetailPage({
         {hypothesis.recommended_action ? (
           <section className="rounded-md border border-stone-200 bg-white p-4">
             <p className="font-mono text-xs uppercase text-stone-500">
-              Recommended action
+              {t("recommendedAction")}
             </p>
             <p className="mt-2 text-sm leading-6 text-stone-800">
               {hypothesis.recommended_action}
@@ -218,7 +222,7 @@ export default async function HypothesisDetailPage({
         {hypothesis.ai_reasoning ? (
           <section className="rounded-md border border-stone-200 bg-white p-4">
             <p className="font-mono text-xs uppercase text-stone-500">
-              AI reasoning
+              {t("reasoning")}
               {hypothesis.discovery_method ? (
                 <span className="ml-2 text-stone-400">
                   · {hypothesis.discovery_method}
@@ -234,7 +238,7 @@ export default async function HypothesisDetailPage({
         <section className="rounded-md border border-stone-200 bg-white">
           <div className="border-b border-stone-200 p-4">
             <h2 className="text-base font-semibold">
-              Supporting papers ({papers.rows.length})
+              {t("supportingPapers")} ({papers.rows.length})
             </h2>
             {papers.error ? (
               <p className="mt-1 text-xs text-amber-700">{papers.error}</p>
@@ -248,7 +252,7 @@ export default async function HypothesisDetailPage({
               >
                 <div className="font-mono text-sm text-cyan-700">
                   {p.relevance_score == null
-                    ? "n/a"
+                    ? tShared("na")
                     : p.relevance_score.toFixed(2)}
                 </div>
                 <div>
@@ -262,10 +266,10 @@ export default async function HypothesisDetailPage({
                         ? `Trial ${p.ct_id}`
                         : p.doi
                           ? `DOI ${p.doi}`
-                          : p.source || "source pending"}
+                          : p.source || tPapers("sourcePending")}
                     {" · "}
                     {p.direct_relevance
-                      ? "direct HIE"
+                      ? tPapers("directHie")
                       : p.cross_disease_source || "cross-source"}
                   </p>
                 </div>
@@ -273,9 +277,7 @@ export default async function HypothesisDetailPage({
             ))}
             {papers.rows.length === 0 ? (
               <p className="p-4 text-sm text-stone-500">
-                No supporting papers linked yet. The pipeline cites these in
-                ai_reasoning; `backfill_supporting_papers.py` populates the
-                UUID array.
+                {t("emptySupportingPapers")}
               </p>
             ) : null}
           </div>
@@ -285,17 +287,17 @@ export default async function HypothesisDetailPage({
           <section className="rounded-md border border-stone-200 bg-white">
             <div className="border-b border-stone-200 p-4">
               <h2 className="text-base font-semibold">
-                Related therapies ({therapies.rows.length})
+                {t("relatedTherapies")} ({therapies.rows.length})
               </h2>
             </div>
             <div className="divide-y divide-stone-100">
-              {therapies.rows.map((t) => (
-                <article key={t.id} className="grid gap-1 p-4">
-                  <h3 className="text-sm font-medium leading-6">{t.name}</h3>
+              {therapies.rows.map((th) => (
+                <article key={th.id} className="grid gap-1 p-4">
+                  <h3 className="text-sm font-medium leading-6">{th.name}</h3>
                   <p className="text-xs text-stone-500">
-                    {t.therapy_type || "type pending"} · evidence{" "}
-                    {t.evidence_in_hie || "unknown"} · for Aleksandra:{" "}
-                    {t.aleksandra_status || "not_considered"}
+                    {th.therapy_type || "type pending"} · {tPapers("evidenceLabel")}{" "}
+                    {th.evidence_in_hie || tShared("unknown")} · {t("aleksandraFor")}:{" "}
+                    {th.aleksandra_status || "not_considered"}
                   </p>
                 </article>
               ))}
@@ -306,14 +308,14 @@ export default async function HypothesisDetailPage({
         {hypothesis.outcome ? (
           <section className="rounded-md border border-stone-200 bg-stone-100 p-4">
             <p className="font-mono text-xs uppercase text-stone-500">
-              Current outcome (last curator note)
+              {t("currentOutcome")}
             </p>
             <p className="mt-2 text-sm leading-6 text-stone-700">
               {hypothesis.outcome}
             </p>
             {hypothesis.reviewed_at ? (
               <p className="mt-1 text-xs text-stone-500">
-                reviewed_at: {new Date(hypothesis.reviewed_at).toLocaleString()}
+                {t("reviewedAt")}: {new Date(hypothesis.reviewed_at).toLocaleString()}
               </p>
             ) : null}
           </section>
@@ -323,11 +325,10 @@ export default async function HypothesisDetailPage({
           className={`rounded-md border p-4 shadow-sm shadow-stone-200/40 ${tone(hypothesis.status)}`}
         >
           <p className="font-mono text-xs uppercase text-stone-500">
-            Curator action
+            {t("curatorAction")}
           </p>
           <p className="mt-2 text-xs leading-5 text-stone-600">
-            Confirmation marks the evidence link curated for research
-            follow-up. It is not a clinical treatment recommendation.
+            {t("curatorActionBody")}
           </p>
           <form
             action={reviewHypothesis}
@@ -338,7 +339,7 @@ export default async function HypothesisDetailPage({
             <textarea
               name="outcome"
               rows={3}
-              placeholder="Why this verdict? Which paper carries the weight? What is the next step?"
+              placeholder={t("detailReasoningPlaceholder")}
               className="w-full rounded-md border border-stone-300 bg-white/90 px-3 py-2 text-sm leading-6 text-stone-800 placeholder:text-stone-400 focus:border-cyan-400 focus:outline-none focus:ring-1 focus:ring-cyan-300"
             />
             <div className="flex flex-col gap-2 lg:w-44">
@@ -348,7 +349,7 @@ export default async function HypothesisDetailPage({
                 value="confirmed"
                 type="submit"
               >
-                <span aria-hidden="true">✓</span> Confirm
+                <span aria-hidden="true">✓</span> {t("confirm")}
               </button>
               <button
                 className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md bg-white px-3 py-2 text-sm font-medium text-stone-800 ring-1 ring-stone-300 hover:bg-stone-100"
@@ -356,7 +357,7 @@ export default async function HypothesisDetailPage({
                 value="under_review"
                 type="submit"
               >
-                <span aria-hidden="true">?</span> Under review
+                <span aria-hidden="true">?</span> {t("underReview")}
               </button>
               <button
                 className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md bg-white px-3 py-2 text-sm font-medium text-rose-800 ring-1 ring-rose-300 hover:bg-rose-50"
@@ -364,7 +365,7 @@ export default async function HypothesisDetailPage({
                 value="rejected"
                 type="submit"
               >
-                <span aria-hidden="true">×</span> Reject
+                <span aria-hidden="true">×</span> {t("reject")}
               </button>
             </div>
           </form>

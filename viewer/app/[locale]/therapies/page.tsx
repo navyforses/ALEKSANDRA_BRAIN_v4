@@ -1,4 +1,4 @@
-import { setRequestLocale } from "next-intl/server";
+import { setRequestLocale, getTranslations } from "next-intl/server";
 import { getRows } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
@@ -36,15 +36,6 @@ function tone(value: string | null) {
   return "border-stone-200 bg-white text-stone-800";
 }
 
-function yesNo(value: boolean | null) {
-  if (value == null) return "unknown";
-  return value ? "yes" : "no";
-}
-
-function listValue(values: string[] | null) {
-  return values && values.length > 0 ? values.join(", ") : "not listed";
-}
-
 // Defensive parser: some `ai_assessment` rows are stringified dossier objects
 // (e.g. {"source_hypothesis_id":..., "dossier":"..."}) due to upstream pipeline
 // drift. Extract the actual `dossier` text when present; otherwise hide.
@@ -70,6 +61,17 @@ export default async function TherapiesPage({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
+  const t = await getTranslations("Therapies");
+  const tShared = await getTranslations("Shared");
+
+  function yesNo(value: boolean | null) {
+    if (value == null) return tShared("unknown");
+    return value ? tShared("yes") : tShared("no");
+  }
+
+  function listValue(values: string[] | null) {
+    return values && values.length > 0 ? values.join(", ") : tShared("notListed");
+  }
 
   const therapies = await getRows<Therapy>("therapies", {
     select:
@@ -78,36 +80,36 @@ export default async function TherapiesPage({
     limit: 100,
   });
 
-  const active = therapies.rows.filter((t) => t.aleksandra_status === "receiving").length;
-  const watching = therapies.rows.filter((t) =>
-    ["planned", "applied", "evaluating"].includes(t.aleksandra_status || ""),
+  const active = therapies.rows.filter((tr) => tr.aleksandra_status === "receiving").length;
+  const watching = therapies.rows.filter((tr) =>
+    ["planned", "applied", "evaluating"].includes(tr.aleksandra_status || ""),
   ).length;
-  const promising = therapies.rows.filter((t) => t.evidence_in_hie === "promising").length;
+  const promising = therapies.rows.filter((tr) => tr.evidence_in_hie === "promising").length;
 
   return (
     <main className="min-h-screen bg-stone-50 text-stone-950">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-5 py-6 sm:px-8">
         <header className="grid gap-4 lg:grid-cols-[1fr_auto]">
           <div>
-            <p className="font-mono text-xs uppercase text-cyan-700">Therapy tracker</p>
+            <p className="font-mono text-xs uppercase text-cyan-700">{t("phaseLabel")}</p>
             <h1 className="mt-1 text-3xl font-semibold tracking-normal sm:text-4xl">
-              Therapies
+              {t("title")}
             </h1>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-stone-600">
-              Read-only status view of treatments, programs, and research candidates. This page is operational context, not clinical advice.
+              {t("subtitle")}
             </p>
           </div>
           <div className="grid min-w-72 grid-cols-3 gap-3">
             <div className="rounded-md border border-stone-200 bg-white p-4">
-              <p className="font-mono text-xs uppercase text-stone-500">Shown</p>
+              <p className="font-mono text-xs uppercase text-stone-500">{t("shown")}</p>
               <p className="mt-2 text-2xl font-semibold">{therapies.rows.length}</p>
             </div>
             <div className="rounded-md border border-stone-200 bg-white p-4">
-              <p className="font-mono text-xs uppercase text-stone-500">Active</p>
+              <p className="font-mono text-xs uppercase text-stone-500">{t("active")}</p>
               <p className="mt-2 text-2xl font-semibold">{active}</p>
             </div>
             <div className="rounded-md border border-stone-200 bg-white p-4">
-              <p className="font-mono text-xs uppercase text-stone-500">Watching</p>
+              <p className="font-mono text-xs uppercase text-stone-500">{t("watching")}</p>
               <p className="mt-2 text-2xl font-semibold">{watching}</p>
             </div>
           </div>
@@ -121,19 +123,19 @@ export default async function TherapiesPage({
 
         <section className="grid gap-3 sm:grid-cols-3">
           <div className="rounded-md border border-stone-200 bg-white p-4">
-            <p className="font-mono text-xs uppercase text-stone-500">Promising HIE evidence</p>
+            <p className="font-mono text-xs uppercase text-stone-500">{t("promisingEvidence")}</p>
             <p className="mt-2 text-xl font-semibold">{promising}</p>
           </div>
           <div className="rounded-md border border-stone-200 bg-white p-4">
-            <p className="font-mono text-xs uppercase text-stone-500">Eligible marked yes</p>
+            <p className="font-mono text-xs uppercase text-stone-500">{t("eligibleYes")}</p>
             <p className="mt-2 text-xl font-semibold">
-              {therapies.rows.filter((t) => t.aleksandra_eligible).length}
+              {therapies.rows.filter((tr) => tr.aleksandra_eligible).length}
             </p>
           </div>
           <div className="rounded-md border border-stone-200 bg-white p-4">
-            <p className="font-mono text-xs uppercase text-stone-500">Time critical</p>
+            <p className="font-mono text-xs uppercase text-stone-500">{t("timeCritical")}</p>
             <p className="mt-2 text-xl font-semibold">
-              {therapies.rows.filter((t) => t.time_sensitivity === "critical").length}
+              {therapies.rows.filter((tr) => tr.time_sensitivity === "critical").length}
             </p>
           </div>
         </section>
@@ -145,13 +147,13 @@ export default async function TherapiesPage({
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
                     <span className={`rounded-md border px-2 py-1 font-mono text-xs ${tone(therapy.aleksandra_status)}`}>
-                      {therapy.aleksandra_status || "not_considered"}
+                      {therapy.aleksandra_status || t("statusNotConsidered")}
                     </span>
                     <span className={`rounded-md border px-2 py-1 font-mono text-xs ${tone(therapy.evidence_in_hie)}`}>
-                      evidence {therapy.evidence_in_hie || "unknown"}
+                      {t("evidenceLabel")} {therapy.evidence_in_hie || t("evidenceUnknown")}
                     </span>
                     <span className="font-mono text-xs text-stone-500">
-                      {therapy.therapy_type || "type pending"}
+                      {therapy.therapy_type || t("typePending")}
                     </span>
                   </div>
                   <h2 className="mt-3 text-lg font-semibold leading-7">{therapy.name}</h2>
@@ -163,32 +165,32 @@ export default async function TherapiesPage({
                 </div>
                 <dl className="grid gap-3 text-sm sm:grid-cols-3 lg:w-96">
                   <div>
-                    <dt className="font-mono text-xs uppercase text-stone-500">Eligible</dt>
+                    <dt className="font-mono text-xs uppercase text-stone-500">{t("eligible")}</dt>
                     <dd className="mt-1 font-semibold">{yesNo(therapy.aleksandra_eligible)}</dd>
                   </div>
                   <div>
-                    <dt className="font-mono text-xs uppercase text-stone-500">Window</dt>
-                    <dd className="mt-1 font-semibold">{therapy.optimal_age_window || "n/a"}</dd>
+                    <dt className="font-mono text-xs uppercase text-stone-500">{t("ageWindow")}</dt>
+                    <dd className="mt-1 font-semibold">{therapy.optimal_age_window || tShared("na")}</dd>
                   </div>
                   <div>
-                    <dt className="font-mono text-xs uppercase text-stone-500">Timing</dt>
-                    <dd className="mt-1 font-semibold">{therapy.time_sensitivity || "n/a"}</dd>
+                    <dt className="font-mono text-xs uppercase text-stone-500">{t("timing")}</dt>
+                    <dd className="mt-1 font-semibold">{therapy.time_sensitivity || tShared("na")}</dd>
                   </div>
                 </dl>
               </div>
 
               <div className="mt-4 grid gap-4 border-t border-stone-100 pt-4 lg:grid-cols-3">
                 <div>
-                  <p className="font-mono text-xs uppercase text-stone-500">Clinical status</p>
-                  <p className="mt-1 text-sm text-stone-700">{therapy.clinical_status || "unknown"}</p>
+                  <p className="font-mono text-xs uppercase text-stone-500">{t("clinicalStatus")}</p>
+                  <p className="mt-1 text-sm text-stone-700">{therapy.clinical_status || tShared("unknown")}</p>
                 </div>
                 <div>
-                  <p className="font-mono text-xs uppercase text-stone-500">Locations</p>
+                  <p className="font-mono text-xs uppercase text-stone-500">{t("locations")}</p>
                   <p className="mt-1 text-sm text-stone-700">{listValue(therapy.available_locations)}</p>
                 </div>
                 <div>
-                  <p className="font-mono text-xs uppercase text-stone-500">Cost</p>
-                  <p className="mt-1 text-sm text-stone-700">{therapy.approximate_cost || "unknown"}</p>
+                  <p className="font-mono text-xs uppercase text-stone-500">{t("cost")}</p>
+                  <p className="mt-1 text-sm text-stone-700">{therapy.approximate_cost || t("costUnknown")}</p>
                 </div>
               </div>
 
@@ -214,7 +216,7 @@ export default async function TherapiesPage({
           ))}
           {therapies.rows.length === 0 ? (
             <div className="rounded-md border border-stone-200 bg-white p-6 text-sm text-stone-500">
-              No therapy rows returned.
+              {t("emptyList")}
             </div>
           ) : null}
         </section>

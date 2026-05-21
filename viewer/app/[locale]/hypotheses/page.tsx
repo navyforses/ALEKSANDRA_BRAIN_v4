@@ -1,5 +1,5 @@
-import Link from "next/link";
-import { setRequestLocale } from "next-intl/server";
+import { setRequestLocale, getTranslations } from "next-intl/server";
+import { Link } from "@/i18n/navigation";
 import { reviewHypothesis } from "./actions";
 import { getRows } from "@/lib/supabase";
 
@@ -27,10 +27,6 @@ function tone(status: string | null) {
   return "border-stone-200 bg-white text-stone-900";
 }
 
-function score(value: number | null) {
-  return value == null ? "n/a" : value.toFixed(2);
-}
-
 export default async function HypothesesPage({
   params,
 }: {
@@ -38,6 +34,13 @@ export default async function HypothesesPage({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
+  const t = await getTranslations("Hypotheses");
+  const tNav = await getTranslations("Navigation");
+  const tShared = await getTranslations("Shared");
+
+  function score(value: number | null) {
+    return value == null ? tShared("na") : value.toFixed(2);
+  }
 
   const hypotheses = await getRows<Hypothesis>("hypotheses", {
     select:
@@ -58,41 +61,40 @@ export default async function HypothesesPage({
           </Link>
           <div className="flex flex-wrap items-center gap-2 text-sm">
             <Link className="rounded-md px-3 py-2 text-stone-700 hover:bg-white" href="/dashboard">
-              Dashboard
+              {tNav("dashboard")}
             </Link>
             <Link className="rounded-md bg-white px-3 py-2 text-stone-900 ring-1 ring-stone-200" href="/hypotheses">
-              Hypotheses
+              {tNav("hypotheses")}
             </Link>
             <Link className="rounded-md px-3 py-2 text-stone-700 hover:bg-white" href="/papers">
-              Papers
+              {tNav("papers")}
             </Link>
             <Link className="rounded-md px-3 py-2 text-stone-700 hover:bg-white" href="/therapies">
-              Therapies
+              {tNav("therapies")}
             </Link>
             <Link className="rounded-md px-3 py-2 text-stone-700 hover:bg-white" href="/timeline">
-              Timeline
+              {tNav("timeline")}
             </Link>
           </div>
         </nav>
 
         <header className="grid gap-4 lg:grid-cols-[1fr_auto]">
           <div>
-            <p className="font-mono text-xs uppercase text-cyan-700">Phase II.5D</p>
+            <p className="font-mono text-xs uppercase text-cyan-700">{t("phaseLabel")}</p>
             <h1 className="mt-1 text-3xl font-semibold tracking-normal sm:text-4xl">
-              Validation workflow
+              {t("title")}
             </h1>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-stone-600">
-              Research hypotheses can be confirmed for follow-up, held under review, or rejected.
-              Confirmation here means evidence links were curated; it does not mean treatment approval.
+              {t("subtitle")}
             </p>
           </div>
           <div className="grid min-w-64 grid-cols-2 gap-3">
             <div className="rounded-md border border-stone-200 bg-white p-4">
-              <p className="font-mono text-xs uppercase text-stone-500">Confirmed</p>
+              <p className="font-mono text-xs uppercase text-stone-500">{t("confirmedKpi")}</p>
               <p className="mt-2 text-3xl font-semibold">{confirmed}</p>
             </div>
             <div className="rounded-md border border-stone-200 bg-white p-4">
-              <p className="font-mono text-xs uppercase text-stone-500">Evidence-linked</p>
+              <p className="font-mono text-xs uppercase text-stone-500">{t("evidenceLinkedKpi")}</p>
               <p className="mt-2 text-3xl font-semibold">
                 {hydrated}/{hypotheses.rows.length}
               </p>
@@ -116,10 +118,10 @@ export default async function HypothesesPage({
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="rounded-md border border-current/20 px-2 py-1 font-mono text-xs">
-                      {hypothesis.status || "new"}
+                      {hypothesis.status || t("statusNew")}
                     </span>
                     <span className="font-mono text-xs text-stone-500">
-                      {hypothesis.hypothesis_type || "other"}
+                      {hypothesis.hypothesis_type || t("typeOther")}
                     </span>
                   </div>
                   <h2 className="mt-3 text-lg font-semibold leading-7">
@@ -136,15 +138,15 @@ export default async function HypothesesPage({
                 </div>
                 <dl className="grid grid-cols-3 gap-3 text-sm lg:w-80">
                   <div>
-                    <dt className="font-mono text-xs uppercase text-stone-500">Confidence</dt>
-                    <dd className="mt-1 font-semibold">{hypothesis.confidence_level || "n/a"}</dd>
+                    <dt className="font-mono text-xs uppercase text-stone-500">{t("confidence")}</dt>
+                    <dd className="mt-1 font-semibold">{hypothesis.confidence_level || tShared("na")}</dd>
                   </div>
                   <div>
-                    <dt className="font-mono text-xs uppercase text-stone-500">Novelty</dt>
+                    <dt className="font-mono text-xs uppercase text-stone-500">{t("novelty")}</dt>
                     <dd className="mt-1 font-semibold">{score(hypothesis.novelty_score)}</dd>
                   </div>
                   <div>
-                    <dt className="font-mono text-xs uppercase text-stone-500">Feasible</dt>
+                    <dt className="font-mono text-xs uppercase text-stone-500">{t("feasible")}</dt>
                     <dd className="mt-1 font-semibold">{score(hypothesis.feasibility_score)}</dd>
                   </div>
                 </dl>
@@ -152,11 +154,11 @@ export default async function HypothesesPage({
 
               <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_auto]">
                 <p className="text-sm leading-6 text-stone-700">
-                  {hypothesis.recommended_action || "No recommended action captured."}
+                  {hypothesis.recommended_action || t("noRecommendedAction")}
                 </p>
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="rounded-md bg-white/80 px-3 py-2 font-mono text-xs text-stone-700 ring-1 ring-stone-200">
-                    papers {(hypothesis.supporting_papers || []).length}
+                    {t("papersBadge")} {(hypothesis.supporting_papers || []).length}
                   </span>
                   <form
                     action={reviewHypothesis}
@@ -167,7 +169,7 @@ export default async function HypothesesPage({
                     <textarea
                       name="outcome"
                       rows={2}
-                      placeholder="Optional curator note (why? evidence quality? next step?)"
+                      placeholder={t("curatorNotePlaceholder")}
                       className="w-full rounded-md border border-stone-300 bg-white/90 px-3 py-2 text-xs leading-5 text-stone-800 placeholder:text-stone-400 focus:border-cyan-400 focus:outline-none focus:ring-1 focus:ring-cyan-300"
                     />
                     <div className="flex flex-wrap gap-2">
@@ -178,7 +180,7 @@ export default async function HypothesesPage({
                         type="submit"
                       >
                         <span aria-hidden="true">✓</span>
-                        Confirm
+                        {t("confirm")}
                       </button>
                       <button
                         className="inline-flex min-h-10 items-center gap-2 rounded-md bg-white px-3 py-2 text-sm font-medium text-stone-800 ring-1 ring-stone-300 hover:bg-stone-100"
@@ -187,7 +189,7 @@ export default async function HypothesesPage({
                         type="submit"
                       >
                         <span aria-hidden="true">?</span>
-                        Review
+                        {t("review")}
                       </button>
                       <button
                         className="inline-flex min-h-10 items-center gap-2 rounded-md bg-white px-3 py-2 text-sm font-medium text-rose-800 ring-1 ring-rose-300 hover:bg-rose-50"
@@ -196,7 +198,7 @@ export default async function HypothesesPage({
                         type="submit"
                       >
                         <span aria-hidden="true">×</span>
-                        Reject
+                        {t("reject")}
                       </button>
                     </div>
                   </form>
@@ -212,7 +214,7 @@ export default async function HypothesesPage({
           ))}
           {hypotheses.rows.length === 0 ? (
             <div className="rounded-md border border-stone-200 bg-white p-6 text-sm text-stone-500">
-              No hypotheses returned.
+              {t("emptyList")}
             </div>
           ) : null}
         </section>
