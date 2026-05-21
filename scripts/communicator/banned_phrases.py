@@ -90,6 +90,32 @@ _PATTERNS_KA: list[str] = [
     r"გამოჯანმრთელდება",
     r"აუცილებლად\s+გაუმჯობესდება",
     r"ეს\s+აღკვეთს",
+    # ===== Phase 6 D-05 additions — REVIEW BEFORE ACTIVATION =====
+    # Per CONTEXT.md D-05 + 06-VALIDATION.md Manual-Only Verifications,
+    # Shako must sanity-check this lexicon before the lint goes live.
+    # In Auto Mode for plan 06-11, the D-05 locked lexicon is auto-approved;
+    # native-speaker re-verification tracked in .planning/todos/pending/.
+    # RESEARCH.md Pattern 8 note on word boundaries: `\b` is Latin-aware only;
+    # for Mkhedruli, existing _PATTERNS_KA entries omit `\b`. The first three
+    # additions carry `\b` because they typically appear at Mkhedruli ↔ ASCII
+    # script boundaries (space, punctuation, mixed-script context); the
+    # remaining five match without `\b` (consistent with the existing convention).
+    # TODO(shako-review): English "should" -> Georgian (you-ought, direct-instruction form)
+    r"\bმართებთ\b",
+    # TODO(shako-review): English "must" -> Georgian (bare 'necessarily')
+    r"\bაუცილებლად\b",
+    # TODO(shako-review): English "must" -> Georgian (predicative 'it is necessary')
+    r"\bაუცილებელია\b",
+    # TODO(shako-review): English "consider" -> Georgian (polite imperative 2pl)
+    r"განიხილეთ",
+    # TODO(shako-review): English "consider" -> Georgian (alt form: 'take into account')
+    r"გაითვალისწინეთ",
+    # TODO(shako-review): English "try" -> Georgian (polite imperative 2pl)
+    r"სცადეთ",
+    # TODO(shako-review): English "ask for" -> Georgian (polite imperative 2pl 'demand/ask for')
+    r"მოითხოვეთ",
+    # TODO(shako-review): English "request" -> Georgian (polite imperative 2pl)
+    r"ითხოვეთ",
 ]
 
 _PATTERNS_FR: list[str] = [
