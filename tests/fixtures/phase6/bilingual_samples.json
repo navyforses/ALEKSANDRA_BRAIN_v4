@@ -1,0 +1,247 @@
+[
+  {
+    "id": "S01",
+    "kind": "finding",
+    "domain": "Dashboard",
+    "banned": false,
+    "en": "A 2024 case series reports neuroplasticity gains in the 0-2 year window for cystic encephalomalacia patients.",
+    "ka": "2024 წლის შემთხვევათა სერია აღწერს ნეიროპლასტიკურობის შესაძლო გავლენას 0-2 წლის ფანჯარაში ცისტური ენცეფალომალაციის შემთხვევებში."
+  },
+  {
+    "id": "S02",
+    "kind": "finding",
+    "domain": "Timeline",
+    "banned": false,
+    "en": "BMC neurology visit on 2026-04-12 documented preserved brainstem function and stable seizure threshold.",
+    "ka": "ბოსტონის სამედიცინო ცენტრის ნევროლოგიის ვიზიტი 2026-04-12 თარიღით აღწერს შენარჩუნებულ ტვინის ღეროს ფუნქციას და სტაბილურ კრუნჩხვის ზღურბლს."
+  },
+  {
+    "id": "S03",
+    "kind": "finding",
+    "domain": "Therapies",
+    "banned": false,
+    "en": "Cord-blood therapy data from Duke EAP shows reproducible safety signal across 47 enrolled patients.",
+    "ka": "ჭიპლარის სისხლის თერაპიის მონაცემები Duke EAP-დან აღწერს უსაფრთხოების სიგნალს 47 ჩარიცხულ პაციენტში."
+  },
+  {
+    "id": "S04",
+    "kind": "finding",
+    "domain": "Hypotheses",
+    "banned": false,
+    "en": "Hypothesis H-07 links vigabatrin washout duration to GABAergic rebound observed in pediatric HIE cohorts.",
+    "ka": "ჰიპოთეზა H-07 აკავშირებს ვიგაბატრინის გადაბარების ხანგრძლივობას GABA-ერგულ რეაქციასთან პედიატრიულ HIE კოჰორტებში."
+  },
+  {
+    "id": "S05",
+    "kind": "finding",
+    "domain": "Papers",
+    "banned": false,
+    "en": "PubMed PMID 12345678 reports a 2025 prospective trial of erythropoietin in 200 neonatal HIE cases.",
+    "ka": "PubMed PMID 12345678 აღწერს 2025 წლის ერითროპოეტინის პროსპექტულ კვლევას 200 ნეონატალურ HIE შემთხვევაში."
+  },
+  {
+    "id": "S06",
+    "kind": "source",
+    "domain": "Papers",
+    "banned": false,
+    "en": "Source provenance: Cochrane Review 2024, evidence-tier 1 systematic review of 14 RCTs.",
+    "ka": "წყაროს წარმომავლობა: Cochrane Review 2024, მტკიცებულების 1-ლი დონის სისტემური მიმოხილვა 14 RCT-ის შესახებ."
+  },
+  {
+    "id": "S07",
+    "kind": "source",
+    "domain": "Therapies",
+    "banned": false,
+    "en": "Source: ClinicalTrials.gov NCT04xxxxx, Phase II open-label safety extension by Duke DTRI.",
+    "ka": "წყარო: ClinicalTrials.gov NCT04xxxxx, Duke DTRI-ის II ფაზის ღია ეტიკეტის უსაფრთხოების გაგრძელება."
+  },
+  {
+    "id": "S08",
+    "kind": "source",
+    "domain": "Knowledge",
+    "banned": false,
+    "en": "Source: Imaging Neuroscience 2025 paper on FastSurfer-LIT lesion inpainting (DOI 10.1162/imag_a_00446).",
+    "ka": "წყარო: 2025 წლის Imaging Neuroscience-ის სტატია FastSurfer-LIT დაზიანების ინპეინთინგზე (DOI 10.1162/imag_a_00446)."
+  },
+  {
+    "id": "S09",
+    "kind": "source",
+    "domain": "Hypotheses",
+    "banned": false,
+    "en": "Source: BONBID-HIE 2024 challenge dataset of 133 patients with ADC and ZADC maps.",
+    "ka": "წყარო: BONBID-HIE 2024 გამოწვევის მონაცემთა ნაკრები 133 პაციენტისთვის ADC და ZADC რუკებით."
+  },
+  {
+    "id": "S10",
+    "kind": "source",
+    "domain": "Timeline",
+    "banned": false,
+    "en": "Source: BMC chart note 2026-03-08 by Dr. August documents stable EEG pattern.",
+    "ka": "წყარო: BMC-ის სამედიცინო ჩანაწერი 2026-03-08, ექიმი August აღწერს სტაბილურ EEG სურათს."
+  },
+  {
+    "id": "S11",
+    "kind": "evidence_strength",
+    "domain": "Therapies",
+    "banned": false,
+    "en": "Evidence-tier 2 finding — open-label case series, n=12, no control arm; effect-size estimate carries wide confidence interval.",
+    "ka": "მტკიცებულების მე-2 დონის მიგნება — ღია ეტიკეტის შემთხვევათა სერია, n=12, საკონტროლო ჯგუფის გარეშე; ეფექტის ზომის შეფასებას ფართო სანდოობის ინტერვალი აქვს."
+  },
+  {
+    "id": "S12",
+    "kind": "evidence_strength",
+    "domain": "Hypotheses",
+    "banned": false,
+    "en": "Evidence-tier 3 signal — mechanistic plausibility from rodent models; no human safety data yet.",
+    "ka": "მტკიცებულების მე-3 დონის სიგნალი — მექანიზმური დასაბუთება მღრღნელების მოდელებიდან; ადამიანის უსაფრთხოების მონაცემები ჯერ არ არსებობს."
+  },
+  {
+    "id": "S13",
+    "kind": "evidence_strength",
+    "domain": "Papers",
+    "banned": false,
+    "en": "Evidence quality: 2025 meta-analysis of 8 trials, I-squared 42%, pooled effect modest and statistically significant.",
+    "ka": "მტკიცებულების ხარისხი: 2025 წლის 8 კვლევის მეტა-ანალიზი, I-კვადრატი 42%, გაერთიანებული ეფექტი ზომიერი და სტატისტიკურად მნიშვნელოვანი."
+  },
+  {
+    "id": "S14",
+    "kind": "evidence_strength",
+    "domain": "Dashboard",
+    "banned": false,
+    "en": "Evidence-tier 1 anchor: 2023 NEJM RCT of 200 neonates establishes therapeutic hypothermia baseline.",
+    "ka": "მტკიცებულების 1-ლი დონის საფუძველი: 2023 წლის NEJM RCT 200 ახალშობილის შესახებ აღწერს თერაპიული ჰიპოთერმიის ბაზისს."
+  },
+  {
+    "id": "S15",
+    "kind": "evidence_strength",
+    "domain": "Knowledge",
+    "banned": false,
+    "en": "Evidence-tier 4 hypothesis: case report only, single patient, no replication attempted.",
+    "ka": "მტკიცებულების მე-4 დონის ჰიპოთეზა: მხოლოდ შემთხვევის ანგარიში, ერთი პაციენტი, რეპლიკაცია არ მცდელია."
+  },
+  {
+    "id": "S16",
+    "kind": "population_gap",
+    "domain": "Therapies",
+    "banned": false,
+    "en": "Population gap: published cord-blood data covers infants 1-12 months; Aleksandra's 9-month profile sits at the boundary of the studied range.",
+    "ka": "პოპულაციური ხარვეზი: გამოქვეყნებული ჭიპლარის სისხლის მონაცემები მოიცავს 1-12 თვის ჩვილებს; ალექსანდრას 9-თვიანი პროფილი მონაცემთა ჩარჩოს საზღვართან მდებარეობს."
+  },
+  {
+    "id": "S17",
+    "kind": "population_gap",
+    "domain": "Hypotheses",
+    "banned": false,
+    "en": "Population gap: existing RCTs exclude patients with preserved brainstem and diffuse cystic involvement — extrapolation is uncertain.",
+    "ka": "პოპულაციური ხარვეზი: არსებული RCT-ები გამორიცხავს პაციენტებს შენარჩუნებული ტვინის ღეროთი და დიფუზური ცისტური ჩართულობით — ექსტრაპოლაცია გაურკვეველია."
+  },
+  {
+    "id": "S18",
+    "kind": "population_gap",
+    "domain": "Papers",
+    "banned": false,
+    "en": "Population gap: dataset is North American urban; Eastern European cohort representation is below 4%.",
+    "ka": "პოპულაციური ხარვეზი: მონაცემთა ნაკრები ჩრდილოეთ ამერიკის ურბანული წარმოშობისაა; აღმოსავლეთ ევროპული კოჰორტის წარმომადგენლობა 4%-ზე ნაკლებია."
+  },
+  {
+    "id": "S19",
+    "kind": "population_gap",
+    "domain": "Timeline",
+    "banned": false,
+    "en": "Population gap: Wisconsin Virtual A2 program enrollment data is pediatric general; severe HIE subgroup size n=3.",
+    "ka": "პოპულაციური ხარვეზი: Wisconsin Virtual A2 პროგრამის ჩარიცხვის მონაცემები ზოგადი პედიატრიულია; მძიმე HIE ქვეჯგუფის ზომა n=3."
+  },
+  {
+    "id": "S20",
+    "kind": "population_gap",
+    "domain": "Knowledge",
+    "banned": false,
+    "en": "Population gap: TVB simulation cohort is adult; pediatric brain-parameter calibration is unpublished as of 2026-05.",
+    "ka": "პოპულაციური ხარვეზი: TVB სიმულაციის კოჰორტა ზრდასრულია; პედიატრიული ტვინის პარამეტრების კალიბრაცია გამოუქვეყნებელია 2026-05 თარიღით."
+  },
+  {
+    "id": "S21",
+    "kind": "clinician_question",
+    "domain": "Therapies",
+    "banned": false,
+    "en": "Question for Dr. Maypole: how does the 9-month-old preserved brainstem profile interact with vigabatrin washout timing before cord-blood EAP?",
+    "ka": "კითხვა ექიმ Maypole-სთვის: 9 თვის შენარჩუნებული ტვინის ღეროს პროფილი როგორ ურთიერთქმედებს ვიგაბატრინის გადაბარების დროსთან ჭიპლარის სისხლის EAP-მდე?"
+  },
+  {
+    "id": "S22",
+    "kind": "clinician_question",
+    "domain": "Hypotheses",
+    "banned": false,
+    "en": "Question for clinician review: under hypothesis H-07, what additional MRI sequences would clarify the GABAergic-rebound mechanism in this patient?",
+    "ka": "კითხვა კლინიცისტის გადასახედი: H-07 ჰიპოთეზის ფარგლებში რომელი MRI თანმიმდევრობები გაარკვევდა GABA-ერგულ რეაქციის მექანიზმს ამ პაციენტში?"
+  },
+  {
+    "id": "S23",
+    "kind": "clinician_question",
+    "domain": "Timeline",
+    "banned": false,
+    "en": "Question for Dr. Hien at next BMC visit: how do recent EEG findings inform the 6-month neurodevelopmental milestone framework?",
+    "ka": "კითხვა ექიმ Hien-სთვის BMC-ის შემდეგ ვიზიტზე: ბოლო EEG მიგნებები როგორ აისახება 6-თვიანი ნეიროგანვითარების ეტაპების ჩარჩოში?"
+  },
+  {
+    "id": "S24",
+    "kind": "clinician_question",
+    "domain": "Papers",
+    "banned": false,
+    "en": "Question for literature triage: which 2025-2026 papers in PubMed match the diffuse-cystic-with-preserved-brainstem phenotype?",
+    "ka": "კითხვა ლიტერატურის ტრიაჟის შესახებ: PubMed-ის რომელი 2025-2026 სტატიები შეესაბამება დიფუზური-ცისტური-შენარჩუნებული-ღეროს ფენოტიპს?"
+  },
+  {
+    "id": "S25",
+    "kind": "clinician_question",
+    "domain": "Today",
+    "banned": false,
+    "en": "Question for Jeanette Heitman at Wisconsin Virtual A2 check-in: which motor-development metric do you track at the 9-month interval?",
+    "ka": "კითხვა Jeanette Heitman-ისთვის Wisconsin Virtual A2-ის რეგისტრაციისას: 9-თვიან ინტერვალში მოტორული განვითარების რომელ მეტრიკას აღრიცხავთ?"
+  },
+  {
+    "id": "S26",
+    "kind": "finding",
+    "domain": "Today",
+    "banned": true,
+    "triggered_phrase": "should",
+    "en": "Aleksandra should start vigabatrin tomorrow.",
+    "ka": "ალექსანდრამ უნდა მიიღოს ვიგაბატრინი ხვალ."
+  },
+  {
+    "id": "S27",
+    "kind": "finding",
+    "domain": "Today",
+    "banned": true,
+    "triggered_phrase": "consider / განიხილეთ",
+    "en": "Please consider escalating the dose this week.",
+    "ka": "გთხოვთ განიხილეთ დოზის გაზრდა ამ კვირაში."
+  },
+  {
+    "id": "S28",
+    "kind": "finding",
+    "domain": "Today",
+    "banned": true,
+    "triggered_phrase": "try / სცადეთ",
+    "en": "The family must try the new therapy next month.",
+    "ka": "ოჯახმა სცადეთ ახალი თერაპია მომავალ თვეში."
+  },
+  {
+    "id": "S29",
+    "kind": "finding",
+    "domain": "Today",
+    "banned": true,
+    "triggered_phrase": "ask for / მოითხოვეთ",
+    "en": "We recommend you ask for second-opinion consultation.",
+    "ka": "მოითხოვეთ მეორე აზრის კონსულტაცია."
+  },
+  {
+    "id": "S30",
+    "kind": "finding",
+    "domain": "Today",
+    "banned": true,
+    "triggered_phrase": "request / ითხოვეთ",
+    "en": "Please request a referral to a specialist clinic.",
+    "ka": "ითხოვეთ მიმართვა სპეციალისტის კლინიკაში."
+  }
+]
