@@ -1,0 +1,50 @@
+-- PLACEHOLDER — populated by scripts/migrations/012_runbook.md step 2 before psql apply
+-- Phase 6 / Plan 06-06 authored this skeleton; Plan 06-07 (Shako-supervised) fills it.
+--
+-- ============================================================================
+-- Pre-flight audit (run BEFORE applying migration 012)
+-- ============================================================================
+--
+-- Plan 06-07 will populate this file with the live verification of:
+--
+--  A1. INDEX AUDIT — column-touching indexes on the 6 converted columns must
+--      be EMPTY. Grep each .policies.pre.txt for the column names; assert no
+--      index entry mentions them:
+--        - aleksandra_timeline.title        : EXPECTED no index entry
+--        - aleksandra_timeline.description  : EXPECTED no index entry
+--        - hypotheses.title                 : EXPECTED no index entry
+--        - hypotheses.description           : EXPECTED no index entry
+--        - therapies.name                   : EXPECTED no index entry
+--        - therapies.evidence_summary       : EXPECTED no index entry
+--      Verified at plan-authoring time by reading scripts/schema.sql + 002.
+--
+--  A7. TRIGGER AUDIT — triggers on the 4 tables referencing the converted
+--      columns must be EMPTY beyond the aleksandra_timeline_set_updated_at
+--      already known to touch only updated_at.
+--
+--  RLS POLICY COUNT (per table) — recorded for the runbook step-4 diff:
+--      aleksandra_timeline : 3 policies (family_read, service_write, service_update)
+--      hypotheses          : 2 policies (service_all, family_read)
+--      therapies           : 2 policies (service_all, family_read)
+--      briefs              : 2 policies (service_all, family_read)
+--                          + 1 CHECK constraint (briefs_phi_redacted_chk)
+--
+--  A3. workflows/daily_digest.json `"active": false` confirmed:
+--      Plan 06-07 populates `grep -c '"active": false' workflows/daily_digest.json` ≥ 1.
+--
+--  A4. scripts/manager/briefing.py + scripts/communicator/ JSONB call-site audit:
+--      Plan 06-07 populates `grep -rn "sections\[" scripts/manager/ scripts/communicator/`
+--      and `grep -rn "summary_lines\[" scripts/manager/ scripts/communicator/`.
+--      Any call site reading a string-shape field without a display_field_py-style
+--      helper becomes a follow-up backlog item.
+--
+-- ============================================================================
+-- Outcome (filled by 06-07)
+-- ============================================================================
+--   [ ] A1 PASS — no index conflicts
+--   [ ] A7 PASS — no trigger conflicts
+--   [ ] RLS counts recorded
+--   [ ] A3 daily_digest.json still inactive
+--   [ ] A4 no string-shape-assuming reader call sites identified
+--
+-- If any item FAILS, escalate to Shako BEFORE running psql -f 012_i18n_jsonb.sql.

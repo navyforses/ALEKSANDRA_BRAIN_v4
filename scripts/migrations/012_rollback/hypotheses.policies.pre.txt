@@ -1,0 +1,23 @@
+-- PLACEHOLDER — populated by scripts/migrations/012_runbook.md step 2 before psql apply
+-- Phase 6 / Plan 06-06 authored this skeleton.
+-- Phase 6 / Plan 06-07 (autonomous=false, Shako-supervised) will replace this file
+-- with the live output of:
+--     psql "$SUPABASE_DB_URL" -c "\d hypotheses"
+-- BEFORE running migration 012, and again into hypotheses.policies.post.txt AFTER.
+-- The PRE/POST diff proves RLS policies survived the TYPE conversion intact.
+--
+-- Expected populated content (per scripts/schema.sql + scripts/migrations/008_phase3_tables_and_rls.sql):
+--   Indexes:
+--     (status / confidence_level / hypothesis_type — none on title or description)
+--   Policies (set by migration 008 RLS tighten):
+--     hypotheses_service_all      (FOR ALL to service_role)
+--     hypotheses_family_read      (FOR SELECT to authenticated)
+--   Triggers:
+--     (none referencing title or description by name)
+--
+-- A1 verification target — 06-RESEARCH.md Assumptions Log:
+--   "The 4 target columns have no indexes (B-tree, GIN, or otherwise)"
+-- Confirmed by reading scripts/schema.sql + 002_aleksandra_timeline.sql at plan time;
+-- the populated form of this file is the live verification.
+--
+-- DO NOT commit live row data here; DDL-only.

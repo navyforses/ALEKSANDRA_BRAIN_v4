@@ -1,0 +1,26 @@
+-- PLACEHOLDER — populated by scripts/migrations/012_runbook.md step 2 before psql apply
+-- Phase 6 / Plan 06-06 authored this skeleton.
+-- Phase 6 / Plan 06-07 (autonomous=false, Shako-supervised) will replace this file
+-- with the live output of:
+--     psql "$SUPABASE_DB_URL" -c "\d briefs"
+-- BEFORE running migration 012, and again into briefs.policies.post.txt AFTER.
+-- The PRE/POST diff proves RLS policies survived the SHAPE conversion intact.
+--
+-- NOTE: briefs.sections is ALREADY JSONB pre-migration (defined in 008_phase3_tables_and_rls.sql).
+-- Migration 012 does NOT change its column TYPE; it rewrites the SHAPE of the values inside
+-- (each summary_line / papers[i].title / hypotheses[i].title / therapies[i].name /
+-- outreach[i].subject / questions[i].{question,context} becomes {en, ka}).
+-- Therefore RLS preservation is structural — UPDATE statements do not affect policies.
+--
+-- Expected populated content (per scripts/migrations/008_phase3_tables_and_rls.sql):
+--   Indexes:
+--     briefs_brief_week_idx
+--   Policies (set by migration 008):
+--     briefs_service_all     (FOR ALL to service_role)
+--     briefs_family_read     (FOR SELECT to authenticated)
+--   CHECK constraints:
+--     briefs_phi_redacted_chk (phi_redacted = TRUE)  — must remain after migration 012
+--   Triggers:
+--     (none referencing sections by name)
+--
+-- DO NOT commit live row data here; DDL-only.

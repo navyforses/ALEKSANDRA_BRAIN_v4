@@ -1,0 +1,22 @@
+-- PLACEHOLDER — populated by scripts/migrations/012_runbook.md step 2 before psql apply
+-- Phase 6 / Plan 06-06 authored this skeleton.
+-- Phase 6 / Plan 06-07 (autonomous=false, Shako-supervised) will replace this file
+-- with the live output of:
+--     psql "$SUPABASE_DB_URL" -c "\d aleksandra_timeline"
+-- BEFORE running migration 012, and again into aleksandra_timeline.policies.post.txt
+-- AFTER applying migration 012. The PRE/POST diff proves RLS policies (and indexes,
+-- and triggers) survived the TYPE conversion intact.
+--
+-- Expected populated content (per scripts/migrations/002_aleksandra_timeline.sql):
+--   Indexes:
+--     aleksandra_timeline_event_date_idx (event_date DESC)
+--     aleksandra_timeline_event_type_idx (event_type)
+--   Policies:
+--     aleksandra_timeline_family_read     (SELECT to authenticated, USING true)
+--     aleksandra_timeline_service_write   (INSERT to service_role, WITH CHECK true)
+--     aleksandra_timeline_service_update  (UPDATE to service_role, USING true WITH CHECK true)
+--   Triggers:
+--     aleksandra_timeline_set_updated_at  (BEFORE UPDATE → aleksandra_timeline_touch_updated_at())
+--
+-- DO NOT commit live row data here; this file holds DDL-only diagnostic output
+-- from `\d` (psql describe command). It is safe to commit.

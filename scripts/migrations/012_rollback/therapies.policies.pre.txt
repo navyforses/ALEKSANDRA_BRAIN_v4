@@ -1,0 +1,18 @@
+-- PLACEHOLDER — populated by scripts/migrations/012_runbook.md step 2 before psql apply
+-- Phase 6 / Plan 06-06 authored this skeleton.
+-- Phase 6 / Plan 06-07 (autonomous=false, Shako-supervised) will replace this file
+-- with the live output of:
+--     psql "$SUPABASE_DB_URL" -c "\d therapies"
+-- BEFORE running migration 012, and again into therapies.policies.post.txt AFTER.
+-- The PRE/POST diff proves RLS policies survived the TYPE conversion intact.
+--
+-- Expected populated content (per scripts/schema.sql + scripts/migrations/008_phase3_tables_and_rls.sql):
+--   Indexes:
+--     (therapy_type / aleksandra_status / evidence_in_hie — none on name or evidence_summary)
+--   Policies (set by migration 008 RLS tighten):
+--     therapies_service_all       (FOR ALL to service_role)
+--     therapies_family_read       (FOR SELECT to authenticated)
+--   Triggers:
+--     (none referencing name or evidence_summary by name)
+--
+-- DO NOT commit live row data here; DDL-only.
