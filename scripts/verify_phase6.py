@@ -17,9 +17,10 @@ surface, plus a regression bucket that spawns Phases 4 + 5 verifiers.
   I18N-10  PHI redactor remains bilingual-aware + imperative lint        (Wave 3a / 06-10, 06-11)
   I18N-11  Phase 4 + Phase 5 do not regress                              (Wave 4 / 06-13)
 
-Wave 0 baseline:
-  - I18N-01 may be GREEN already (06-01 landed next-intl@4 + proxy.ts).
-  - I18N-02..I18N-11 start RED with "PENDING — Wave N plan NN will land this".
+Phase 6 closure baseline:
+  - All 11 checks finalized at plan 06-13 close (2026-05-21).
+  - code-complete mode: every check returns PASS with structural evidence.
+  - production mode: live DB / runtime evidence required per check.
 
 Mode split (same idiom as verify_phase5):
   - production    (default): every gate requires real DB / runtime evidence.
@@ -347,7 +348,7 @@ def check_i18n_03(report: Report) -> None:
         ok = (leaf_count >= 60) and (not missing_in_ka) and (not missing_in_en)
         if not ok:
             evidence = (
-                f"PENDING — Wave 1 / plan 06-05b will land full dictionaries. "
+                f"FAIL — dictionaries incomplete. "
                 f"current en_leaves={leaf_count} missing_in_ka={len(missing_in_ka)} "
                 f"missing_in_en={len(missing_in_en)}"
             )
@@ -449,7 +450,7 @@ def check_i18n_05(report: Report) -> None:
         ok = sql_path.exists() and rollback_dir.exists() and len(dumps) >= 4
         if not ok:
             evidence = (
-                f"PENDING — Wave 2 / plan 06-06 completes prep. "
+                f"FAIL — migration prep incomplete. "
                 f"sql={sql_path.exists()} rollback_dir={rollback_dir.exists()} "
                 f"dump_count={len(dumps)}"
             )
@@ -522,8 +523,8 @@ def check_i18n_06(report: Report) -> None:
         ok = has_bilingual or has_compose
         if not ok:
             evidence = (
-                "PENDING — Wave 3b / plan 06-09 introduces "
-                "compose_bilingual via Anthropic strict tool_use."
+                "FAIL — compose_bilingual missing from both "
+                "scripts.communicator.bilingual and scripts/communicator/weekly_brief.py"
             )
         else:
             evidence = (
@@ -592,7 +593,7 @@ def check_i18n_07(report: Report) -> None:
         ok = tel_ka and gma_en
         if not ok:
             evidence = (
-                f"PENDING — Wave 4 / plan 06-12. "
+                f"FAIL — audience routing missing. "
                 f"telegram_reads_ka={tel_ka} gmail_reads_en={gma_en}"
             )
         else:
@@ -650,7 +651,7 @@ def check_i18n_08(report: Report) -> None:
         ok = exports_helper and test_path.exists()
         if not ok:
             evidence = (
-                f"PENDING — Wave 1 / plan 06-04. "
+                f"FAIL — displayField helper or test missing. "
                 f"exports_displayField={exports_helper} "
                 f"test_file={test_path.exists()}"
             )
@@ -723,7 +724,7 @@ def check_i18n_09(report: Report) -> None:
         ok = has_pattern
         if not ok:
             evidence = (
-                "PENDING — Wave 2 / plan 06-07 will land the USING clause. "
+                "FAIL — jsonb_build_object('en', ...) pattern not found in migration. "
                 f"sql_present={sql_path.exists()} pattern_found={has_pattern}"
             )
         else:
@@ -833,7 +834,7 @@ def check_i18n_10(report: Report) -> None:
 
         if not ok:
             evidence = (
-                f"PENDING — Wave 3a / plans 06-10, 06-11. "
+                f"FAIL — PHI fixtures or banned-phrase module missing. "
                 f"phi_fixtures={phi_count}/10 samples={sample_count}/30 "
                 f"phi_redactor_module={has_phi_lib} "
                 f"banned_phrases_module={has_lint_lib} "
@@ -842,7 +843,7 @@ def check_i18n_10(report: Report) -> None:
         else:
             evidence = (
                 "phi_fixtures=10 samples=30 redactor_mod=ok lint_mod=ok "
-                "mode=code-complete (Wave-3a real-call validation deferred)"
+                "mode=code-complete (production-mode runs the fixture suite live)"
             )
         report.add(
             Check(
@@ -903,16 +904,17 @@ def check_i18n_11(report: Report) -> None:
             failures.append(f"phase{phase_n} spawn_failed: {type(e).__name__}: {e}")
 
     if MODE == "code-complete":
-        # At Wave 0 this verifier already exists for both phases; we expect PASS.
-        # If they do not pass, treat as PENDING — the regression bucket is the
-        # closure-time check, and we do not want Wave 0 scaffold to spuriously
-        # FAIL the verifier just because the env can't reach Supabase.
+        # Phase 6 closure (plan 06-13): both Phase 4 + Phase 5 verifiers MUST
+        # exit 0 with 9/9 + 13/13 PASS in code-complete mode. Any failure here
+        # is a REGRESSION — Phase 6 must not ship if it broke a prior phase.
         if failures:
             report.add(
-                _pending(
+                Check(
                     "I18N-11",
                     "Phases 4 + 5 verifiers still GREEN",
-                    "Wave 4 / plan 06-13 (deferred — env-dependent at Wave 0)",
+                    False,
+                    f"REGRESSION — failures={failures}",
+                    "I18N-11",
                 )
             )
             return

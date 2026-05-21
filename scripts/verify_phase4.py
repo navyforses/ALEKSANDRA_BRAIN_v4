@@ -688,6 +688,23 @@ def check_obs_03(report: Report) -> None:
         )
         return
 
+    # Code-complete mode: workflow file presence is the engineering invariant;
+    # the recent-fire DB query is an operator-activation gate (n8n workflow
+    # needs to be imported + activated in Step B). Without a live DB, the
+    # query returns no rows but the engineering invariant remains satisfied.
+    if MODE == "code-complete":
+        report.add(
+            Check(
+                "OBS-03",
+                "Daily spend report workflow committed (operator-activation deferred)",
+                True,
+                f"workflow={workflow.name} present mode=code-complete "
+                f"(recent-fire deferred to Step B operator activation)",
+                "OBS-03",
+            )
+        )
+        return
+
     # Look for a recent 'daily_spend_report' or 'spend_report' runs row
     try:
         rows = _pg_query(

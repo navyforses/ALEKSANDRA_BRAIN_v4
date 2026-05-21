@@ -136,10 +136,23 @@ def check_mng_01(report: Report) -> None:
         return
 
     layout_src = layout.read_text(encoding="utf-8")
-    mounts = "BrainPanel" in layout_src and "<BrainPanel" in layout_src
-    today = (VIEWER / "app" / "today" / "page.tsx").exists()
+    # Post-Phase-6 (06-03b): root layout is a children pass-through; the BrainPanel
+    # mount lives in viewer/app/[locale]/layout.tsx. Accept either location.
+    locale_layout = VIEWER / "app" / "[locale]" / "layout.tsx"
+    locale_layout_src = (
+        locale_layout.read_text(encoding="utf-8") if locale_layout.exists() else ""
+    )
+    mounts = ("BrainPanel" in layout_src and "<BrainPanel" in layout_src) or (
+        "BrainPanel" in locale_layout_src and "<BrainPanel" in locale_layout_src
+    )
+    # Post-Phase-6 (06-03a): family-facing routes live under app/[locale]/.
+    today = (VIEWER / "app" / "today" / "page.tsx").exists() or (
+        VIEWER / "app" / "[locale]" / "today" / "page.tsx"
+    ).exists()
     brain_route = (VIEWER / "app" / "brain" / "page.tsx").exists()
-    know = (VIEWER / "app" / "knowledge" / "page.tsx").exists()
+    know = (VIEWER / "app" / "knowledge" / "page.tsx").exists() or (
+        VIEWER / "app" / "[locale]" / "knowledge" / "page.tsx"
+    ).exists()
 
     ok = mounts and today and brain_route and know
     report.add(
@@ -510,7 +523,11 @@ def check_mng_09(report: Report) -> None:
     has_route = (
         VIEWER / "app" / "api" / "manager" / "undo" / "[id]" / "route.ts"
     ).exists()
-    has_audit_page = (VIEWER / "app" / "audit-log" / "page.tsx").exists()
+    # Post-Phase-6: audit surface lives at viewer/app/audit/page.tsx (sibling root layout
+    # outside the [locale]/ tree, per 06-03b deviation). Accept legacy 'audit-log' path too.
+    has_audit_page = (VIEWER / "app" / "audit-log" / "page.tsx").exists() or (
+        VIEWER / "app" / "audit" / "page.tsx"
+    ).exists()
 
     if not has_undo:
         report.add(
