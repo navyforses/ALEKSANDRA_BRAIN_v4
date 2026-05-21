@@ -124,24 +124,24 @@ Qdrant Docker-ით ეშვება localhost:6333.
 
 ---
 
-## პუნქტი 1.4 — Cloudflare R2 + KV
+## პუნქტი 1.4 — Cloudflare R2
+
+> **შენიშვნა (2026-05-21):** KV deprecated — Postgres-მა შთანთქა dedup/budget/state როლები. მხოლოდ R2 (object storage) გვჭირდება.
 
 **ლინკი:** https://dash.cloudflare.com/
 
 **ნაბიჯები:**
 1. cloudflare.com → Sign Up (უფასო)
 2. R2 Object Storage → Create Bucket → `aleksandra-brain-storage`
-3. Workers & Pages → KV → Create Namespace → `aleksandra-brain-cache`
-4. My Profile → API Tokens → Create Token → R2 read/write
-5. .env:
+3. My Profile → API Tokens → Create Token → R2 read/write
+4. .env:
 ```
 CLOUDFLARE_ACCOUNT_ID=xxxx
 CLOUDFLARE_R2_ACCESS_KEY_ID=xxxx
 CLOUDFLARE_R2_SECRET_ACCESS_KEY=xxxx
-CLOUDFLARE_KV_NAMESPACE_ID=xxxx
 ```
 
-**შედეგის შემოწმება:** R2-ში bucket ჩანს? KV namespace ჩანს? ✅
+**შედეგის შემოწმება:** R2-ში bucket ჩანს? ✅
 
 ---
 
@@ -430,7 +430,7 @@ FastMCP @mcp.tool() decorator-ებით.
 □ n8n             → workflows visible?
 □ Zapier          → connection?
 □ Vercel          → projects visible?
-□ Cloudflare ×2   → workers/KV/R2?
+□ Cloudflare      → R2 bucket? (KV deprecated 2026-05-21)
 □ Netlify         → connection?
 □ Canva           → connection?
 □ Figma           → connection?

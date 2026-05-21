@@ -32,7 +32,7 @@ ALEKSANDRA_BRAIN v4.0 — მუდმივად მოქმედი AI ს�
 - mem0 (53K⭐, 5 აგენტის shared memory)
 - Hindsight (10K⭐, self-improving memory)
 - Prism MCP (HIPAA-hardened)
-- Cloudflare R2/KV (storage/cache)
+- Cloudflare R2 (storage; KV deprecated 2026-05-21 — Postgres absorbed dedup + budget + state)
 
 ### COGNITION (აზროვნება)
 - CrewAI (49K⭐, 5 აგენტი):
@@ -72,7 +72,7 @@ Custom MCP = FastMCP-ით (24K⭐, Python decorators)
 ## Tech Stack
 - Frontend: Next.js 14, Tailwind, shadcn/ui, Vercel
 - Backend: CrewAI, n8n (Railway), Supabase Edge Functions, CF Workers
-- Data: Neo4j AuraDB, Qdrant Docker, Supabase PostgreSQL, CF R2/KV
+- Data: Neo4j AuraDB, Qdrant Docker, Supabase PostgreSQL, CF R2 (KV deprecated)
 - AI: Claude Sonnet 4, DSPy, mem0, LightRAG
 - 3D: NiiVue, R3F, drei, postprocessing
 
@@ -173,7 +173,7 @@ A continuously-running AI research system that hunts, evaluates, and surfaces tr
 | **LightRAG** (HKUDS) | v1.4.16 (May 7, 2026) | **Single combined graph+vector query** for the Spider/Analyzer agents | Replaces hand-rolled "query Neo4j + query Qdrant + merge" logic. May 2026 release adds OpenSearch backend + setup wizard + Langfuse tracing + RAGAS evaluation. EMNLP 2025 paper. |
 | **mem0** | 2026 token-efficient algorithm (April 2026 release; 91.6% accuracy at <7K tokens, +29.6 pts on temporal queries) | **Shared memory across the 5 CrewAI agents** (Spider ↔ Analyzer ↔ Hypothesis ↔ Repurposing ↔ Communicator) | This is mem0's exact sweet spot. April 2026 algorithm is dramatically better on temporal/multi-hop reasoning — both directly relevant. **OpenMemory MCP** lets the same memory store also serve Claude Desktop / Cursor. |
 | **Cloudflare R2** | Free tier (10 GB storage, 1M Class-A ops, 10M Class-B ops/mo, **zero egress**) | Raw artifacts (cached HTML, PDFs, scraped JSON) | Egress-free is the killer feature — your Crawl4AI nightly run can re-read freely. |
-| **Cloudflare Workers KV** | Free tier (limited, included with Free Workers plan) | Hot cache for n8n workflow state, dedup keys, source URLs seen | Daily-reset limits but free. Pair with R2 for cold artifacts. |
+| ~~**Cloudflare Workers KV**~~ (deprecated 2026-05-21) | ~~Free tier~~ | ~~Hot cache for n8n workflow state, dedup keys, source URLs seen~~ | **DEPRECATED.** Phase 1–3 implementation absorbed all three roles into Supabase Postgres: URL dedup via `papers` UNIQUE constraints; workflow state via `runs` table; Firecrawl spend cap via `runs.cost_usd` ledger + `scripts/cognition/budget.py`. KV never instantiated in code; ghost Cloudflare Worker `aleksandrabrane4` slated for disconnect. |
 - **Hindsight** (self-improving memory): brings real value once you have **months** of agent traces to learn from. Adopt at Phase 3+, not MVP.
 - **Prism MCP** (HIPAA-hardened on-device memory with `prism-coder:7b`): adopt **when a clinician needs read access**, not before. Until then, your PHI surface (MRI) is client-side-only anyway and PHI never enters server memory. Bringing Prism in early adds an on-device LLM dependency you don't need yet.
 ### COGNITION Layer — Reasoning & Agents
@@ -220,7 +220,7 @@ A continuously-running AI research system that hunts, evaluates, and surfaces tr
 ## Recommended MVP-vs-Full Cost Breakdown
 | Tier | Component cost | Total |
 |---|---|---|
-| **MVP ($20–30/mo target)** | Vercel Hobby $0 + AuraDB Free $0 + Supabase Free $0 + CF R2/KV Free $0 + Railway ~$15 (n8n + Qdrant + 1 worker) + Firecrawl Hobby $16 + Claude API metered (start with $5/mo cap) | **~$36/mo** at the cap (slightly over the floor; well under $120). Drop Firecrawl Hobby for first month to hit $20. |
+| **MVP ($20–30/mo target)** | Vercel Hobby $0 + AuraDB Free $0 + Supabase Free $0 + CF R2 Free $0 (KV deprecated) + Railway ~$15 (n8n + Qdrant + 1 worker) + Firecrawl Hobby $16 + Claude API metered (start with $5/mo cap) | **~$36/mo** at the cap (slightly over the floor; well under $120). Drop Firecrawl Hobby for first month to hit $20. |
 | **Full ($120/mo target)** | + Railway expansion to ~$30 (RAGFlow, additional worker) + Firecrawl Standard credits as needed + Claude API headroom ~$40 + AuraDB Professional only if you grow beyond Free | **~$110–120/mo** sustainable. |
 ## Installation (canonical bootstrap)
 # Python / agents / MCP servers (uv recommended over pip in 2026)
