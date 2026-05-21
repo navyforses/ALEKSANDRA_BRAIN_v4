@@ -130,7 +130,7 @@ Phases execute in numeric order: 0 → 1 → 2 → 2.5 → 3 → 4 → 5 → 6
 | 3. Cognition (minimum) | 0/TBD | Closed — 11/11 PASS | 2026-05-16 |
 | 4. First Family Value | 0/TBD | Engineering closed 9/9 PASS; 14-day acceptance window in progress (closes ~2026-06-07) | 2026-05-17 (engineering) |
 | 5. BRAIN AI Manager Assistant | 0/TBD | Closed — 13/13 PASS · ALL GREEN | 2026-05-18 |
-| 6. Bilingual System (i18n) | 10/15 | In Progress|  |
+| 6. Bilingual System (i18n) | 14/15 | In Progress|  |
 
 ## Coverage
 
@@ -168,7 +168,7 @@ Phases execute in numeric order: 0 → 1 → 2 → 2.5 → 3 → 4 → 5 → 6
 **Goal:** By the end of this phase, every family-facing viewer route is reachable under `/en/*` and `/ka/*` URL segments and renders fully in the matching language; the 4 family-visible dynamic tables (`aleksandra_timeline`, `hypotheses`, `therapies`, `briefs`) store en+ka pairs in JSONB columns with English fallback; the Communicator and Phase 5 composer emit `{en, ka}` pairs for all newly-created family-visible content; and Telegram delivery uses `.ka` while Gmail delivery uses `.en`.
 **Depends on:** Phase 5 (does not block on Phase 5 production activation; the two run independently)
 **Requirements**: I18N-01, I18N-02, I18N-03, I18N-04, I18N-05, I18N-06, I18N-07, I18N-08, I18N-09, I18N-10, I18N-11
-**Plans:** 10/15 plans executed
+**Plans:** 14/15 plans executed
 
 Plans:
 **Wave 1**
@@ -191,7 +191,7 @@ Plans:
 - [x] 06-11-PLAN.md — banned_phrases.py D-05 lexicon extension (8 new Georgian imperative-verb entries) + 39-test regression suite + Shako review checkpoint
 
 **Wave 4** *(blocked on Wave 3 completion)*
-- [ ] 06-12-PLAN.md — _bilingual_read.py display_field_py helper + telegram_sender reads .ka + gmail_digest reads .en + n8n zero-touch documentation
+- [x] 06-12-PLAN.md — _bilingual_read.py display_field_py helper + telegram_sender reads .ka + gmail_digest reads .en + n8n zero-touch documentation
 - [ ] 06-13-PLAN.md — Finalize verify_phase6.py + production-mode 11/11 sweep + verify_phase4 9/9 + verify_phase5 13/13 regression + Phase 6 exit report + STATE/ROADMAP/REQUIREMENTS/CLAUDE updates
 
 **Cross-cutting constraints:**
