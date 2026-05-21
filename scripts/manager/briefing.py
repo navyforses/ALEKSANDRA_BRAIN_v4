@@ -52,11 +52,75 @@ class BriefingTooLong(RuntimeError):
     pass
 
 
+# ---------------------------------------------------------------------------
+# Phase 6 I18N-06 / D-02 — bilingual emission for manager-briefing template strings
+# ---------------------------------------------------------------------------
+# The manager briefing is deterministic Python templating (no LLM call). Per
+# RESEARCH.md Pattern 6 Recommendation, use Option A (deterministic prose
+# mirror) — zero Anthropic cost. The Telegram audience is the family; the
+# .ka half is the primary read surface (per Phase 6 D-02 per-tier policy +
+# the audience routing landing in plan 06-12).
+#
+# TODO(Phase 6 execute): Shako sanity-check these template strings before merge.
+# Translations avoid the D-05 banned imperatives (უნდა, აუცილებლად, განიხილეთ,
+# მოითხოვეთ, ითხოვეთ, განიხილეთ, გაითვალისწინეთ, სცადეთ) — descriptive
+# evidence-grade Georgian only.
+BRIEFING_TEMPLATES_KA: dict[str, str] = {
+    "good_morning": "დილა მშვიდობისა.",
+    "today_event": "• დღეს: {title}",
+    "today_event_at": "• დღეს: {title} @ {loc}",
+    "today_more": " (+{n} მეტი)",
+    "today_none": "• დღეს: შეხვედრები არ არის",
+    "activity_evidence": "{n} ახალი წყარო (24სთ)",
+    "activity_top_therapy": "მთავარი თერაპია {name}",
+    "activity_prefix": "• აქტიურობა: ",
+    "activity_quiet": "• აქტიურობა: მშვიდი ბოლო 24სთ-ში",
+    "follow_pending": "• გასაგზავნი: {n} მონახაზი მიმოხილვისთვის",
+    "follow_clear": "• გასაგზავნი: ფოსტა გასუფთავებულია",
+}
+
+
+def _build_bilingual_bullets(
+    today_line_key: str,
+    today_args: dict[str, Any],
+    activity_line_key: str,
+    activity_args: dict[str, Any],
+    follow_line_key: str,
+    follow_args: dict[str, Any],
+    *,
+    en_today: str,
+    en_activity: str,
+    en_follow: str,
+) -> list[dict[str, str]]:
+    """Render the 3-bullet bilingual structure for persistence in briefs.sections.
+
+    Each bullet is `{en, ka}`. The deterministic English half is passed in
+    pre-built (it already matches the str-only message text); the Georgian
+    half is rendered from BRIEFING_TEMPLATES_KA. The text body used for
+    Telegram send keeps the English-only form for backward compat with
+    Phase 5 dispatch infrastructure — Phase 6 plan 06-12 swaps it.
+    """
+
+    def _ka(key: str, args: dict[str, Any]) -> str:
+        return BRIEFING_TEMPLATES_KA[key].format(**args)
+
+    return [
+        {"en": en_today, "ka": _ka(today_line_key, today_args)},
+        {"en": en_activity, "ka": _ka(activity_line_key, activity_args)},
+        {"en": en_follow, "ka": _ka(follow_line_key, follow_args)},
+    ]
+
+
 @dataclass
 class BriefMessage:
     text: str
     word_count: int
     bullets: list[str] = field(default_factory=list)
+    # Phase 6 I18N-06: bilingual_bullets is the {en, ka} mirror of `bullets`
+    # persisted into briefs.sections JSONB per migration 012's reshape. The
+    # English-only `text` field is preserved for backward-compat Telegram
+    # dispatch (plan 06-12 swaps the Telegram body to read .ka).
+    bilingual_bullets: list[dict[str, str]] = field(default_factory=list)
 
 
 def _open():
@@ -140,35 +204,71 @@ def compose(
     pending_outreach_count: int,
 ) -> BriefMessage:
     """Build the 3-bullet ≤ 50-word message. Deterministic, no LLM."""
+    # Phase 6 I18N-06: build both halves of each bullet at the same time so the
+    # Georgian renderings stay structurally identical to the English ones.
     if today_events:
         ev = today_events[0]
         loc = ev.get("institution") or ""
-        today_line = f"• Today: {ev['title']}" + (f" @ {loc}" if loc else "")
+        title_str = str(ev["title"]) if ev["title"] else ""
+        today_line = f"• Today: {title_str}" + (f" @ {loc}" if loc else "")
         if len(today_events) > 1:
             today_line += f" (+{len(today_events) - 1} more)"
+        # Bilingual mirror
+        if loc:
+            today_key = "today_event_at"
+            today_args: dict[str, Any] = {"title": title_str, "loc": loc}
+        else:
+            today_key = "today_event"
+            today_args = {"title": title_str}
+        ka_today = BRIEFING_TEMPLATES_KA[today_key].format(**today_args)
+        if len(today_events) > 1:
+            ka_today += BRIEFING_TEMPLATES_KA["today_more"].format(
+                n=len(today_events) - 1
+            )
     else:
         today_line = "• Today: no appointments"
+        ka_today = BRIEFING_TEMPLATES_KA["today_none"]
 
     activity_bits: list[str] = []
+    activity_bits_ka: list[str] = []
     if last_24h_evidence_count:
         activity_bits.append(f"{last_24h_evidence_count} new sources (24h)")
+        activity_bits_ka.append(
+            BRIEFING_TEMPLATES_KA["activity_evidence"].format(n=last_24h_evidence_count)
+        )
     if top_therapy:
         activity_bits.append(f"top therapy {top_therapy}")
-    activity_line = (
-        "• Activity: " + "; ".join(activity_bits)
-        if activity_bits
-        else "• Activity: quiet last 24h"
-    )
+        activity_bits_ka.append(
+            BRIEFING_TEMPLATES_KA["activity_top_therapy"].format(name=top_therapy)
+        )
+    if activity_bits:
+        activity_line = "• Activity: " + "; ".join(activity_bits)
+        ka_activity = BRIEFING_TEMPLATES_KA["activity_prefix"] + "; ".join(
+            activity_bits_ka
+        )
+    else:
+        activity_line = "• Activity: quiet last 24h"
+        ka_activity = BRIEFING_TEMPLATES_KA["activity_quiet"]
 
-    follow_line = (
-        f"• Follow-ups: {pending_outreach_count} draft"
-        + ("s" if pending_outreach_count != 1 else "")
-        + " awaiting send"
-        if pending_outreach_count
-        else "• Follow-ups: inbox clear"
-    )
+    if pending_outreach_count:
+        follow_line = (
+            f"• Follow-ups: {pending_outreach_count} draft"
+            + ("s" if pending_outreach_count != 1 else "")
+            + " awaiting send"
+        )
+        ka_follow = BRIEFING_TEMPLATES_KA["follow_pending"].format(
+            n=pending_outreach_count
+        )
+    else:
+        follow_line = "• Follow-ups: inbox clear"
+        ka_follow = BRIEFING_TEMPLATES_KA["follow_clear"]
 
     bullets = [today_line, activity_line, follow_line]
+    bilingual_bullets = [
+        {"en": today_line, "ka": ka_today},
+        {"en": activity_line, "ka": ka_activity},
+        {"en": follow_line, "ka": ka_follow},
+    ]
     text = "Good morning. " + "\n".join(bullets)
     wc = _count_words(text)
 
@@ -177,12 +277,19 @@ def compose(
         shorter = [today_line, follow_line]
         text = "Good morning. " + "\n".join(shorter)
         wc = _count_words(text)
+        # bilingual_bullets keeps all 3 bullets — JSONB audit trail is allowed
+        # to be richer than the truncated Telegram body.
         if wc > WORD_CAP:
             words = text.split()
             text = " ".join(words[:WORD_CAP])
             wc = WORD_CAP
 
-    return BriefMessage(text=text, word_count=wc, bullets=bullets)
+    return BriefMessage(
+        text=text,
+        word_count=wc,
+        bullets=bullets,
+        bilingual_bullets=bilingual_bullets,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -197,9 +304,15 @@ def _insert_briefs_row(
         print(f"[briefs.write] supabase creds missing: {e}", file=sys.stderr)
         return None
 
+    # Phase 6 I18N-06 / D-02: persist the bilingual bullet bodies into the
+    # `briefs.sections` JSONB so the Telegram audience routing (plan 06-12)
+    # can read .ka and the Gmail-side audit can read .en. The legacy
+    # English-only `bullets` field is retained for backward-compat with any
+    # downstream consumer that still reads scalar strings.
     sections = {
         "kind": "manager_morning_briefing",
         "bullets": msg.bullets,
+        "bilingual_bullets": msg.bilingual_bullets,
         "word_count": msg.word_count,
         "dispatched_message_id": dispatched_message_id,
     }
