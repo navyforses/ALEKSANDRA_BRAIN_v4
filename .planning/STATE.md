@@ -4,14 +4,14 @@ milestone: v1.0
 milestone_name: milestone
 status: executing
 stopped_at: Completed 06-10-PLAN.md (PHI bilingual redactor; 13/13 pytest GREEN; Phase 3 CGM-02 no regression)
-last_updated: "2026-05-21T12:04:42.905Z"
+last_updated: "2026-05-21T12:53:38.687Z"
 last_activity: 2026-05-21
 progress:
   total_phases: 8
   completed_phases: 0
   total_plans: 15
-  completed_plans: 12
-  percent: 80
+  completed_plans: 13
+  percent: 87
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-13)
 ## Current Position
 
 Phase: 6 of 8 (Bilingual System i18n)
-Plan: 12 of 15 in current phase (06-11 complete — D-05 8-entry Georgian imperative-verb lexicon appended to scripts/communicator/banned_phrases.py with TODO(shako-review) markers + per-locale scoping already in place; 65-case pytest regression suite (tests/test_imperative_verb_lint_georgian.py) GREEN; Phase 6 verifier check_i18n_10 PASS in bucket C; Phase 3 CGM-04 unregressed. Auto-mode override of checkpoint:human-verify Task 3 against locked CONTEXT.md D-05; Shako native-speaker re-verify deferred to maintenance todo .planning/todos/pending/2026-05-21-shako-verify-06-11-lexicon.md (P2). Wave 3a fully consumed; Wave 3b 06-09 (Communicator compose_bilingual) is next blocker for I18N-06)
+Plan: 13 of 15 in current phase (06-11 complete — D-05 8-entry Georgian imperative-verb lexicon appended to scripts/communicator/banned_phrases.py with TODO(shako-review) markers + per-locale scoping already in place; 65-case pytest regression suite (tests/test_imperative_verb_lint_georgian.py) GREEN; Phase 6 verifier check_i18n_10 PASS in bucket C; Phase 3 CGM-04 unregressed. Auto-mode override of checkpoint:human-verify Task 3 against locked CONTEXT.md D-05; Shako native-speaker re-verify deferred to maintenance todo .planning/todos/pending/2026-05-21-shako-verify-06-11-lexicon.md (P2). Wave 3a fully consumed; Wave 3b 06-09 (Communicator compose_bilingual) is next blocker for I18N-06)
 Status: Ready to execute
 Last activity: 2026-05-21
 
-Progress: [████████░░] 80%
+Progress: [█████████░] 87%
 
 ## Performance Metrics
 
@@ -68,6 +68,7 @@ Progress: [████████░░] 80%
 | Phase 06 P08 | 28m | 3 tasks | 5 files |
 | Phase 06 P06-10 | 8min | 3 tasks | 2 files |
 | Phase 06 P06-11 | 13min | 3 tasks | 3 files |
+| Phase 06 P06-09 | 25m | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -128,6 +129,9 @@ Recent decisions affecting current work:
 - [Phase ?]: Deterministic _CLINICIAN_PATTERNS literal list for PHI scrubbing — DB-derived consent.known_doctor_names was empty under no-DB / test conditions, leaking Dr. Hien. Literal fallback runs in all contexts; DB names augment (06-10)
 - [Phase ?]: redact_bilingual({en, ka}, consent) is a pure wrapper over redact() — Single-string redact() signature unchanged → Phase 3 CGM-02 invariants preserved (12/12 still PASS); bilingual OR-block contract is the only new behavior (06-10)
 - [Phase ?]: Phase 6 (plan 06-11, 2026-05-21): Auto-mode override of checkpoint:human-verify gate — D-05 lexicon auto-approved against locked CONTEXT.md reference; Shako native-speaker re-verify deferred to maintenance todo .planning/todos/pending/2026-05-21-shako-verify-06-11-lexicon.md (P2). Lint is functional today; gap is review-not-yet-done, not code-not-correct.
+- [Phase ?]: Phase 6 (plan 06-09, 2026-05-21): compose_bilingual uses scripts.cognition.budget.check_daily_budget (not scripts.ledger as PLAN said). Same FND-04 ceiling and raise_on_over semantics; real import path.
+- [Phase ?]: Phase 6 (plan 06-09, 2026-05-21): BILINGUAL_TEST_MODE=1 env var (or unset ANTHROPIC_API_KEY) returns deterministic stub. Verifier and CI exercise the code path without burning Anthropic credits. Georgian half is marked so downstream consumers can detect test-mode rows.
+- [Phase ?]: Phase 6 (plan 06-09, 2026-05-21): BriefSections.summary_lines re-typed list[str] to list[dict[str,str]]. render_pdf reads .en for display (ReportLab default font cannot render Mkhedruli); .ka half persists to briefs.sections JSONB for Telegram routing landed in plan 06-12. Option A (deterministic mirror) used for weekly_brief and manager/briefing template strings per RESEARCH.md Pattern 6 (zero Anthropic cost).
 
 ### Pending Todos
 
@@ -153,6 +157,6 @@ Items acknowledged and carried forward:
 
 ## Session Continuity
 
-Last session: 2026-05-21T12:03:27.729Z
+Last session: 2026-05-21T12:51:46.412Z
 Stopped at: Completed 06-10-PLAN.md (PHI bilingual redactor; 13/13 pytest GREEN; Phase 3 CGM-02 no regression)
 Resume file: None

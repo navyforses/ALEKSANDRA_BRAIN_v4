@@ -186,7 +186,7 @@ Plans:
 - [x] 06-08-PLAN.md — Update manager apply route to write JSONB shape + Timeline/Therapies/Hypotheses pages render via displayField
 
 **Wave 3** *(blocked on Wave 2 completion)*
-- [ ] 06-09-PLAN.md — scripts/communicator/bilingual.py compose_bilingual helper (Anthropic strict tool_use) + weekly_brief Option-A mirror + Communicator/manager_briefing JSONB emission
+- [x] 06-09-PLAN.md — scripts/communicator/bilingual.py compose_bilingual helper (Anthropic strict tool_use) + weekly_brief Option-A mirror + Communicator/manager_briefing JSONB emission
 - [x] 06-10-PLAN.md — phi_redactor.py bilingual-aware (Mkhedruli suffix glue) + redact_bilingual helper + 13-test pytest suite over the 10 Georgian PHI fixtures
 - [x] 06-11-PLAN.md — banned_phrases.py D-05 lexicon extension (8 new Georgian imperative-verb entries) + 39-test regression suite + Shako review checkpoint
 
