@@ -130,7 +130,7 @@ Phases execute in numeric order: 0 → 1 → 2 → 2.5 → 3 → 4 → 5 → 6
 | 3. Cognition (minimum) | 0/TBD | Closed — 11/11 PASS | 2026-05-16 |
 | 4. First Family Value | 0/TBD | Engineering closed 9/9 PASS; 14-day acceptance window in progress (closes ~2026-06-07) | 2026-05-17 (engineering) |
 | 5. BRAIN AI Manager Assistant | 0/TBD | Closed — 13/13 PASS · ALL GREEN | 2026-05-18 |
-| 6. Bilingual System (i18n) | 5/15 | Executing — Wave 0 closed + Wave 1 06-03a + 06-04 + 06-05a complete (bilingual dictionaries authored: viewer/messages/{en,ka}.json 143 leaves × 2 locales across 11 namespaces; recursive key-set equality verified; 99.3% Mkhedruli coverage; verifier 4/11 PASS — check_i18n_03 page-side still PENDING until 06-05b consumes the dictionaries); 06-05b next to wire t(...) calls across 9 family-facing routes + TopNav | 2026-05-21 (06-05a) |
+| 6. Bilingual System (i18n) | 6/15 | In Progress|  |
 
 ## Coverage
 
@@ -168,7 +168,7 @@ Phases execute in numeric order: 0 → 1 → 2 → 2.5 → 3 → 4 → 5 → 6
 **Goal:** By the end of this phase, every family-facing viewer route is reachable under `/en/*` and `/ka/*` URL segments and renders fully in the matching language; the 4 family-visible dynamic tables (`aleksandra_timeline`, `hypotheses`, `therapies`, `briefs`) store en+ka pairs in JSONB columns with English fallback; the Communicator and Phase 5 composer emit `{en, ka}` pairs for all newly-created family-visible content; and Telegram delivery uses `.ka` while Gmail delivery uses `.en`.
 **Depends on:** Phase 5 (does not block on Phase 5 production activation; the two run independently)
 **Requirements**: I18N-01, I18N-02, I18N-03, I18N-04, I18N-05, I18N-06, I18N-07, I18N-08, I18N-09, I18N-10, I18N-11
-**Plans:** 13 plans (across 5 waves: 0 foundation, 1 frontend, 2 database, 3 agent output, 4 delivery + regression)
+**Plans:** 6/15 plans executed
 
 Plans:
 **Wave 1**
@@ -181,7 +181,7 @@ Plans:
 - [ ] 06-05b-PLAN.md — Insert t() refs across 9 family-facing pages + locale-aware TopNav (consumer of 06-05a dictionaries)
 
 **Wave 2** *(blocked on Wave 1 completion)*
-- [ ] 06-06-PLAN.md — Author scripts/migrations/012_i18n_jsonb.sql + per-table pg_dump rollback artifacts + RLS policy snapshots + operator runbook
+- [x] 06-06-PLAN.md — Author scripts/migrations/012_i18n_jsonb.sql + per-table pg_dump rollback artifacts + RLS policy snapshots + operator runbook
 - [ ] 06-07-PLAN.md — [BLOCKING][autonomous=false] Apply migration 012 to production Supabase (Shako maintenance window) + capture post-apply RLS diff
 - [ ] 06-08-PLAN.md — Update manager apply route to write JSONB shape + Timeline/Therapies/Hypotheses pages render via displayField
 

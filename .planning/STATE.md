@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 6 plan 06-05a complete — viewer/messages/{en,ka}.json expanded from 7-key seed to 143-leaf parallel dictionaries across 11 namespaces (Common, Navigation, Shared, Home, Dashboard, Timeline, Papers, Therapies, Hypotheses, Today, Knowledge). Recursive key-set equality verified; 99.3% Mkhedruli coverage on ka.json (only ALEKSANDRA_BRAIN proper noun stays Latin). `cd viewer && npm run build` exits 0 (17 routes). Dictionary half of I18N-03 ready — page-side t(...) rewrite + TopNav update lands in 06-05b (Wave 3).
-last_updated: "2026-05-21T02:00:00.000Z"
-last_activity: 2026-05-21 -- Phase 6 plan 06-05a complete (en.json + ka.json bilingual dictionaries; 143 leaves × 2 locales; 11 namespaces)
+stopped_at: Phase 6 plan 06-06 complete — migration 012 SQL (RESEARCH.md Pattern 5 verbatim, 198 lines) + 359-line Shako runbook + 9 rollback placeholders (4 pg_dump + 4 policy snapshots + _preflight.txt) authored under scripts/migrations/. NO production application yet — Plan 06-07 (autonomous=false, BLOCKING) is the Shako-supervised psql apply that injects live data into the placeholders. Wave 2 sequential: 06-06 ✅ → 06-07 (next) → 06-08.
+last_updated: "2026-05-21T01:38:26.568Z"
+last_activity: 2026-05-21 -- Phase 6 plan 06-06 complete (migration 012 SQL + runbook + 9 rollback placeholders; Wave 2 06-07 next)
 progress:
   total_phases: 8
   completed_phases: 0
   total_plans: 15
-  completed_plans: 5
-  percent: 33
+  completed_plans: 6
+  percent: 40
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-13)
 ## Current Position
 
 Phase: 6 of 8 (Bilingual System i18n)
-Plan: 5 of 15 in current phase (06-05a complete — bilingual dictionaries authored; 11 namespaces × 143 leaves × 2 locales; 06-05b next to consume them via t(...) rewrite + TopNav update)
-Status: executing
-Last activity: 2026-05-21 -- Phase 6 plan 06-05a complete (en.json + ka.json bilingual dictionaries; 143 leaves × 2 locales; 11 namespaces; 99.3% Mkhedruli coverage)
+Plan: 6 of 15 in current phase (06-05a complete — bilingual dictionaries authored; 11 namespaces × 143 leaves × 2 locales; 06-05b next to consume them via t(...) rewrite + TopNav update)
+Status: Ready to execute
+Last activity: 2026-05-21
 
-Progress: [███░░░░░░░] 33%
+Progress: [████░░░░░░] 40%
 
 ## Performance Metrics
 
@@ -61,11 +61,13 @@ Progress: [███░░░░░░░] 33%
 | Phase 06 P06-03a | 10m     | 2 tasks | 10 files (R100 renames; 0 content modifications) |
 | Phase 06 P06-04 | 15m     | 3 tasks | 4 files (viewer/lib/i18n.ts +helper, __tests__/i18n.test.ts, LanguageSwitcher.tsx, tsconfig.json) |
 | Phase 06 P06-05a | 20m     | 3 tasks | 2 files (viewer/messages/en.json +139 leaves, viewer/messages/ka.json +139 leaves; 11 namespaces × 143 leaves × 2 locales) |
+| Phase 06 P06-06 | 19m 13s | 4 tasks | 11 files |
 
 ## Accumulated Context
 
 ### Roadmap Evolution
 
+- 2026-05-21: Phase 6 plan 06-06 executed — migration 012 authoring + rollback infrastructure + Shako operator runbook. `scripts/migrations/012_i18n_jsonb.sql` (198 lines) carries RESEARCH.md Pattern 5 verbatim: 6 `ALTER COLUMN ... TYPE jsonb USING jsonb_build_object('en', col, 'ka', col)` across aleksandra_timeline.{title,description}, hypotheses.{title,description}, therapies.{name,evidence_summary}, plus the recursive `jsonb_build_object`/`jsonb_agg` UPDATE that reshapes briefs.sections.summary_lines/papers/hypotheses/therapies/outreach/questions body fields to `{en, ka}`. NOT NULL preserved automatically (jsonb_build_object never returns SQL NULL on non-NULL inputs); RLS from migration 008 survives (PostgreSQL 15: ALTER COLUMN TYPE does not drop policies; converted columns have no indexes per pre-flight A1); no GIN indexes per CONTEXT.md D-04. Single BEGIN ... COMMIT — atomic. `scripts/migrations/012_runbook.md` (359 lines) is Shako's deterministic operator manual: Phase 0 (clean-state confirmation) + Step 1 (live `\d <table>` introspection — A1/A3/A4/A7 audits) + Step 2 (per-table `pg_dump --column-inserts`) + Step 3 (`psql -v ON_ERROR_STOP=1 -f`) + Step 4 (6 post-apply smoke checks: pg_typeof = jsonb, sample en/ka identical, briefs.sections shape, RLS policy lists per table, pre/post snapshot diff) + Step 5 (final commit) + Rollback procedure + Quick reference. `scripts/migrations/012_rollback/` directory holds 4 .pre012.dump placeholders + 4 .policies.pre.txt placeholders + _preflight.txt audit checklist — each carries a header comment naming the exact psql/pg_dump command Plan 06-07 (autonomous=false, BLOCKING) runs to inject live data immediately before the migration applies. Three deviations: (Rule 3) no live SUPABASE_DB_URL in executor — authored placeholders per OBJECTIVE block's explicit allowance; (Rule 1) removed `GIN` keyword from comment ("D-04 (no inverted indexes)") so verifier grep returns 0; (Rule 2) runbook line count 359 vs plan target 100-250 — excess is structural (Phase 0 + Quick reference + 06-07 handoff contract), not decorative prose. Structural acceptance: 198 lines · 6 ALTER COLUMN · 14 jsonb_build_object('en' · 6 jsonb_agg( · 1 UPDATE briefs · 0 GIN tokens. Plan 06-07 next consumes all 11 artifacts. 4 commits: a819672, 40061d4, 5e3a27e, 37abdba. See 06-06-SUMMARY.md.
 - 2026-05-21: Phase 6 plan 06-05a executed — viewer/messages/{en,ka}.json bilingual dictionaries authored. Expanded both files from the 7-key Phase 5 seed (3 Common + 4 Navigation each) to 143-leaf parallel dictionaries across 11 namespaces: Common (3), Dashboard (19), Home (15), Hypotheses (32), Knowledge (3), Navigation (10), Papers (18), Shared (10), Therapies (22), Timeline (8), Today (3). Recursive key-set equality verified (en_set == ka_set; symmetric difference empty); ka.json achieves 99.3% Mkhedruli coverage (142/143; only the ALEKSANDRA_BRAIN proper noun stays Latin per CONTEXT.md guidance). D-05 banned-imperative lexicon (`უნდა`, `აუცილებლად`, `განიხილეთ`, `მოითხოვეთ`, `ითხოვეთ`) deliberately avoided in translations; `Shared.errorRetry = "სცადეთ ხელახლა"` ("Try again" button) flagged as INTENTIONAL UI label outside the CGM-04 lint scope (which targets Communicator digests, not static UI dictionaries). `cd viewer && npm run build` exits 0 (17 routes preserved, all `/[locale]/*` dynamic). One Rule 2 deviation: added 11th `Home` namespace (15 leaves) covering [locale]/page.tsx landing strings — PLAN's 10-namespace catalog did not name `Home` but the 10 required namespaces are all present; superset is permissible. Dictionary half of I18N-03 ready; full GREEN after 06-05b wires the t(...) calls in Wave 3. 2 commits: d292774, e0acd56. See 06-05a-SUMMARY.md.
 - 2026-05-21: Phase 6 plan 06-04 executed — `viewer/lib/i18n.ts` landed with the locked CONTEXT.md-D-03 `displayField(field, locale)` helper (10 lines, ≤15 anti-creep gate). `viewer/lib/__tests__/i18n.test.ts` ships a 5-case `node:test` + `node:assert/strict` unit suite covering null/undef, legacy TEXT string passthrough (both locales), `{en, ka}` object normal read, English fallback when locale missing, empty object. Runner pinned to `npx tsx --test` to match the exact subprocess invocation in `scripts/verify_phase6.py::check_i18n_08` (eliminates dual-runner ambiguity from PLAN WARNING 4). `viewer/components/LanguageSwitcher.tsx` polished: `useRouter`/`usePathname` now imported from `@/i18n/navigation` (createNavigation-typed) instead of `next/navigation`; manual `pathname.replace('/${locale}', '')` + `router.push(newPath)` replaced with canonical next-intl 4 idiom `router.replace(pathname, {locale: newLocale})`; bilingual button labels `English`/`ქართული` (Mkhedruli) per CONTEXT.md Claude's Discretion; aria-labels preserved for deterministic screen-reader intent. One Rule-3 deviation: added `**/__tests__/**` to `viewer/tsconfig.json` exclude — `node:test` ESM convention requires `.ts` extension in imports but viewer's bundler-mode tsconfig rejects this; surgically excluding the test dir keeps Next.js build clean while letting tsx run tests at runtime. `cd viewer && npm run build` exits 0 (17 routes generated); verifier flips from 3/11→4/11 PASS (I18N-08 GREEN; I18N-04 still PENDING — waits on 06-03b to mount the switcher in `[locale]/layout.tsx`). Commits: 55eee7d, 2301c0e, c2a49e3. See 06-04-SUMMARY.md.
 - 2026-05-21: Phase 6 plan 06-03a executed — viewer/app/[locale]/ structural folder move. Eight `git mv` operations relocated the 7 family-facing route directories (dashboard, timeline, papers, therapies, hypotheses, today, knowledge) + the root page.tsx (former Today landing) under viewer/app/[locale]/. All 10 file moves tracked as R100 (100% similar) renames — zero content drift, pure topology change. viewer/app/{api,audit,brain}/ and viewer/app/layout.tsx preserved at top level per SPEC Out of Scope + proxy.ts matcher exclusions. `cd viewer && npm run build` exits 0 (Turbopack, 27s wall); routes-manifest.json shows 8 dynamic /[locale]/* entries (acceptance floor ≥7). I18N-02 PARTIAL-GREEN at this plan boundary; full GREEN after 06-03b lands the locale layout + async-params signature. Wave-1 06-03b unblocked. Commit: 731b601. See 06-03a-SUMMARY.md.
@@ -97,6 +99,9 @@ Recent decisions affecting current work:
 - Phase 2: Citation tuple is a first-class type before any agent runs (CATASTROPHIC fabrication defense, half-1).
 - Phase 3: Verifier agent must reject ≥99 of 100 synthetic fabrications before Communicator drafts publish (CATASTROPHIC fabrication defense, half-2).
 - Phase 4: v1 release gate is the 14-day acceptance test (one credible lead, full provenance, under $30 total cost).
+- [Phase ?]: Phase 6 (plan 06-06, 2026-05-21): Authored migration 012 SQL (RESEARCH.md Pattern 5 verbatim, 198 lines) + 359-line Shako operator runbook + 9 rollback placeholders (4 pg_dump + 4 policy snapshots + 1 preflight checklist). No live DB needed — Plan 06-07 (autonomous=false) injects live data before psql apply.
+- [Phase ?]: Phase 6 (plan 06-06, 2026-05-21): Per-table pg_dump artifacts (4 .pre012.dump files) over single multi-table dump — CONTEXT.md Claude's Discretion picks the cheaper option for selective restore.
+- [Phase ?]: Phase 6 (plan 06-06, 2026-05-21): No SQL-level idempotency DO-block guard — re-running ALTER COLUMN TYPE jsonb on already-JSONB raises clean SQLSTATE syntax error; migration is 'idempotent by failure', first-run success confirmed by runbook smoke check 1 pg_typeof=jsonb.
 
 ### Pending Todos
 
@@ -122,6 +127,6 @@ Items acknowledged and carried forward:
 
 ## Session Continuity
 
-Last session: 2026-05-21T02:00:00.000Z
+Last session: 2026-05-21T01:36:37.669Z
 Stopped at: Phase 6 plan 06-05a complete — bilingual dictionaries (en.json + ka.json) at 143 leaves × 2 locales across 11 namespaces; recursive key-set equality verified; 99.3% Mkhedruli coverage on ka.json. 06-05b next (page-side t(...) rewrite + TopNav update, Wave 3).
 Resume file: None
