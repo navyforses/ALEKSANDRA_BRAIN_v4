@@ -168,14 +168,14 @@ Phases execute in numeric order: 0 → 1 → 2 → 2.5 → 3 → 4 → 5 → 6
 **Goal:** By the end of this phase, every family-facing viewer route is reachable under `/en/*` and `/ka/*` URL segments and renders fully in the matching language; the 4 family-visible dynamic tables (`aleksandra_timeline`, `hypotheses`, `therapies`, `briefs`) store en+ka pairs in JSONB columns with English fallback; the Communicator and Phase 5 composer emit `{en, ka}` pairs for all newly-created family-visible content; and Telegram delivery uses `.ka` while Gmail delivery uses `.en`.
 **Depends on:** Phase 5 (does not block on Phase 5 production activation; the two run independently)
 **Requirements**: I18N-01, I18N-02, I18N-03, I18N-04, I18N-05, I18N-06, I18N-07, I18N-08, I18N-09, I18N-10, I18N-11
-**Plans:** 6/15 plans executed
+**Plans:** 7/15 plans executed
 
 Plans:
 **Wave 1**
 - [x] 06-01-PLAN.md — Install next-intl@4 + rename middleware.ts → proxy.ts (Next.js 16 convention) + author i18n module files + relocate messages
 - [x] 06-02-PLAN.md — Phase 6 verifier scaffold (scripts/verify_phase6.py) + 10-entry Georgian PHI fixture + 30-entry bilingual digest sample set
 - [x] 06-03a-PLAN.md — Move 7 family-facing routes + root page.tsx under viewer/app/[locale]/ via 8 `git mv` (R100 renames; pure topology change; no content edits)
-- [ ] 06-03b-PLAN.md — Author viewer/app/[locale]/layout.tsx + update each relocated page's signature to `params: Promise<{locale: string}>` (Next.js 16 async-params)
+- [x] 06-03b-PLAN.md — Author viewer/app/[locale]/layout.tsx + update each relocated page's signature to `params: Promise<{locale: string}>` (Next.js 16 async-params)
 - [x] 06-04-PLAN.md — viewer/lib/i18n.ts displayField helper + unit test + LanguageSwitcher typed-nav polish
 - [x] 06-05a-PLAN.md — Author viewer/messages/{en,ka}.json bilingual dictionaries (143 leaves × 2 locales across 11 namespaces; recursive key-set equality + 99.3% Mkhedruli coverage)
 - [ ] 06-05b-PLAN.md — Insert t() refs across 9 family-facing pages + locale-aware TopNav (consumer of 06-05a dictionaries)

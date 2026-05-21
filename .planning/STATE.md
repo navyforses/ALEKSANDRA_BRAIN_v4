@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 6 plan 06-06 complete — migration 012 SQL (RESEARCH.md Pattern 5 verbatim, 198 lines) + 359-line Shako runbook + 9 rollback placeholders (4 pg_dump + 4 policy snapshots + _preflight.txt) authored under scripts/migrations/. NO production application yet — Plan 06-07 (autonomous=false, BLOCKING) is the Shako-supervised psql apply that injects live data into the placeholders. Wave 2 sequential: 06-06 ✅ → 06-07 (next) → 06-08.
-last_updated: "2026-05-21T01:38:26.568Z"
-last_activity: 2026-05-21 -- Phase 6 plan 06-06 complete (migration 012 SQL + runbook + 9 rollback placeholders; Wave 2 06-07 next)
+stopped_at: Phase 6 plan 06-03b complete — viewer/app/[locale]/layout.tsx authored (setRequestLocale + NextIntlClientProvider + hasLocale + generateStaticParams + html/body shell + LanguageSwitcher mounted in chrome); root layout reduced to {children} pass-through; 9 family page.tsx files take async params Promise<{locale: 'en'|'ka'}> + setRequestLocale(locale); sibling root layouts authored under viewer/app/audit/ + viewer/app/brain/ (Rule 3 deviation — required for valid HTML on subtrees excluded from the next-intl proxy matcher). cd viewer && npm run build → 21 static pages generated, 8 routes under /[locale]/* in routes-manifest. I18N-02 verifier should now flip GREEN. Wave 1 sequential: 06-03b ✅ → 06-05b (page t() refs + locale-aware TopNav).
+last_updated: "2026-05-21T02:42:00.000Z"
+last_activity: 2026-05-21 -- Phase 6 plan 06-03b complete (locale-scoped layout + async-params on all 9 family pages; 2 sibling root layouts as Rule 3 deviation; build green 21/21 static pages)
 progress:
   total_phases: 8
   completed_phases: 0
   total_plans: 15
-  completed_plans: 6
-  percent: 40
+  completed_plans: 7
+  percent: 47
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-13)
 ## Current Position
 
 Phase: 6 of 8 (Bilingual System i18n)
-Plan: 6 of 15 in current phase (06-05a complete — bilingual dictionaries authored; 11 namespaces × 143 leaves × 2 locales; 06-05b next to consume them via t(...) rewrite + TopNav update)
+Plan: 7 of 15 in current phase (06-03b complete — locale-scoped layout authored + 9 family pages take async params Promise<{locale}> + setRequestLocale; build green 21/21 static pages; Wave 1 work continues with 06-05b next — page t() refs + locale-aware TopNav)
 Status: Ready to execute
 Last activity: 2026-05-21
 
-Progress: [████░░░░░░] 40%
+Progress: [████▌░░░░░] 47%
 
 ## Performance Metrics
 
@@ -62,11 +62,13 @@ Progress: [████░░░░░░] 40%
 | Phase 06 P06-04 | 15m     | 3 tasks | 4 files (viewer/lib/i18n.ts +helper, __tests__/i18n.test.ts, LanguageSwitcher.tsx, tsconfig.json) |
 | Phase 06 P06-05a | 20m     | 3 tasks | 2 files (viewer/messages/en.json +139 leaves, viewer/messages/ka.json +139 leaves; 11 namespaces × 143 leaves × 2 locales) |
 | Phase 06 P06-06 | 19m 13s | 4 tasks | 11 files |
+| Phase 06 P06-03b | 25m     | 2 tasks | 12 files (10 modified + 2 new sibling root layouts as Rule 3 deviation) |
 
 ## Accumulated Context
 
 ### Roadmap Evolution
 
+- 2026-05-21: Phase 6 plan 06-03b executed — `viewer/app/[locale]/layout.tsx` authored (Pattern 2 verbatim: `setRequestLocale(locale)` after `hasLocale(routing.locales, locale)` allow-list, `notFound()` on miss, `generateStaticParams` returning `routing.locales` pairs, `<html lang={locale}>` shell, `NextIntlClientProvider` wrapping the entire body so `LanguageSwitcher` — a client component using `useLocale()` — gets the React context). `viewer/app/layout.tsx` reduced from 38-line full shell to 19-line metadata + `return children` pass-through; locale-owned shell pattern locked. All 9 family-facing `page.tsx` under `viewer/app/[locale]/` take Next.js 16 `params: Promise<{locale: 'en' \| 'ka'}>`, await + call `setRequestLocale(locale)` (Pitfall 2 + Pitfall 4 prevention); nested `[id]/page.tsx` widens to `Promise<{locale; id: string}>`. Two Rule 3 deviations: `viewer/app/audit/layout.tsx` + `viewer/app/brain/layout.tsx` authored as sibling root layouts (own `<html lang="en">` / `<body>` / `TopNav`) — required because the children-pass-through root layout produces invalid HTML for any subtree not under `[locale]/`, and audit + brain are excluded from the next-intl proxy matcher per `viewer/proxy.ts`. One Rule 1 deviation folded into Task 2: moved `<NextIntlClientProvider>` to wrap the entire body content (including header) instead of just main+aside — static prerender of `/en/knowledge`, `/ka/knowledge`, `/en/today`, `/ka/today`, `/en`, `/ka` crashed at `useLocale → null IntlContext → throw Error(undefined)` when the switcher rendered above the provider. `cd viewer && npm run build` exits 0; 21 static pages generated; routes manifest shows 8 dynamic entries under `/[locale]/*` (acceptance floor ≥7); audit.html + brain.html + en.html + ka.html each contain exactly 1×`<html>` + 1×`<body>`. I18N-02 verifier should flip from PARTIAL-GREEN to fully GREEN. 2 commits: c49199e (Task 1), 56eeaf8 (Task 2 + deviations). See 06-03b-SUMMARY.md.
 - 2026-05-21: Phase 6 plan 06-06 executed — migration 012 authoring + rollback infrastructure + Shako operator runbook. `scripts/migrations/012_i18n_jsonb.sql` (198 lines) carries RESEARCH.md Pattern 5 verbatim: 6 `ALTER COLUMN ... TYPE jsonb USING jsonb_build_object('en', col, 'ka', col)` across aleksandra_timeline.{title,description}, hypotheses.{title,description}, therapies.{name,evidence_summary}, plus the recursive `jsonb_build_object`/`jsonb_agg` UPDATE that reshapes briefs.sections.summary_lines/papers/hypotheses/therapies/outreach/questions body fields to `{en, ka}`. NOT NULL preserved automatically (jsonb_build_object never returns SQL NULL on non-NULL inputs); RLS from migration 008 survives (PostgreSQL 15: ALTER COLUMN TYPE does not drop policies; converted columns have no indexes per pre-flight A1); no GIN indexes per CONTEXT.md D-04. Single BEGIN ... COMMIT — atomic. `scripts/migrations/012_runbook.md` (359 lines) is Shako's deterministic operator manual: Phase 0 (clean-state confirmation) + Step 1 (live `\d <table>` introspection — A1/A3/A4/A7 audits) + Step 2 (per-table `pg_dump --column-inserts`) + Step 3 (`psql -v ON_ERROR_STOP=1 -f`) + Step 4 (6 post-apply smoke checks: pg_typeof = jsonb, sample en/ka identical, briefs.sections shape, RLS policy lists per table, pre/post snapshot diff) + Step 5 (final commit) + Rollback procedure + Quick reference. `scripts/migrations/012_rollback/` directory holds 4 .pre012.dump placeholders + 4 .policies.pre.txt placeholders + _preflight.txt audit checklist — each carries a header comment naming the exact psql/pg_dump command Plan 06-07 (autonomous=false, BLOCKING) runs to inject live data immediately before the migration applies. Three deviations: (Rule 3) no live SUPABASE_DB_URL in executor — authored placeholders per OBJECTIVE block's explicit allowance; (Rule 1) removed `GIN` keyword from comment ("D-04 (no inverted indexes)") so verifier grep returns 0; (Rule 2) runbook line count 359 vs plan target 100-250 — excess is structural (Phase 0 + Quick reference + 06-07 handoff contract), not decorative prose. Structural acceptance: 198 lines · 6 ALTER COLUMN · 14 jsonb_build_object('en' · 6 jsonb_agg( · 1 UPDATE briefs · 0 GIN tokens. Plan 06-07 next consumes all 11 artifacts. 4 commits: a819672, 40061d4, 5e3a27e, 37abdba. See 06-06-SUMMARY.md.
 - 2026-05-21: Phase 6 plan 06-05a executed — viewer/messages/{en,ka}.json bilingual dictionaries authored. Expanded both files from the 7-key Phase 5 seed (3 Common + 4 Navigation each) to 143-leaf parallel dictionaries across 11 namespaces: Common (3), Dashboard (19), Home (15), Hypotheses (32), Knowledge (3), Navigation (10), Papers (18), Shared (10), Therapies (22), Timeline (8), Today (3). Recursive key-set equality verified (en_set == ka_set; symmetric difference empty); ka.json achieves 99.3% Mkhedruli coverage (142/143; only the ALEKSANDRA_BRAIN proper noun stays Latin per CONTEXT.md guidance). D-05 banned-imperative lexicon (`უნდა`, `აუცილებლად`, `განიხილეთ`, `მოითხოვეთ`, `ითხოვეთ`) deliberately avoided in translations; `Shared.errorRetry = "სცადეთ ხელახლა"` ("Try again" button) flagged as INTENTIONAL UI label outside the CGM-04 lint scope (which targets Communicator digests, not static UI dictionaries). `cd viewer && npm run build` exits 0 (17 routes preserved, all `/[locale]/*` dynamic). One Rule 2 deviation: added 11th `Home` namespace (15 leaves) covering [locale]/page.tsx landing strings — PLAN's 10-namespace catalog did not name `Home` but the 10 required namespaces are all present; superset is permissible. Dictionary half of I18N-03 ready; full GREEN after 06-05b wires the t(...) calls in Wave 3. 2 commits: d292774, e0acd56. See 06-05a-SUMMARY.md.
 - 2026-05-21: Phase 6 plan 06-04 executed — `viewer/lib/i18n.ts` landed with the locked CONTEXT.md-D-03 `displayField(field, locale)` helper (10 lines, ≤15 anti-creep gate). `viewer/lib/__tests__/i18n.test.ts` ships a 5-case `node:test` + `node:assert/strict` unit suite covering null/undef, legacy TEXT string passthrough (both locales), `{en, ka}` object normal read, English fallback when locale missing, empty object. Runner pinned to `npx tsx --test` to match the exact subprocess invocation in `scripts/verify_phase6.py::check_i18n_08` (eliminates dual-runner ambiguity from PLAN WARNING 4). `viewer/components/LanguageSwitcher.tsx` polished: `useRouter`/`usePathname` now imported from `@/i18n/navigation` (createNavigation-typed) instead of `next/navigation`; manual `pathname.replace('/${locale}', '')` + `router.push(newPath)` replaced with canonical next-intl 4 idiom `router.replace(pathname, {locale: newLocale})`; bilingual button labels `English`/`ქართული` (Mkhedruli) per CONTEXT.md Claude's Discretion; aria-labels preserved for deterministic screen-reader intent. One Rule-3 deviation: added `**/__tests__/**` to `viewer/tsconfig.json` exclude — `node:test` ESM convention requires `.ts` extension in imports but viewer's bundler-mode tsconfig rejects this; surgically excluding the test dir keeps Next.js build clean while letting tsx run tests at runtime. `cd viewer && npm run build` exits 0 (17 routes generated); verifier flips from 3/11→4/11 PASS (I18N-08 GREEN; I18N-04 still PENDING — waits on 06-03b to mount the switcher in `[locale]/layout.tsx`). Commits: 55eee7d, 2301c0e, c2a49e3. See 06-04-SUMMARY.md.
@@ -81,6 +83,9 @@ Progress: [████░░░░░░] 40%
 Decisions are logged in PROJECT.md Key Decisions table.
 Recent decisions affecting current work:
 
+- Phase 6 (plan 06-03b, 2026-05-21): Locale-owned `<html lang={locale}>` shell pattern locked — `[locale]/layout.tsx` owns `<html>`/`<body>`, root `app/layout.tsx` returns just `{children}`. Accessibility/SEO correctness over the simpler-but-static `<html lang="en">` fallback. Non-locale subtrees (audit, brain) each have their own sibling root layout per Next.js 16 multi-root-layout convention.
+- Phase 6 (plan 06-03b, 2026-05-21): `NextIntlClientProvider` placement is the OUTERMOST JSX child of `<body>` — wraps the header (which renders the client-component `LanguageSwitcher` calling `useLocale()`), not just the main content. PLAN's example snippet was below the header; canonical RESEARCH.md Pattern 2 (and the build error trail) put it outermost. Future locale-scoped layout copies follow this placement.
+- Phase 6 (plan 06-03b, 2026-05-21): Every family-facing page under `[locale]/` calls `setRequestLocale(locale)` immediately after `await params` — not just the layout boundary. RESEARCH.md Pitfall 4 prevention (avoids silent dynamic rendering when `getTranslations` is later wired in 06-05b).
 - Phase 6 (plan 06-04, 2026-05-21): `displayField` helper lives in `viewer/lib/i18n.ts` (NOT under `viewer/i18n/`) — distinct concerns: `viewer/i18n/{routing,request,navigation}.ts` holds next-intl wiring; `viewer/lib/i18n.ts` is consumer-facing utility code that downstream page/worker components import via `@/lib/i18n`.
 - Phase 6 (plan 06-04, 2026-05-21): Helper is EXACTLY the 10-line shape locked in CONTEXT.md §D-03 — no JSDoc body, no extra exports, no logic creep. The 5-case behavior contract lives in the unit test file, not in code comments. Anti-creep gate enforces ≤15 lines.
 - Phase 6 (plan 06-04, 2026-05-21): Test runner pinned to `npx tsx --test` (NOT vitest, NOT jest) — the verifier `check_i18n_08` production-mode path subprocess-invokes this exact command, so the runner is the contract, not the framework.
@@ -127,6 +132,6 @@ Items acknowledged and carried forward:
 
 ## Session Continuity
 
-Last session: 2026-05-21T01:36:37.669Z
-Stopped at: Phase 6 plan 06-05a complete — bilingual dictionaries (en.json + ka.json) at 143 leaves × 2 locales across 11 namespaces; recursive key-set equality verified; 99.3% Mkhedruli coverage on ka.json. 06-05b next (page-side t(...) rewrite + TopNav update, Wave 3).
+Last session: 2026-05-21T02:42:00.000Z
+Stopped at: Phase 6 plan 06-03b complete — viewer/app/[locale]/layout.tsx authored + 9 family pages take async params + setRequestLocale; root layout reduced to {children} pass-through; 2 sibling root layouts (audit + brain) authored as Rule 3 deviation; build green 21/21 static pages. Wave 1 continues with 06-05b next (page-side t() refs + locale-aware TopNav).
 Resume file: None
