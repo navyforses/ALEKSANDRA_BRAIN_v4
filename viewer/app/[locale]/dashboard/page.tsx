@@ -1,5 +1,5 @@
-import Link from "next/link";
-import { setRequestLocale } from "next-intl/server";
+import { setRequestLocale, getTranslations } from "next-intl/server";
+import { Link } from "@/i18n/navigation";
 import { getCount, getRows } from "@/lib/supabase";
 import DashboardCharts from "@/components/DashboardCharts";
 
@@ -28,10 +28,10 @@ type HypothesisRow = {
 };
 
 const metricSpecs = [
-  ["evidence_ledger", "Evidence ledger"],
-  ["papers", "Papers"],
-  ["paper_chunks", "Chunks"],
-  ["hypotheses", "Hypotheses"],
+  ["evidence_ledger", "metricEvidenceLedger"],
+  ["papers", "metricPapers"],
+  ["paper_chunks", "metricChunks"],
+  ["hypotheses", "metricHypotheses"],
 ] as const;
 
 function statusTone(status: string | null) {
@@ -53,6 +53,9 @@ export default async function DashboardPage({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
+  const t = await getTranslations("Dashboard");
+  const tNav = await getTranslations("Navigation");
+  const tShared = await getTranslations("Shared");
 
   const [counts, runs, papers, hypotheses, runsForSpend, papersForIngestion] = await Promise.all([
     Promise.all(metricSpecs.map(([path]) => getCount(path))),
@@ -134,61 +137,59 @@ export default async function DashboardPage({
           </div>
           <div className="flex flex-wrap items-center gap-2 text-sm">
             <Link className="rounded-md bg-white px-3 py-2 text-stone-900 ring-1 ring-stone-200 shadow-sm transition-all" href="/dashboard">
-              Dashboard
+              {tNav("dashboard")}
             </Link>
             <Link className="rounded-md px-3 py-2 text-stone-700 hover:bg-white transition-all" href="/hypotheses">
-              Hypotheses
+              {tNav("hypotheses")}
             </Link>
             <Link className="rounded-md px-3 py-2 text-stone-700 hover:bg-white transition-all" href="/papers">
-              Papers
+              {tNav("papers")}
             </Link>
             <Link className="rounded-md px-3 py-2 text-stone-700 hover:bg-white transition-all" href="/therapies">
-              Therapies
+              {tNav("therapies")}
             </Link>
             <Link className="rounded-md px-3 py-2 text-stone-700 hover:bg-white transition-all" href="/timeline">
-              Timeline
+              {tNav("timeline")}
             </Link>
           </div>
         </nav>
 
         <header className="grid gap-4 lg:grid-cols-[1.3fr_0.7fr]">
           <div>
-            <p className="font-mono text-xs uppercase text-cyan-700">Phase II.5C</p>
+            <p className="font-mono text-xs uppercase text-cyan-700">{t("phaseLabel")}</p>
             <h1 className="mt-1 text-3xl font-semibold tracking-normal sm:text-4xl">
-              Family-visible operations dashboard
+              {t("title")}
             </h1>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-stone-600">
-              A compact family view of ingestion, memory growth, alerts, and validation status.
-              Clinical decisions stay with Aleksandra&apos;s doctors; this view tracks research workflow state.
+              {t("subtitle")}
             </p>
           </div>
           <div className="rounded-md border border-stone-200 bg-white p-4 shadow-sm transition-all hover:shadow-md duration-300">
-            <p className="font-mono text-xs uppercase text-stone-500">Access posture</p>
+            <p className="font-mono text-xs uppercase text-stone-500">{t("accessPosture")}</p>
             <p className="mt-2 text-sm leading-6 text-stone-700">
-              Server-rendered data only. Service credentials remain on the server, and MRI data is never fetched here.
+              {t("accessPostureBody")}
             </p>
             <p className="mt-3 text-sm font-medium text-emerald-700 flex items-center gap-1.5">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-              RLS smoke: covered by Phase 2.5 verifier C.2.
+              {t("rlsSmoke")}
             </p>
           </div>
         </header>
 
         {!configured ? (
           <section className="rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
-            Supabase environment is not configured for the viewer runtime. The page shell is ready; live counts
-            appear after `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are set on the server.
+            {t("configWarning")}
           </section>
         ) : null}
 
         <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {metricSpecs.map(([, label], index) => (
-            <div key={label} className="rounded-md border border-stone-200 bg-white p-4 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md hover:border-stone-300">
-              <p className="font-mono text-xs uppercase text-stone-500">{label}</p>
+          {metricSpecs.map(([, labelKey], index) => (
+            <div key={labelKey} className="rounded-md border border-stone-200 bg-white p-4 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md hover:border-stone-300">
+              <p className="font-mono text-xs uppercase text-stone-500">{t(labelKey)}</p>
               <p className="mt-2 text-3xl font-semibold tracking-normal">
                 {counts[index]?.count.toLocaleString() ?? 0}
               </p>
-              <p className="mt-1 text-xs text-stone-500">{counts[index]?.error || "Live Supabase count"}</p>
+              <p className="mt-1 text-xs text-stone-500">{counts[index]?.error || t("liveSupabaseCount")}</p>
             </div>
           ))}
         </section>
@@ -209,7 +210,7 @@ export default async function DashboardPage({
         <section className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
           <div className="rounded-md border border-stone-200 bg-white">
             <div className="border-b border-stone-200 p-4">
-              <h2 className="text-base font-semibold">Hypothesis status</h2>
+              <h2 className="text-base font-semibold">{t("hypothesisStatus")}</h2>
             </div>
             <div className="flex flex-wrap gap-2 p-4">
               {Object.entries(statusCounts).length > 0 ? (
@@ -222,14 +223,14 @@ export default async function DashboardPage({
                   </span>
                 ))
               ) : (
-                <p className="text-sm text-stone-500">No hypothesis rows returned.</p>
+                <p className="text-sm text-stone-500">{t("emptyHypotheses")}</p>
               )}
             </div>
           </div>
 
           <div className="rounded-md border border-stone-200 bg-white">
             <div className="border-b border-stone-200 p-4">
-              <h2 className="text-base font-semibold">Latest workflow events</h2>
+              <h2 className="text-base font-semibold">{t("latestEvents")}</h2>
             </div>
             <div className="divide-y divide-stone-100">
               {runs.rows.map((run) => (
@@ -237,7 +238,7 @@ export default async function DashboardPage({
                   <div>
                     <p className="font-medium">{run.kind}</p>
                     <p className="text-xs text-stone-500">
-                      {run.agent_id || "system"} · {new Date(run.start_time).toLocaleString()}
+                      {run.agent_id || t("system")} · {new Date(run.start_time).toLocaleString()}
                     </p>
                   </div>
                   <div className="text-left sm:text-right">
@@ -246,31 +247,31 @@ export default async function DashboardPage({
                   </div>
                 </div>
               ))}
-              {runs.rows.length === 0 ? <p className="p-4 text-sm text-stone-500">No recent runs.</p> : null}
+              {runs.rows.length === 0 ? <p className="p-4 text-sm text-stone-500">{t("emptyRuns")}</p> : null}
             </div>
           </div>
         </section>
 
         <section className="rounded-md border border-stone-200 bg-white">
           <div className="border-b border-stone-200 p-4">
-            <h2 className="text-base font-semibold">Top papers by relevance</h2>
+            <h2 className="text-base font-semibold">{t("topPapers")}</h2>
           </div>
           <div className="divide-y divide-stone-100">
             {papers.rows.map((paper) => (
               <article key={`${paper.pmid || paper.ct_id || paper.title}`} className="grid gap-2 p-4 md:grid-cols-[auto_1fr]">
                 <div className="font-mono text-sm text-cyan-700">
-                  {paper.relevance_score == null ? "n/a" : paper.relevance_score.toFixed(2)}
+                  {paper.relevance_score == null ? tShared("na") : paper.relevance_score.toFixed(2)}
                 </div>
                 <div>
                   <h3 className="text-sm font-medium leading-6">{paper.title}</h3>
                   <p className="mt-1 text-xs text-stone-500">
-                    {paper.pmid ? `PMID ${paper.pmid}` : paper.ct_id || "source pending"} ·{" "}
+                    {paper.pmid ? `PMID ${paper.pmid}` : paper.ct_id || tShared("sourcePending")} ·{" "}
                     {paper.direct_relevance ? "direct HIE" : paper.cross_disease_source || "cross-source"}
                   </p>
                 </div>
               </article>
             ))}
-            {papers.rows.length === 0 ? <p className="p-4 text-sm text-stone-500">No paper rows returned.</p> : null}
+            {papers.rows.length === 0 ? <p className="p-4 text-sm text-stone-500">{t("emptyPapers")}</p> : null}
           </div>
         </section>
       </div>
