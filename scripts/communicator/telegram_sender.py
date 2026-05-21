@@ -42,9 +42,16 @@ from typing import Any
 import httpx
 import psycopg2
 
+from scripts.communicator._bilingual_read import display_field_py
 from scripts.communicator.summarize import SummaryDraft
 from scripts.communicator.tier_router import TierDecision
 from scripts.ledger import load_env
+
+
+# Phase 6 Plan 06-12 / D-02 — Telegram audience is family-facing, Georgian-only.
+# Every read of a migration-012-converted JSONB column (or briefs.sections nested
+# bilingual field) must be resolved through display_field_py(field, 'ka').
+TELEGRAM_LOCALE = "ka"
 
 
 # ---------------------------------------------------------------------------
@@ -399,4 +406,100 @@ def fire_daily_batch(*, dry_run: bool = False) -> dict[str, Any]:
     return {"delivered": len(rows), "telegram_message_id": msg_id}
 
 
-__all__ = ["DispatchResult", "dispatch", "fire_daily_batch"]
+def compose_bilingual_telegram_body(rows: list[dict[str, Any]]) -> str:
+    """Compose a Telegram message body from JSONB-shaped fixture rows.
+
+    Phase 6 Plan 06-12 / I18N-07: Telegram audience reads `.ka` from every
+    converted bilingual JSONB column (aleksandra_timeline.title/description,
+    hypotheses.title/description, therapies.name/evidence_summary) and from
+    briefs.sections nested bilingual fields. Every read goes through
+    display_field_py(field, TELEGRAM_LOCALE) so the same code path that the
+    family sees on Telegram is the locale-resolved path.
+
+    Input shape (mirrors the post-migration-012 column types):
+        {
+          "title":        {"en": "...", "ka": "..."},   # JSONB
+          "description":  {"en": "...", "ka": "..."},   # JSONB
+          "name":         "legacy text",                # legacy TEXT tolerated
+          ...
+        }
+    """
+    lines: list[str] = ["📨 ALEKSANDRA_BRAIN — bilingual dry-run (Telegram, ka)"]
+    for row in rows:
+        title = display_field_py(row.get("title"), TELEGRAM_LOCALE)
+        description = display_field_py(row.get("description"), TELEGRAM_LOCALE)
+        if title:
+            lines.append(f"• {title}")
+        if description:
+            lines.append(f"  {description}")
+    return "\n".join(lines)
+
+
+def _bilingual_dryrun_fixture() -> list[dict[str, Any]]:
+    """Fixture rows shaped like post-migration-012 JSONB columns.
+
+    Used by --bilingual-dryrun (which check_i18n_07 calls to assert Mkhedruli
+    codepoints appear in the Telegram-side output).
+    """
+    return [
+        {
+            "title": {
+                "en": "New paper on vigabatrin washout",
+                "ka": "ახალი სტატია ვიგაბატრინის გამორეცხვაზე",
+            },
+            "description": {
+                "en": "Three new sources entered the ledger.",
+                "ka": "სამი ახალი წყარო შემოვიდა ჩანაწერებში.",
+            },
+        },
+        {
+            # legacy-TEXT row tolerance (pre-migration-012 path)
+            "title": "Sunday morning briefing reminder",
+            "description": {"en": "Cord blood follow-up due"},
+        },
+    ]
+
+
+def _bilingual_dryrun() -> int:
+    """Print a Telegram body composed via display_field_py(..., 'ka'). Exit 0."""
+    rows = _bilingual_dryrun_fixture()
+    body = compose_bilingual_telegram_body(rows)
+    print(body)
+    return 0
+
+
+def main(argv: list[str] | None = None) -> int:
+    import argparse  # noqa: PLC0415
+
+    parser = argparse.ArgumentParser(
+        prog="scripts.communicator.telegram_sender",
+        description="Phase 4 Telegram dispatcher + Phase 6 bilingual dry-run.",
+    )
+    parser.add_argument(
+        "--bilingual-dryrun",
+        action="store_true",
+        help=(
+            "Phase 6 I18N-07: compose a Telegram body from JSONB-shaped fixture "
+            "rows via display_field_py(..., 'ka'). Prints body to stdout, exit 0, "
+            "no Telegram API call, no DB write. Verifier check_i18n_07 asserts "
+            "Mkhedruli codepoints (U+10A0..U+10FF) appear in the output."
+        ),
+    )
+    args = parser.parse_args(argv)
+    if args.bilingual_dryrun:
+        return _bilingual_dryrun()
+    parser.print_help()
+    return 0
+
+
+__all__ = [
+    "DispatchResult",
+    "dispatch",
+    "fire_daily_batch",
+    "compose_bilingual_telegram_body",
+    "TELEGRAM_LOCALE",
+]
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
