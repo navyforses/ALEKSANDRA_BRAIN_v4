@@ -65,6 +65,20 @@
 - [ ] **OBS-02**: Every digest sent to Telegram or Gmail is linked from `runs` so any published claim can be traced to the originating run within two clicks
 - [ ] **OBS-03**: A daily spend report is posted to the family Telegram channel each morning so cost stays visible
 
+### Bilingual System — i18n (I18N)
+
+- [x] **I18N-01**: next-intl@4 is installed and compatible with Next.js 16.2.6; the viewer builds with locale routing enabled and serves `/en/dashboard` and `/ka/dashboard` as distinct pre-rendered routes
+- [x] **I18N-02**: Family-facing routes live under `viewer/app/[locale]/*`; visiting `/en/{dashboard,timeline,papers,therapies,hypotheses,today,knowledge}` and `/ka/{...}` each returns HTTP 200; bare `/dashboard` 308-redirects to `/en/dashboard`
+- [x] **I18N-03**: Static UI strings live in `viewer/messages/{en,ka}.json` (143 leaves × 2 locales across 11 namespaces); every `t(...)` / `useTranslations(...)('...')` reference in `viewer/app/[locale]/**` + `viewer/components/**` resolves to a key in both message files
+- [x] **I18N-04**: LanguageSwitcher mounted in `viewer/app/[locale]/layout.tsx` header swaps `/en/*` ↔ `/ka/*` via `router.replace(pathname, {locale})`; URL is the single source of truth — no cookie/localStorage
+- [x] **I18N-05**: Migration 012 (`scripts/migrations/012_i18n_jsonb.sql`) converts 6 family-visible TEXT columns to JSONB with `USING jsonb_build_object('en', col, 'ka', col)` across 4 tables (`aleksandra_timeline`, `hypotheses`, `therapies`, `briefs.sections`); RLS from migration 008 preserved; Shako-applied 2026-05-20
+- [x] **I18N-06**: Communicator + Phase 5 composer emit `{en, ka}` JSONB pairs for family-visible newly-created content via `scripts/communicator/bilingual.py::compose_bilingual` (Anthropic strict tool_use) or deterministic Option-A mirror; budget gate honored via `check_daily_budget(raise_on_over=True)`
+- [x] **I18N-07**: Telegram-sending worker code reads `.ka` (via `display_field_py`); Gmail-sending worker code reads `.en`; per-file locale constants (`TELEGRAM_LOCALE`, `GMAIL_LOCALE`, `BRIEFING_LOCALE`); n8n workflows unchanged (zero-touch)
+- [x] **I18N-08**: `viewer/lib/i18n.ts::displayField(field, locale)` returns `field?.[locale] ?? field?.en ?? ''` with type guards for legacy TEXT-string passthrough; consumed across 9 displayField call sites in the 4 plan-target pages
+- [x] **I18N-09**: Migration 012 sets `ka = en` for all existing rows; AI re-translation of historical content (200 entities, 307 facts, 47 episodes, 10 hypotheses, 12 therapies) is OUT of this phase and deferred to a future maintenance backlog item
+- [x] **I18N-10**: PHI redactor runs on both `.en` and `.ka` strings via `redact_bilingual({en, ka}, consent)` wrapper; imperative-verb lint extended with 8 Georgian D-05 entries (`უნდა`, `აუცილებლად`, `განიხილეთ`, `მოითხოვეთ`, `ითხოვეთ`, `სცადეთ`, `გაითვალისწინეთ`, `მართებთ`); Phase 3 CGM-04 English invariants unchanged
+- [x] **I18N-11**: After Phase 6 lands, `verify_phase4 --mode code-complete` exits 0 with 9/9 PASS and `verify_phase5 --mode code-complete` exits 0 with 13/13 PASS; `check_i18n_11` spawns both as subprocesses to codify the regression sweep into the Phase 6 verifier itself
+
 ## v2 Requirements
 
 Deferred to a later milestone, not in the current roadmap.
@@ -166,12 +180,23 @@ Explicitly excluded. Documented to prevent scope creep.
 | OBS-01 | Phase 0 | Pending |
 | OBS-02 | Phase 4 | Pending |
 | OBS-03 | Phase 4 | Pending |
+| I18N-01 | Phase 6 | Validated (2026-05-21) |
+| I18N-02 | Phase 6 | Validated (2026-05-21) |
+| I18N-03 | Phase 6 | Validated (2026-05-21) |
+| I18N-04 | Phase 6 | Validated (2026-05-21) |
+| I18N-05 | Phase 6 | Validated (2026-05-21) |
+| I18N-06 | Phase 6 | Validated (2026-05-21) |
+| I18N-07 | Phase 6 | Validated (2026-05-21) |
+| I18N-08 | Phase 6 | Validated (2026-05-21) |
+| I18N-09 | Phase 6 | Validated (2026-05-21) |
+| I18N-10 | Phase 6 | Validated (2026-05-21) |
+| I18N-11 | Phase 6 | Validated (2026-05-21) |
 
 **Coverage:**
-- v1 requirements: 41 total
-- Mapped to phases: 41
+- v1 requirements: 52 total (41 v1.0 + 11 i18n in v1.1)
+- Mapped to phases: 52
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-05-13*
-*Last updated: 2026-05-13 after initial definition*
+*Last updated: 2026-05-21 — Phase 6 (Bilingual System i18n) closed; 11 I18N-* requirements validated (89/89 cumulative verifier coverage)*

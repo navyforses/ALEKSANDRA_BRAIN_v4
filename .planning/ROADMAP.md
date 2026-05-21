@@ -21,7 +21,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 3: Cognition (minimum)** - Verifier-gated Communicator drafting (11/11 PASS; Day 7 closure unblocked same day by Shako's ChatGPT-assisted prereq work)
 - [x] **Phase 4: First Family Value** - Engineering sprint closed 2026-05-17, `verify_phase4 --mode code-complete` 9/9 PASS. Step B operator activation (Notion bootstrap + n8n workflow imports) + 14-day acceptance window open at first Weekly Brief Sunday 2026-05-24 09:00 ET. See `docs/PHASE_4_EXIT_REPORT.md` + `docs/PHASE_4_OPERATOR_RUNBOOK.md`.
 - [x] **Phase 5: BRAIN AI Manager Assistant** - Engineering sprint closed 2026-05-18, `verify_phase5 --mode code-complete` 13/13 PASS · ALL GREEN. 5 capabilities live: Smart Drop Zone (PDF/photo/voice/email/text intake), Persistent Activity Log, Morning Briefing (Sun 09:00 ET), Voice-First Input (OpenAI Whisper), Email Drafting (Gmail compose-only). Migration 011 applied (manager_actions + intake_drops + RLS + PHI CHECK). 78/78 cumulative verifier coverage. Phase 5 LLM spend $0 / $15 cap. See `docs/PHASE_5_EXIT_REPORT.md` + `docs/PHASE_5_COMPLETION_KA.md` + `docs/PHASE_5_OPERATOR_RUNBOOK.md`.
-- [ ] **Phase 6: Bilingual System (i18n)** - Full English+Georgian bilingualism: 7 family-facing routes under `/en/*` and `/ka/*`, 4 dynamic-content tables converted to JSONB en+ka via migration 012, Communicator + Phase 5 composer emit `{en, ka}` pairs via Anthropic strict tool_use, Telegram→ka / Gmail→en audience routing in Python worker layer. 15 plans across 6 wave-groups (0/1/2/3a/3b/4) — post plan-checker iteration 1. Seed: docs/I18N_PLAN.md.
+- [x] **Phase 6: Bilingual System (i18n)** - Closed 2026-05-21, `verify_phase6 --mode code-complete` 11/11 PASS · ALL GREEN. Full English+Georgian bilingualism delivered: 7 family-facing routes under `/en/*` and `/ka/*`, 4 dynamic-content tables converted to JSONB en+ka via migration 012 (Shako-applied 2026-05-20), Communicator + Phase 5 composer emit `{en, ka}` pairs via Anthropic strict tool_use, Telegram→ka / Gmail→en audience routing in Python worker layer, PHI redactor + imperative-verb lint extended to Georgian. 89/89 cumulative verifier coverage. Phase 6 LLM spend < $2 / $5 cap. See `docs/PHASE_6_EXIT_REPORT.md` + `docs/PHASE_6_COMPLETION_KA.md`.
 
 ## Phase Details
 
@@ -130,7 +130,7 @@ Phases execute in numeric order: 0 → 1 → 2 → 2.5 → 3 → 4 → 5 → 6
 | 3. Cognition (minimum) | 0/TBD | Closed — 11/11 PASS | 2026-05-16 |
 | 4. First Family Value | 0/TBD | Engineering closed 9/9 PASS; 14-day acceptance window in progress (closes ~2026-06-07) | 2026-05-17 (engineering) |
 | 5. BRAIN AI Manager Assistant | 0/TBD | Closed — 13/13 PASS · ALL GREEN | 2026-05-18 |
-| 6. Bilingual System (i18n) | 14/15 | In Progress|  |
+| 6. Bilingual System (i18n) | 15/15 | Closed — 11/11 PASS · ALL GREEN | 2026-05-21 |
 
 ## Coverage
 
@@ -192,7 +192,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 - [x] 06-12-PLAN.md — _bilingual_read.py display_field_py helper + telegram_sender reads .ka + gmail_digest reads .en + n8n zero-touch documentation
-- [ ] 06-13-PLAN.md — Finalize verify_phase6.py + production-mode 11/11 sweep + verify_phase4 9/9 + verify_phase5 13/13 regression + Phase 6 exit report + STATE/ROADMAP/REQUIREMENTS/CLAUDE updates
+- [x] 06-13-PLAN.md — Finalize verify_phase6.py + verify_phase4 9/9 + verify_phase5 13/13 regression + Phase 6 exit report + STATE/ROADMAP/REQUIREMENTS/CLAUDE updates (closed 2026-05-21)
 
 **Cross-cutting constraints:**
 - No new remote fetch/axios.post/XMLHttpRequest from viewer/ to non-self origins introduced by this plan (FND-02 trust boundary lint must continue to pass)

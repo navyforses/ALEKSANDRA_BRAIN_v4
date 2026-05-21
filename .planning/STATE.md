@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 06-12-PLAN.md (audience routing; Telegram=ka, Gmail=en; I18N-07 GREEN; verifier 10/11 PASS)
-last_updated: "2026-05-21T20:19:31.647Z"
+status: milestone_complete
+stopped_at: Phase 6 closed 2026-05-21 — verify_phase6 --mode code-complete 11/11 PASS · ALL GREEN; cumulative 89/89; see docs/PHASE_6_EXIT_REPORT.md
+last_updated: "2026-05-21T21:30:00.000Z"
 last_activity: 2026-05-21
 progress:
   total_phases: 8
-  completed_phases: 0
+  completed_phases: 2
   total_plans: 15
-  completed_plans: 14
-  percent: 93
+  completed_plans: 15
+  percent: 25
 ---
 
 # Project State
@@ -25,20 +25,20 @@ See: .planning/PROJECT.md (updated 2026-05-13)
 
 ## Current Position
 
-Phase: 6 of 8 (Bilingual System i18n)
-Plan: 14 of 15 in current phase (06-11 complete — D-05 8-entry Georgian imperative-verb lexicon appended to scripts/communicator/banned_phrases.py with TODO(shako-review) markers + per-locale scoping already in place; 65-case pytest regression suite (tests/test_imperative_verb_lint_georgian.py) GREEN; Phase 6 verifier check_i18n_10 PASS in bucket C; Phase 3 CGM-04 unregressed. Auto-mode override of checkpoint:human-verify Task 3 against locked CONTEXT.md D-05; Shako native-speaker re-verify deferred to maintenance todo .planning/todos/pending/2026-05-21-shako-verify-06-11-lexicon.md (P2). Wave 3a fully consumed; Wave 3b 06-09 (Communicator compose_bilingual) is next blocker for I18N-06)
-Status: Ready to execute
+Phase: 6 of 8 — **CLOSED 2026-05-21** (Bilingual System i18n)
+Plan: 15/15 complete — Phase 6 fully consumed across Wave 1–4. verify_phase6 --mode code-complete → 11/11 PASS · ALL GREEN; verify_phase4 --mode code-complete → 9/9 PASS; verify_phase5 --mode code-complete → 13/13 PASS. Cumulative project verifier coverage: 89/89 PASS. See docs/PHASE_6_EXIT_REPORT.md + docs/PHASE_6_COMPLETION_KA.md.
+Status: No active phase. Phase 4 acceptance window monitored to closure (~2026-06-07). Two P2 maintenance todos pending: migration 012 rollback-artifact capture + Georgian lexicon native-speaker re-verify.
 Last activity: 2026-05-21
 
-Progress: [█████████░] 93%
+Progress: [██████████] 100% (Phase 6 closed)
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 0
-- Average duration: —
-- Total execution time: —
+- Total plans completed: 15 (Phase 6 fully consumed)
+- Average duration: ~16 min/plan
+- Total execution time: ~4 hours across the Phase 6 sprint
 
 **By Phase:**
 
@@ -49,6 +49,7 @@ Progress: [█████████░] 93%
 | 2. Memory | 0/TBD | — | — |
 | 3. Cognition (min) | 0/TBD | — | — |
 | 4. First Family Value | 0/TBD | — | — |
+| 06. Bilingual System (i18n) | 15/15 | ~4h | ~16 min |
 
 **Recent Trend:**
 
@@ -70,11 +71,14 @@ Progress: [█████████░] 93%
 | Phase 06 P06-11 | 13min | 3 tasks | 3 files |
 | Phase 06 P06-09 | 25m | 3 tasks | 5 files |
 | Phase Phase 06 PP06-12 | 15m | 5 tasks tasks | 6 files files |
+| Phase 06 P06-13 | ~20m | 2 doc-task + 1 metadata task | 6 files (PHASE_6_EXIT_REPORT.md + PHASE_6_COMPLETION_KA.md + STATE + ROADMAP + REQUIREMENTS + CLAUDE.md) |
 
 ## Accumulated Context
 
 ### Roadmap Evolution
 
+- 2026-05-21: **Phase 6 closed** — `verify_phase6 --mode code-complete` 11/11 PASS · ALL GREEN. Cumulative project verifier coverage now 89/89 across all 7 phases (Perception 10 + Memory 19 + Quick Wins 16 + Cognition 11 + FFV 9 + Manager 13 + I18N 11). Plan 06-13 finalized verify_phase6 with all 11 check_i18n_NN functions returning real evidence (no PENDING strings); check_i18n_11 spawns verify_phase4 + verify_phase5 as subprocess regression. Phase 4 + Phase 5 invariants preserved (9/9 + 13/13 still GREEN). Phase 6 LLM spend < $2 / $5 cap (deterministic Option A mirror for weekly_brief; Option B LLM-based gated on BILINGUAL_TEST_MODE). Cumulative project spend ~$5-6 / $60 cap (~10%). docs/PHASE_6_EXIT_REPORT.md + docs/PHASE_6_COMPLETION_KA.md authored. Two P2 maintenance todos pending: rollback-artifact capture (15-20 min one-psql-session) + Georgian lexicon native-speaker re-verify (10-15 min). Next focus: Phase 4 acceptance window monitored to ~2026-06-07. See docs/PHASE_6_EXIT_REPORT.md.
+- 2026-05-21: Phase 6 plan 06-13 executed — `scripts/verify_phase6.py` finalized; all 11 check_i18n_NN functions return real evidence (no PENDING — Wave N strings). check_i18n_11 spawns `subprocess.run([sys.executable, "-m", "scripts.verify_phase4", "--mode", "code-complete"])` and `verify_phase5` analogously; asserts both exit-0 AND "9/9 PASS" / "13/13 PASS" in stdout. `python -X utf8 -m scripts.verify_phase6 --mode code-complete` → 11/11 PASS; spawned verify_phase4 + verify_phase5 still GREEN at their full coverage. Single feat(06-13) commit 988abc4 finalized verifier + fixed locale-path regressions in upstream verifiers; subsequent metadata commit lands SUMMARY + STATE + ROADMAP + REQUIREMENTS + CLAUDE.md + 2 docs (exit report + KA completion). See 06-13-SUMMARY.md.
 - 2026-05-21: Phase 6 plan 06-11 executed — `scripts/communicator/banned_phrases.py` `_PATTERNS_KA` extended with the 8 D-05 lexicon entries (Phase 6 D-05 additions block, after the 11 Phase-3 entries). Patterns map the 6 English banned imperatives to Georgian polite-plural forms: `\bმართებთ\b` (should/you-ought), `\bაუცილებლად\b` (must, bare), `\bაუცილებელია\b` (must, predicative), `განიხილეთ` (consider, polite imperative 2pl), `გაითვალისწინეთ` (consider alt), `სცადეთ` (try), `მოითხოვეთ` (ask for), `ითხოვეთ` (request). RESEARCH.md Pattern 8 word-boundary policy honored: first three carry `\b` for Mkhedruli↔ASCII boundaries; remaining five omit `\b` per existing _PATTERNS_KA convention. Each entry preceded by `TODO(shako-review)` inline comment naming the English mapping; block-header comment captures the auto-mode authorization audit trail. `check(text, locales=(...))` signature already supports per-locale scoping (lines 120–135 from existing Phase-3 code) — no signature change needed; backward-compat preserved. `tests/test_imperative_verb_lint_georgian.py` ships 65 pytest cases across 5 groups (25 clean-en + 25 clean-ka sweeps; 5 positive-catch on Georgian halves of S26–S30; 8 D-05 lexicon planted-violation tests; 1 Phase 3 CGM-04 English regression; 1 per-locale scoping invariant); `python -X utf8 -m pytest tests/test_imperative_verb_lint_georgian.py -v` → 65 passed in 0.07s. Rule 3 scope-correction deviation: English positive-half assertions on S27/S28/S30 removed — the fixture's bare-verb paraphrases (`Please consider…`, `The family must try…`, `Please request…`) fall outside Phase-3 `_PATTERNS_EN` by design (subject+modal scope), and Plan Task 1 (c) explicitly freezes `_PATTERNS_EN`; documented inline in test file lines 74–83. Plan Task 3 was a `checkpoint:human-verify gate="blocking-human"` that the execute-plan prompt explicitly auto-mode-overrode against the locked CONTEXT.md D-05 reference; SUMMARY's "Self-Approved Lexicon" section captures the 8 entries verbatim with English mapping; maintenance todo `.planning/todos/pending/2026-05-21-shako-verify-06-11-lexicon.md` (P2, 10–15min) tracks Shako's post-hoc native-speaker re-verify. `python -X utf8 -m scripts.verify_phase3 --gate cgm-04` → 1/1 PASS (English regression preserved); `python -X utf8 -m scripts.verify_phase6 --bucket C --mode code-complete` → I18N-10 PASS (I18N-06 correctly remains PENDING — Wave-3b 06-09 owns Communicator `compose_bilingual`). Wave 3a (06-10 PHI half + 06-11 imperative-verb half) fully closed; Wave 3b 06-09 next. 2 task commits + 1 metadata commit. See 06-11-SUMMARY.md.
 - 2026-05-21: Phase 6 plan 06-08 executed — Wave-2 read-side displayField wiring + toBilingual write-side helper. 9 displayField call sites landed across the 4 plan-target `viewer/app/[locale]/*/page.tsx` files (timeline 2 + therapies 2 + hypotheses list 3 + hypotheses detail 4), consuming the migration-012-converted JSONB columns (`aleksandra_timeline.{title,description}`, `hypotheses.{title,description}`, `therapies.{name,evidence_summary}`). Row TypeScript types widened: `title`, `description`, `name`, `evidence_summary` now typed as `BilingualField` (= `string | {en?, ka?} | null | undefined`); neighbouring TEXT columns (`event_type`, `institution`, `location`, `status`, `therapy_type`, `evidence_in_hie`, `aleksandra_status`, `ai_assessment`, `mechanism_of_action`, etc.) left untouched per the 6-column-only rule. `RelatedTherapy.name` on the hypotheses/[id] detail page widened too — denormalized read but the underlying column is JSONB. Hidden form inputs for the `reviewHypothesis` server action use `displayField(hypothesis.title, 'en')` — locale-invariant audit trail (server action writes to `outcome` TEXT, not `title` JSONB). Therapies' truthiness gate over `evidence_summary` refactored to resolve to a string via displayField BEFORE the falsy check, because BilingualField objects are unconditionally truthy. Task 1 audit confirmed viewer/ has **zero** TypeScript INSERT/UPDATE call sites against the 4 target tables — `viewer/app/api/manager/apply/route.ts` is a pure HTTP proxy that forwards body unchanged to the Python worker. All actual writes live in `scripts/manager/routing/apply_action.py` (lines 58 + 102 — timeline + therapies) and `scripts/communicator/weekly_brief.py`, both explicitly DEFERRED to 06-09 (Wave 3b — Bilingual emission via `compose_bilingual` Anthropic strict tool_use) per the planner's own Task 1 classification table. One Rule 3 scope-correction deviation: plan's literal Task 2 (`grep -c "{en:" route.ts ≥ 2`) cannot be satisfied without inventing dead code in a proxy; `toBilingual()` helper added to `viewer/lib/i18n.ts` instead, colocated with `displayField`, where the shape contract architecturally belongs. One Rule 1 anticipatory bug fix: therapies' truthiness gate refactored to operate on the displayField-resolved string. `cd viewer && npm run build` exits 0 (21 static pages, 8 `/[locale]/*` dynamic routes preserved); `python -X utf8 -m scripts.verify_phase6 --mode code-complete` reports 8/11 PASS — identical to the 06-05b baseline (I18N-08 stays GREEN; the 3 PENDING items I18N-06, I18N-07, I18N-11 are Wave 3b/4 by design). FND-02 lint passes (no new remote fetch call sites). Wave 2 fully consumed at the consumer surface; Wave 3a 06-10 + 06-11 next (redact_bilingual exposure + per-locale check kwarg) before 06-09 can wire the Python write paths. 2 commits: a018fd4, 26c79c6. See 06-08-SUMMARY.md.
 - 2026-05-21: Phase 6 plan 06-05b executed — 129 next-intl `t('Namespace.key')` calls wired across the 9 family-facing `viewer/app/[locale]/*/page.tsx` files plus `viewer/components/layout/TopNav.tsx`, consuming the 11-namespace × 143-leaf dictionaries authored by 06-05a. 10 namespaces touched (Dashboard, Home, Hypotheses, Knowledge, Navigation, Papers, Shared, Therapies, Timeline, Today); `Common` remains dormant scaffold for future dialog UI. Server Components only — every page uses `await getTranslations(namespace)` after `setRequestLocale(locale)` per RESEARCH.md Pitfall 4; the hypotheses detail page binds the largest namespace set (5: Hypotheses + Navigation + Papers + Therapies + Shared) because it surfaces therapy + paper + hypothesis labels in one view. TopNav.tsx converted from sync to async Server Component; `import Link from 'next/link'` replaced with `import { Link } from '@/i18n/navigation'` so locale prefix auto-applies on every nav item; `/audit` (outside `[locale]/` tree per `proxy.ts` matcher exclusion) uses plain `<a>` to avoid the typed Link's locale-prefix 404. Three deviations: (Rule 1) `Hypotheses.aleksandraFor` was missing in dictionaries but `Therapies.aleksandraFor` exists — fixed by binding `tTherapies` on the detail page; (Rule 3) /audit typed Link would 404 → plain `<a>`; (Rule 2) comment text in TopNav referenced the `next/link` literal and triggered the acceptance grep → reworded. Dynamic JSONB column reads (event.title, therapy.name, hypothesis.description, paper.title, etc.) intentionally NOT wrapped — that surface is 06-08's plan (Wave 3a) via the `displayField(value, locale)` helper landed in 06-04. `cd viewer && npm run build` exits 0 in 12.7s (21 static pages, 8 `/[locale]/*` dynamic routes preserved); `python -X utf8 -m scripts.verify_phase6 --mode code-complete` → I18N-03 PASS (`en_leaves=143 ka_leaves=143 diff_count=0`); 8/11 overall PASS (same baseline as pre-plan — Wave-3a/3b/4 gates remain PENDING by design). Inline missing-key verifier (custom Python script that walks every .tsx for namespace bindings + t() calls): `OK: 129 translation references across 10 namespaces all resolve in both dictionaries`. Wave 1 of Phase 6 fully closed; Wave 3a 06-08 next. 3 commits: ce3557f, 9cf0b6e, faa0ca0. See 06-05b-SUMMARY.md.
@@ -161,6 +165,6 @@ Items acknowledged and carried forward:
 
 ## Session Continuity
 
-Last session: 2026-05-21T20:19:31.619Z
-Stopped at: Completed 06-12-PLAN.md (audience routing; Telegram=ka, Gmail=en; I18N-07 GREEN; verifier 10/11 PASS)
+Last session: 2026-05-21T21:30:00.000Z
+Stopped at: Phase 6 closed — verify_phase6 --mode code-complete 11/11 PASS · ALL GREEN; cumulative 89/89; see docs/PHASE_6_EXIT_REPORT.md
 Resume file: None
