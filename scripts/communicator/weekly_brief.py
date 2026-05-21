@@ -71,6 +71,63 @@ QUESTIONS_QUEUE_PATH = ROOT / "scripts" / "communicator" / "questions_queue.yaml
 
 
 # ---------------------------------------------------------------------------
+# Phase 6 I18N-06 / D-02 — bilingual emission for briefs.sections
+# ---------------------------------------------------------------------------
+# Option A (deterministic-mirror, zero Anthropic cost) per RESEARCH.md Pattern 6:
+# the 5 fixed summary-line templates produced by collect_sections() are mirrored
+# into {en, ka} via the lookup table below. The Communicator agent's per-row
+# inserts (hypotheses/therapies/aleksandra_timeline) use Option B (compose_bilingual)
+# — see agents/communicator.py.
+#
+# TODO(Phase 6 execute): Shako sanity-check the Georgian phrasing of these 5
+# template strings before this plan's commit is merged. The translations follow
+# evidence-grade descriptive Georgian (not imperatives) so they cannot trigger
+# the D-05 imperative-verb lint extended by plan 06-11. Polite-plural avoided
+# where bare descriptive forms read naturally to a family audience.
+#
+# Templates map 1:1 to the f-strings in collect_sections() lines ~359-365.
+# Counts substituted via str.format(n=...) before {en, ka} emission.
+SUMMARY_TEMPLATES_KA: dict[str, str] = {
+    "papers": "ამ კვირას {n} ახალი რელევანტური სტატია.",
+    "hypotheses": "{n} ჰიპოთეზის განახლება.",
+    "therapies": "{n} თერაპიის კანდიდატი აქტიური მონიტორინგის ქვეშ.",
+    "outreach_pending": "{n} გასაგზავნი მონახაზი მიმოხილვისთვის.",
+    "open_questions": "{n} ღია ოჯახური კითხვა.",
+}
+
+SUMMARY_TEMPLATES_EN: dict[str, str] = {
+    "papers": "{n} new relevant papers this week.",
+    "hypotheses": "{n} hypothesis updates.",
+    "therapies": "{n} therapy candidates under active monitoring.",
+    "outreach_pending": "{n} outreach drafts pending review.",
+    "open_questions": "{n} open family questions.",
+}
+
+
+def _bilingual_line(key: str, *, n: int) -> dict[str, str]:
+    """Render a {en, ka} pair for a summary-line template key.
+
+    Option A — deterministic prose mirror; no Anthropic call.
+    """
+    return {
+        "en": SUMMARY_TEMPLATES_EN[key].format(n=n),
+        "ka": SUMMARY_TEMPLATES_KA[key].format(n=n),
+    }
+
+
+def _bilingual_mirror(value: str | None) -> dict[str, str]:
+    """Mirror a single English string into {en, ka} with both halves identical.
+
+    Used for per-row title/name fields inside briefs.sections that originate
+    from already-stored DB rows. Once those source tables go through migration
+    012 + the Communicator's compose_bilingual write path, this mirror becomes
+    a safety net (returns whatever upstream already bilingualized).
+    """
+    s = value or ""
+    return {"en": s, "ka": s}
+
+
+# ---------------------------------------------------------------------------
 # Brief data shape
 # ---------------------------------------------------------------------------
 @dataclass
@@ -122,7 +179,10 @@ class BriefSections:
     week_start: date
     week_end: date
     generated_at: datetime
-    summary_lines: list[str] = field(default_factory=list)
+    # Phase 6 I18N-06: summary_lines is a list of {en, ka} dicts now (was list[str]
+    # pre-06-09). The PDF renderer reads .en for display; .ka is persisted into
+    # briefs.sections JSONB for the Telegram audience.
+    summary_lines: list[dict[str, str]] = field(default_factory=list)
     papers: list[PaperRow] = field(default_factory=list)
     hypotheses: list[HypothesisRow] = field(default_factory=list)
     therapies: list[TherapyRow] = field(default_factory=list)
@@ -131,17 +191,71 @@ class BriefSections:
     citations: list[str] = field(default_factory=list)  # appendix rows
 
     def to_dict(self) -> dict:
-        """Serialisable form for the `briefs.sections` JSONB column."""
+        """Serialisable form for the `briefs.sections` JSONB column.
+
+        Phase 6 I18N-06: family-visible body fields are emitted as `{en, ka}`
+        per migration 012's reshape. Summary lines come pre-bilingualized from
+        collect_sections() via _bilingual_line(); per-row title/name fields are
+        mirrored via _bilingual_mirror() (Option A — zero Anthropic cost).
+
+        Internal-only metadata (citation_id, ingested_at, dates, scores,
+        statuses, languages) STAYS as scalar strings — not family-visible prose.
+        """
         return {
             "week_start": self.week_start.isoformat(),
             "week_end": self.week_end.isoformat(),
             "generated_at": self.generated_at.isoformat(),
+            # summary_lines: already a list of {en, ka} pairs from collect_sections()
             "summary_lines": self.summary_lines,
-            "papers": [p.__dict__ for p in self.papers],
-            "hypotheses": [h.__dict__ for h in self.hypotheses],
-            "therapies": [t.__dict__ for t in self.therapies],
-            "outreach": [o.__dict__ for o in self.outreach],
-            "questions": [q.__dict__ for q in self.questions],
+            "papers": [
+                {
+                    "title": _bilingual_mirror(p.title),
+                    "citation_id": p.citation_id,
+                    "ingested_at": p.ingested_at,
+                    "relevance_score": p.relevance_score,
+                }
+                for p in self.papers
+            ],
+            "hypotheses": [
+                {
+                    "title": _bilingual_mirror(h.title),
+                    "status": h.status,
+                    "confidence": h.confidence,
+                    "reviewed_at": h.reviewed_at,
+                    "supporting": h.supporting,
+                }
+                for h in self.hypotheses
+            ],
+            "therapies": [
+                {
+                    "name": _bilingual_mirror(t.name),
+                    "therapy_type": t.therapy_type,
+                    "aleksandra_status": t.aleksandra_status,
+                    "evidence_in_hie": t.evidence_in_hie,
+                }
+                for t in self.therapies
+            ],
+            "outreach": [
+                {
+                    "subject": _bilingual_mirror(o.subject),
+                    "language": o.language,
+                    "drafted_at": o.drafted_at,
+                    "sent_at": o.sent_at,
+                    "contact_label": o.contact_label,
+                    "confidence": o.confidence,
+                }
+                for o in self.outreach
+            ],
+            "questions": [
+                {
+                    "id": q.id,
+                    "question": _bilingual_mirror(q.question),
+                    "context": _bilingual_mirror(q.context),
+                    "asked_at": q.asked_at,
+                    "status": q.status,
+                }
+                for q in self.questions
+            ],
             "citations": self.citations,
         }
 
@@ -189,9 +303,30 @@ def collect_sections(
     sections.questions = _load_questions()
 
     if fixture:
+        # Phase 6 I18N-06: fixture summary lines emitted as {en, ka} dicts.
+        # The Georgian halves use the same descriptive (non-imperative) register
+        # required by the D-05 banned-imperative lint extended in plan 06-11.
         sections.summary_lines = [
-            "This is a fixture render used by CGM-05 — not a real weekly brief.",
-            "Every section below carries a placeholder row so the renderer is exercised end-to-end.",
+            {
+                "en": (
+                    "This is a fixture render used by CGM-05 — not a real "
+                    "weekly brief."
+                ),
+                "ka": (
+                    "ეს არის CGM-05-ის ფიქსტურა — არ წარმოადგენს რეალურ "
+                    "კვირეულ მონახაზს."
+                ),
+            },
+            {
+                "en": (
+                    "Every section below carries a placeholder row so the "
+                    "renderer is exercised end-to-end."
+                ),
+                "ka": (
+                    "ქვემოთ ყველა სექციას აქვს ჩანაცვლების ჩანაწერი, რათა "
+                    "რენდერერი სრულად შემოწმდეს."
+                ),
+            },
         ]
         sections.papers = [
             PaperRow(
@@ -230,7 +365,10 @@ def collect_sections(
         ]
         sections.citations = ["PMID:0000001"]
         sections.summary_lines.append(
-            "Citation appendix exercised with 1 entry (PMID:0000001)."
+            {
+                "en": "Citation appendix exercised with 1 entry (PMID:0000001).",
+                "ka": "ციტირების დანართი შესრულდა 1 ჩანაწერით (PMID:0000001).",
+            }
         )
         return sections
 
@@ -355,13 +493,17 @@ def collect_sections(
     finally:
         conn.close()
 
-    # Summary lines — built from the section counts
+    # Summary lines — built from the section counts.
+    # Phase 6 I18N-06 / D-02: each line is a {en, ka} pair, rendered via the
+    # SUMMARY_TEMPLATES_KA + SUMMARY_TEMPLATES_EN lookup tables (Option A —
+    # deterministic prose mirror, zero Anthropic cost).
+    pending_outreach = len([o for o in sections.outreach if not o.sent_at])
     sections.summary_lines = [
-        f"{len(sections.papers)} new relevant papers this week.",
-        f"{len(sections.hypotheses)} hypothesis updates.",
-        f"{len(sections.therapies)} therapy candidates under active monitoring.",
-        f"{len([o for o in sections.outreach if not o.sent_at])} outreach drafts pending review.",
-        f"{len(sections.questions)} open family questions.",
+        _bilingual_line("papers", n=len(sections.papers)),
+        _bilingual_line("hypotheses", n=len(sections.hypotheses)),
+        _bilingual_line("therapies", n=len(sections.therapies)),
+        _bilingual_line("outreach_pending", n=pending_outreach),
+        _bilingual_line("open_questions", n=len(sections.questions)),
     ]
     return sections
 
@@ -471,7 +613,12 @@ def render_pdf(sections: BriefSections, output_path: Path) -> Path:
     body.append(Paragraph("This week, in short", styles["SectionHeading"]))
     if sections.summary_lines:
         for line in sections.summary_lines:
-            body.append(Paragraph("• " + line, styles["BodyText"]))
+            # Phase 6 I18N-06: lines are {en, ka} dicts; PDF renders the
+            # English half (ReportLab's default fonts don't render Mkhedruli
+            # reliably; the .ka half is preserved in briefs.sections JSONB
+            # for the Telegram audience routing landed in plan 06-12).
+            en_text = line["en"] if isinstance(line, dict) else str(line)
+            body.append(Paragraph("• " + en_text, styles["BodyText"]))
     else:
         body.append(Paragraph(_EMPTY, styles["BodyText"]))
 
@@ -572,7 +719,17 @@ def render_pdf(sections: BriefSections, output_path: Path) -> Path:
     # rendered PDF is opaque to the redactor, but the in-memory section text
     # is available. We re-check the joined text for PHI patterns that might
     # have slipped past the upstream pipeline.
-    flat = "\n".join([*sections.summary_lines, *(p.title for p in sections.papers)])
+    # Phase 6 I18N-06: summary_lines is list[dict[str, str]] now; flatten BOTH
+    # halves so the redactor sweeps Georgian PHI patterns too (plan 06-10 made
+    # the redactor bilingual-aware).
+    summary_strings: list[str] = []
+    for line in sections.summary_lines:
+        if isinstance(line, dict):
+            summary_strings.append(line.get("en", ""))
+            summary_strings.append(line.get("ka", ""))
+        else:
+            summary_strings.append(str(line))
+    flat = "\n".join([*summary_strings, *(p.title for p in sections.papers)])
     safety = redact(flat, consent=ConsentFlags())
     if safety.blocked:
         # If the safety net trips, remove the PDF and refuse — caller must
@@ -609,6 +766,15 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Render from fixture data — no DB pulls.",
     )
+    ap.add_argument(
+        "--bilingual-test",
+        action="store_true",
+        help=(
+            "Phase 6 I18N-06 verifier hook: emit the bilingual sections dict as "
+            "JSON to stdout (no PDF). Intended to be combined with --dry-run so "
+            "the verifier can assert summary_lines[0].en and .ka are non-empty."
+        ),
+    )
     args = ap.parse_args(argv)
 
     if args.week_start is None:
@@ -621,6 +787,17 @@ def main(argv: list[str] | None = None) -> int:
         args.output = ROOT / "briefs" / f"{args.week_start.isoformat()}.pdf"
 
     sections = collect_sections(args.week_start, fixture=args.dry_run)
+
+    # Phase 6 I18N-06 verifier hook: emit the bilingual sections dict to stdout
+    # as JSON. NO PDF is rendered (skips ReportLab + the safety-net redactor).
+    # The verifier asserts summary_lines[0].en and .ka are non-empty strings.
+    if args.bilingual_test:
+        import json as _json  # noqa: PLC0415
+
+        sd = sections.to_dict()
+        print(_json.dumps(sd, ensure_ascii=False, default=str, indent=2))
+        return 0
+
     path = render_pdf(sections, args.output)
     print(f"weekly brief rendered: {path} ({path.stat().st_size} bytes)")
     print(f"citations: {len(sections.citations)}")
