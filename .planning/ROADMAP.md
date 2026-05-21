@@ -130,7 +130,7 @@ Phases execute in numeric order: 0 → 1 → 2 → 2.5 → 3 → 4 → 5 → 6
 | 3. Cognition (minimum) | 0/TBD | Closed — 11/11 PASS | 2026-05-16 |
 | 4. First Family Value | 0/TBD | Engineering closed 9/9 PASS; 14-day acceptance window in progress (closes ~2026-06-07) | 2026-05-17 (engineering) |
 | 5. BRAIN AI Manager Assistant | 0/TBD | Closed — 13/13 PASS · ALL GREEN | 2026-05-18 |
-| 6. Bilingual System (i18n) | 2/15 | Executing — Wave 0 closed (06-01 next-intl@4 foundation + 06-02 verifier scaffold + fixtures); Wave 1 plans 06-03a/b, 06-04, 06-05a/b unblocked | 2026-05-20 (Wave 0) |
+| 6. Bilingual System (i18n) | 3/15 | Executing — Wave 0 closed + Wave 1 06-03a complete (viewer/app/[locale]/ structural move via 10 R100 renames; build green); 06-03b next | 2026-05-21 (06-03a) |
 
 ## Coverage
 
@@ -174,7 +174,8 @@ Plans:
 **Wave 1**
 - [x] 06-01-PLAN.md — Install next-intl@4 + rename middleware.ts → proxy.ts (Next.js 16 convention) + author i18n module files + relocate messages
 - [x] 06-02-PLAN.md — Phase 6 verifier scaffold (scripts/verify_phase6.py) + 10-entry Georgian PHI fixture + 30-entry bilingual digest sample set
-- [ ] 06-03-PLAN.md — Move 7 family-facing routes under viewer/app/[locale]/ with Next.js 16 async-params signature
+- [x] 06-03a-PLAN.md — Move 7 family-facing routes + root page.tsx under viewer/app/[locale]/ via 8 `git mv` (R100 renames; pure topology change; no content edits)
+- [ ] 06-03b-PLAN.md — Author viewer/app/[locale]/layout.tsx + update each relocated page's signature to `params: Promise<{locale: string}>` (Next.js 16 async-params)
 - [ ] 06-04-PLAN.md — viewer/lib/i18n.ts displayField helper + unit test + LanguageSwitcher typed-nav polish
 - [ ] 06-05-PLAN.md — Expand viewer/messages/{en,ka}.json from 7 keys to ~60–80 keys + insert t() refs across 9 pages + locale-aware TopNav
 
