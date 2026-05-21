@@ -109,16 +109,51 @@ _MRN_PATTERNS = [
 _MRN_REPLACEMENT = "[REDACTED:MRN]"
 
 # Hospitals — both English + Georgian forms.
+#
+# Phase 6 / I18N-10 widening:
+#   - Suffix anchor `\b` replaced with lookahead `(?=\b|-)` to allow Georgian
+#     genitive / instrumental suffix glue (e.g. `Boston Medical Center-ის`,
+#     `BMC-ში`, `Duke-ის`). The lookahead does not consume the suffix so the
+#     surrounding case marker remains in the redacted output.
+#   - Georgian transliteration variants added: ბოსტონის სამედიცინო ცენტრი
+#     (BMC), ფილოქსენიის სახლი (Philoxenia House), დიუკი (Duke).
+#   - Standalone `Duke` added (covers `Duke-ის EAP` and any other bare
+#     reference) — earlier patterns only matched `Duke EAP` or
+#     `Duke (University) Medical Center/Hospital`.
 _HOSPITAL_PATTERNS = [
-    r"\bBoston Medical Center\b",
-    r"\bBMC\b",
-    r"\bDuke (?:University )?(?:Medical Center|Hospital)\b",
-    r"\bDuke EAP\b",
-    r"\bWisconsin (?:Virtual )?A2\b",
-    r"\bPhiloxenia House\b",
-    r"\bBumrungrad\b",
+    r"\bBoston Medical Center(?=\b|-)",
+    r"\bBMC(?=\b|-)",
+    r"\bDuke (?:University )?(?:Medical Center|Hospital)(?=\b|-)",
+    r"\bDuke EAP(?=\b|-)",
+    r"\bDuke(?=\b|-)",
+    r"\bWisconsin (?:Virtual )?A2(?=\b|-)",
+    r"\bPhiloxenia House(?=\b|-)",
+    r"\bBumrungrad(?=\b|-)",
+    # Georgian transliterations (Mkhedruli) — no \b because \b is ASCII-only.
+    r"ბოსტონის სამედიცინო ცენტრი",
+    r"ფილოქსენიის სახლი",
+    r"დიუკი",
 ]
 _HOSPITAL_REPLACEMENT = "a U.S. hospital"
+
+# Clinician names — Phase 6 / I18N-10 addition.
+#
+# Earlier the redactor relied on `consent.known_doctor_names` (populated by the
+# Supabase `contacts` table) to scrub doctor identities. That is fine in
+# production but it leaks PHI in tests + early-startup contexts where the DB
+# isn't reachable. RESEARCH.md Pattern 8 and the phi_ka.yaml fixture
+# `ექიმი Dr. Hien-მა გვირჩია` require a deterministic literal-list fallback.
+#
+# Suffix uses `(?=\b|-)` so Georgian genitive / ergative glue (e.g.
+# `Dr. Hien-მა`, `Dr. Maypole-ის`) still resolves to "a clinician".
+_CLINICIAN_PATTERNS = [
+    r"\bDr\.\s+Hien(?=\b|-)",
+    r"\bDr\.\s+August(?=\b|-)",
+    r"\bDr\.\s+Jack\s+Maypole(?=\b|-)",
+    r"\bDr\.\s+Maypole(?=\b|-)",
+    r"\bJeanette\s+Heitman(?=\b|-)",
+]
+_CLINICIAN_REPLACEMENT = "a clinician"
 
 # Street address heuristic — number followed by Street/St/Avenue/Boulevard
 _ADDRESS_PATTERN = (
@@ -244,9 +279,16 @@ def redact(text: str, *, consent: ConsentFlags | None = None) -> RedactionResult
             )
 
     # 6. Doctor names → "a clinician" unless consent_doctor_names.
-    if not consent.consent_doctor_names and consent.known_doctor_names:
+    #    Two sources combined: the deterministic literal list (_CLINICIAN_PATTERNS,
+    #    safe under no-DB / test conditions) and the DB-derived
+    #    `consent.known_doctor_names` (production augmentation).
+    if not consent.consent_doctor_names:
+        for pat in _CLINICIAN_PATTERNS:
+            out = _redact_pattern(
+                out, pat, _CLINICIAN_REPLACEMENT, "doctor", redactions
+            )
         for name in consent.known_doctor_names:
-            pat = r"\b" + re.escape(name) + r"\b"
+            pat = r"\b" + re.escape(name) + r"(?=\b|-)"
             out = _redact_pattern(out, pat, "a clinician", "doctor", redactions)
 
     # 7. Street address → [REDACTED:address].
