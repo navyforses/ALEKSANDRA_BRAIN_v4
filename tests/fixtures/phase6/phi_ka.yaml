@@ -1,0 +1,89 @@
+# tests/fixtures/phase6/phi_ka.yaml
+#
+# 10 Georgian PHI fixtures for the Phase 6 PHI redactor regression suite.
+# Consumed by check_i18n_10 in scripts/verify_phase6.py and by
+# tests/test_phi_redactor_georgian.py (landed by plan 06-10).
+#
+# Source: 06-RESEARCH.md Pattern 8 ("Bilingual PHI fixture set (verifier C.3 input)")
+# Encoding: UTF-8 (no BOM). Mkhedruli script Unicode block U+10A0..U+10FF.
+# Patient: Aleksandra Jincharadze, DOB 28.08.2025, BMC MRN 7616818.
+#
+# Schema:
+#   - name: <short human-readable label>
+#     input: <Georgian PHI-bearing phrase>
+#     category: <patient_name | mrn | dob | hospital | clinician>
+#     must_not_appear_in_output: [<token>, <token>, ...]   # soft-redact contract
+#     must_block: <bool>                                   # hard-block contract (true → drop message entirely)
+#     notes: <why this fixture exists>
+#
+# Category distribution (matches the 5-bucket PHI redactor design):
+#   patient_name : 2  (full name + diminutive)
+#   surname      : 1  (surname-only)        [classified as patient_name]
+#   dob          : 2  (Georgian-month + dd.mm.yyyy)
+#   mrn          : 1  (BMC MRN literal)
+#   hospital     : 1  (English-name-in-Mkhedruli)
+#   clinician    : 1  (English-name-in-Mkhedruli)
+#   patient_name : 1  (catches diminutive without surname)
+#   mri_artifact : 1  (HARD BLOCK — MRI file reference)
+#
+# Total: 10 fixtures. Hard-block count: exactly 1 (mri_artifact).
+
+- name: "Patient full name Mkhedruli"
+  category: patient_name
+  input: "ალექსანდრა ჯინჭარაძემ მიიღო თერაპია"
+  must_not_appear_in_output: ["ალექსანდრა", "ჯინჭარაძე"]
+  notes: "Full name in subject-position; both first and last name must redact."
+
+- name: "Patient short name Mkhedruli"
+  category: patient_name
+  input: "ალექსანდრამ კარგად აიტანა"
+  must_not_appear_in_output: ["ალექსანდრა"]
+  notes: "First-name-only in ergative case (-მ suffix); name root must redact."
+
+- name: "Surname only Mkhedruli"
+  category: patient_name
+  input: "ჯინჭარაძემ კარგი შედეგი ნახა"
+  must_not_appear_in_output: ["ჯინჭარაძე"]
+  notes: "Surname-only reference; stem ჯინჭარაძე must redact regardless of case suffix."
+
+- name: "DOB Georgian-month format"
+  category: dob
+  input: "დაბადება: 28 აგვისტო 2025"
+  must_not_appear_in_output: ["28 აგვისტო 2025"]
+  notes: "Georgian-month spelled form (აგვისტო = August); full triplet must redact."
+
+- name: "BMC MRN literal in Mkhedruli context"
+  category: mrn
+  input: "MRN 7616818 დადასტურდა"
+  must_not_appear_in_output: ["7616818"]
+  notes: "Numeric MRN is language-agnostic; must redact in any context."
+
+- name: "Hospital name English in Mkhedruli context"
+  category: hospital
+  input: "Boston Medical Center-ის ცნობით"
+  must_not_appear_in_output: ["Boston Medical Center"]
+  notes: "English hospital name with Georgian genitive suffix (-ის); BMC literal must redact."
+
+- name: "Doctor name English in Mkhedruli sentence"
+  category: clinician
+  input: "ექიმი Dr. Hien-მა გვირჩია"
+  must_not_appear_in_output: ["Dr. Hien"]
+  notes: "Clinician name in English embedded in Georgian sentence; full token must redact."
+
+- name: "Date format dd.mm.yyyy"
+  category: dob
+  input: "ვიზიტი: 28.08.2025"
+  must_not_appear_in_output: ["28.08.2025"]
+  notes: "Numeric DOB / visit date; both calendar shapes must redact."
+
+- name: "Patient first-name diminutive (catches without surname)"
+  category: patient_name
+  input: "ალექსანდრამ კარგად აიტანა გუშინდელი თერაპია"
+  must_not_appear_in_output: ["ალექსანდრა"]
+  notes: "First name alone (no surname disambiguator); must still redact — patient is uniquely identified."
+
+- name: "MRI artifact reference (HARD BLOCK)"
+  category: mri_artifact
+  input: "ხედე ფაილი viewer/scans/aleksandra.nii.gz"
+  must_block: true
+  notes: "MRI file-path reference is hard-block per CGM-04 / VIS-* doctrine — redaction insufficient, drop the message entirely. phi_redactor must return RedactionResult.blocked=True."
