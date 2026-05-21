@@ -36,6 +36,7 @@ from pathlib import Path
 
 import psycopg2
 
+from scripts.communicator._bilingual_read import display_field_py
 from scripts.communicator.outreach_drafter import (
     GMAIL_SCOPES,
     MAX_DAILY_DRAFTS,
@@ -46,6 +47,13 @@ from scripts.communicator.outreach_drafter import (
 from scripts.communicator.phi_redactor import ConsentFlags, redact
 from scripts.communicator.weekly_brief import BriefSections, collect_sections
 from scripts.ledger import load_env
+
+
+# Phase 6 Plan 06-12 / D-02 — Gmail audience is operational/clinician-facing,
+# English-only. Every read of a migration-012-converted JSONB column (or
+# briefs.sections nested bilingual field) must be resolved through
+# display_field_py(field, 'en').
+GMAIL_LOCALE = "en"
 
 
 # ---------------------------------------------------------------------------
@@ -114,7 +122,11 @@ def render_body(
     lines.append("This week, in short:")
     if sections.summary_lines:
         for line in sections.summary_lines[:6]:
-            lines.append(f"  • {line}")
+            # Phase 6 I18N-07: post-06-09, BriefSections.summary_lines is
+            # list[dict[str, str]] ({en, ka}). Gmail audience reads .en.
+            # display_field_py also tolerates legacy str rows (pre-migration
+            # forward-compat) and None.
+            lines.append(f"  • {display_field_py(line, GMAIL_LOCALE)}")
     else:
         lines.append("  • No new items this week.")
     lines.append("")
@@ -128,36 +140,47 @@ def render_body(
                 lines.append(f"  • {render_item(item)}")
         lines.append("")
 
+    # Phase 6 I18N-07: BriefSections row fields (p.title, h.title, t.name,
+    # o.subject, q.question) may be `str` (legacy) OR `{en, ka}` (post-06-09
+    # _bilingual_mirror / post-migration-012). Gmail audience routes every read
+    # through display_field_py(field, GMAIL_LOCALE) so the English half is
+    # what the inbox sees.
     _section(
         "New evidence",
         sections.papers,
         lambda p: (
-            f"{p.title} [{p.citation_id}, "
+            f"{display_field_py(p.title, GMAIL_LOCALE)} [{p.citation_id}, "
             f"relevance={p.relevance_score if p.relevance_score is not None else 'n/a'}]"
         ),
     )
     _section(
         "Hypothesis updates",
         sections.hypotheses,
-        lambda h: f"{h.title} — status={h.status}, confidence={h.confidence or 'n/a'}",
+        lambda h: (
+            f"{display_field_py(h.title, GMAIL_LOCALE)} — "
+            f"status={h.status}, confidence={h.confidence or 'n/a'}"
+        ),
     )
     _section(
         "Repurposing watch",
         sections.therapies,
-        lambda t: f"{t.name} — {t.aleksandra_status or 'n/a'} / HIE evidence {t.evidence_in_hie or 'n/a'}",
+        lambda t: (
+            f"{display_field_py(t.name, GMAIL_LOCALE)} — "
+            f"{t.aleksandra_status or 'n/a'} / HIE evidence {t.evidence_in_hie or 'n/a'}"
+        ),
     )
     _section(
         "Outreach queue",
         sections.outreach,
         lambda o: (
-            f"[{o.contact_label}] {o.subject} "
+            f"[{o.contact_label}] {display_field_py(o.subject, GMAIL_LOCALE)} "
             f"({'sent' if o.sent_at else 'pending review'})"
         ),
     )
     _section(
         "Open family questions",
         sections.questions,
-        lambda q: q.question,
+        lambda q: display_field_py(q.question, GMAIL_LOCALE),
     )
 
     if pdf_r2_path:
@@ -420,10 +443,141 @@ def stage_weekly_digest(
     )
 
 
+def _bilingual_dryrun_sections() -> BriefSections:
+    """Fixture BriefSections with bilingual JSONB-shaped fields.
+
+    Used by --bilingual-dryrun (which check_i18n_07 reads to assert ZERO
+    Mkhedruli codepoints appear in the Gmail-side output — Gmail audience
+    is English-only per CONTEXT.md D-02).
+    """
+    from scripts.communicator.weekly_brief import (  # noqa: PLC0415
+        HypothesisRow,
+        OutreachRow,
+        PaperRow,
+        QuestionRow,
+        TherapyRow,
+    )
+
+    today = date.today()
+    return BriefSections(
+        week_start=today,
+        week_end=today + timedelta(days=6),
+        generated_at=datetime.now(timezone.utc),
+        summary_lines=[
+            {
+                "en": "3 new relevant papers this week.",
+                "ka": "ამ კვირას 3 ახალი სტატია.",
+            },
+            {"en": "2 hypothesis updates.", "ka": "2 ჰიპოთეზის განახლება."},
+        ],
+        papers=[
+            PaperRow(
+                title={  # type: ignore[arg-type]
+                    "en": "Vigabatrin washout in infant HIE",
+                    "ka": "ვიგაბატრინის გამორეცხვა ჩვილებში HIE-ით",
+                },
+                citation_id="PMID:00000000",
+                ingested_at=today.isoformat(),
+                relevance_score=0.91,
+            ),
+        ],
+        hypotheses=[
+            HypothesisRow(
+                title={  # type: ignore[arg-type]
+                    "en": "Cord blood window aligns with Duke EAP",
+                    "ka": "სანაყოფე სისხლის ფანჯარა ემთხვევა Duke EAP-ს",
+                },
+                status="evaluating",
+                confidence="medium",
+                reviewed_at=today.isoformat(),
+                supporting=[],
+            ),
+        ],
+        therapies=[
+            TherapyRow(
+                name={  # type: ignore[arg-type]
+                    "en": "Vigabatrin",
+                    "ka": "ვიგაბატრინი",
+                },
+                therapy_type="anticonvulsant",
+                aleksandra_status="evaluating",
+                evidence_in_hie="moderate",
+            ),
+        ],
+        outreach=[
+            OutreachRow(
+                subject={  # type: ignore[arg-type]
+                    "en": "Cord blood EAP follow-up",
+                    "ka": "სანაყოფე სისხლის EAP-ის შემდგომი ნაბიჯი",
+                },
+                language="en",
+                drafted_at=today.isoformat(),
+                sent_at=None,
+                contact_label="Duke DTRI",
+                confidence=0.8,
+            ),
+        ],
+        questions=[
+            QuestionRow(
+                id="q-001",
+                question={  # type: ignore[arg-type]
+                    "en": "When does vigabatrin washout complete?",
+                    "ka": "როდის სრულდება ვიგაბატრინის გამორეცხვა?",
+                },
+                context="treatment-timeline",
+                asked_at=today.isoformat(),
+                status="open",
+            ),
+        ],
+        citations=["PMID:00000000"],
+    )
+
+
+def _bilingual_dryrun() -> int:
+    """Print a Gmail body composed via display_field_py(..., 'en'). Exit 0.
+
+    Verifier check_i18n_07 reads stdout and asserts ZERO Mkhedruli codepoints
+    (U+10A0..U+10FF) — Gmail audience is English-only per CONTEXT.md D-02.
+    """
+    sections = _bilingual_dryrun_sections()
+    body = render_body(sections)
+    print(body)
+    return 0
+
+
+def main(argv: list[str] | None = None) -> int:
+    import argparse  # noqa: PLC0415
+
+    parser = argparse.ArgumentParser(
+        prog="scripts.communicator.gmail_digest",
+        description="Phase 4 weekly Gmail digest + Phase 6 bilingual dry-run.",
+    )
+    parser.add_argument(
+        "--bilingual-dryrun",
+        action="store_true",
+        help=(
+            "Phase 6 I18N-07: render a Gmail body from JSONB-shaped fixture "
+            "sections via display_field_py(..., 'en'). Prints body to stdout, "
+            "exit 0, no Gmail API call, no DB write. Verifier check_i18n_07 "
+            "asserts ZERO Mkhedruli codepoints appear (audience is English-only)."
+        ),
+    )
+    args = parser.parse_args(argv)
+    if args.bilingual_dryrun:
+        return _bilingual_dryrun()
+    parser.print_help()
+    return 0
+
+
 __all__ = [
     "WeeklyDigestResult",
     "render_subject",
     "render_body",
     "stage_weekly_digest",
     "GMAIL_SCOPES",
+    "GMAIL_LOCALE",
 ]
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
