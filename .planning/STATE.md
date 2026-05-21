@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 6 plan 06-03a complete — viewer/app/[locale]/ shell landed via 10 R100 git renames (7 family-facing route directories + root page.tsx relocated; api/audit/brain/layout.tsx preserved at top level). npm run build green; 8 /[locale]/* dynamic routes resolve. 06-03b unblocked.
-last_updated: "2026-05-21T00:30:00.000Z"
-last_activity: 2026-05-21 -- Phase 6 plan 06-03a complete (viewer/app/[locale]/ structural folder move — 10 R100 renames)
+stopped_at: Phase 6 plan 06-04 complete — displayField bilingual JSONB helper landed at viewer/lib/i18n.ts (10 lines, locked CONTEXT.md D-03 shape) + 5-case node:test suite passes under `npx tsx --test` + LanguageSwitcher.tsx polished to typed @/i18n/navigation router with bilingual labels. Verifier check_i18n_08 flipped PASS (4/11 total now). 06-04 unblocks Wave-2 viewer reads (06-08) + Wave-3 worker reads (06-09/06-10).
+last_updated: "2026-05-21T01:30:00.000Z"
+last_activity: 2026-05-21 -- Phase 6 plan 06-04 complete (displayField helper + LanguageSwitcher typed-nav polish)
 progress:
   total_phases: 8
   completed_phases: 0
   total_plans: 15
-  completed_plans: 3
-  percent: 20
+  completed_plans: 4
+  percent: 27
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-13)
 ## Current Position
 
 Phase: 6 of 8 (Bilingual System i18n)
-Plan: 3 of 15 in current phase (06-03a complete — viewer/app/[locale]/ folder move landed; 06-03b next)
+Plan: 4 of 15 in current phase (06-04 complete — displayField helper + typed-nav LanguageSwitcher landed; 06-03b next to mount the switcher in [locale]/layout.tsx)
 Status: executing
-Last activity: 2026-05-21 -- Phase 6 plan 06-03a complete (viewer/app/[locale]/ structural folder move — 10 R100 renames)
+Last activity: 2026-05-21 -- Phase 6 plan 06-04 complete (displayField bilingual JSONB helper + LanguageSwitcher typed-nav polish)
 
-Progress: [██░░░░░░░░] 20%
+Progress: [███░░░░░░░] 27%
 
 ## Performance Metrics
 
@@ -59,11 +59,13 @@ Progress: [██░░░░░░░░] 20%
 | Phase 06 P06-01 | 7m 26s | 5 tasks | 9 files |
 | Phase 06 P06-02 | 16m     | 3 tasks | 3 files |
 | Phase 06 P06-03a | 10m     | 2 tasks | 10 files (R100 renames; 0 content modifications) |
+| Phase 06 P06-04 | 15m     | 3 tasks | 4 files (viewer/lib/i18n.ts +helper, __tests__/i18n.test.ts, LanguageSwitcher.tsx, tsconfig.json) |
 
 ## Accumulated Context
 
 ### Roadmap Evolution
 
+- 2026-05-21: Phase 6 plan 06-04 executed — `viewer/lib/i18n.ts` landed with the locked CONTEXT.md-D-03 `displayField(field, locale)` helper (10 lines, ≤15 anti-creep gate). `viewer/lib/__tests__/i18n.test.ts` ships a 5-case `node:test` + `node:assert/strict` unit suite covering null/undef, legacy TEXT string passthrough (both locales), `{en, ka}` object normal read, English fallback when locale missing, empty object. Runner pinned to `npx tsx --test` to match the exact subprocess invocation in `scripts/verify_phase6.py::check_i18n_08` (eliminates dual-runner ambiguity from PLAN WARNING 4). `viewer/components/LanguageSwitcher.tsx` polished: `useRouter`/`usePathname` now imported from `@/i18n/navigation` (createNavigation-typed) instead of `next/navigation`; manual `pathname.replace('/${locale}', '')` + `router.push(newPath)` replaced with canonical next-intl 4 idiom `router.replace(pathname, {locale: newLocale})`; bilingual button labels `English`/`ქართული` (Mkhedruli) per CONTEXT.md Claude's Discretion; aria-labels preserved for deterministic screen-reader intent. One Rule-3 deviation: added `**/__tests__/**` to `viewer/tsconfig.json` exclude — `node:test` ESM convention requires `.ts` extension in imports but viewer's bundler-mode tsconfig rejects this; surgically excluding the test dir keeps Next.js build clean while letting tsx run tests at runtime. `cd viewer && npm run build` exits 0 (17 routes generated); verifier flips from 3/11→4/11 PASS (I18N-08 GREEN; I18N-04 still PENDING — waits on 06-03b to mount the switcher in `[locale]/layout.tsx`). Commits: 55eee7d, 2301c0e, c2a49e3. See 06-04-SUMMARY.md.
 - 2026-05-21: Phase 6 plan 06-03a executed — viewer/app/[locale]/ structural folder move. Eight `git mv` operations relocated the 7 family-facing route directories (dashboard, timeline, papers, therapies, hypotheses, today, knowledge) + the root page.tsx (former Today landing) under viewer/app/[locale]/. All 10 file moves tracked as R100 (100% similar) renames — zero content drift, pure topology change. viewer/app/{api,audit,brain}/ and viewer/app/layout.tsx preserved at top level per SPEC Out of Scope + proxy.ts matcher exclusions. `cd viewer && npm run build` exits 0 (Turbopack, 27s wall); routes-manifest.json shows 8 dynamic /[locale]/* entries (acceptance floor ≥7). I18N-02 PARTIAL-GREEN at this plan boundary; full GREEN after 06-03b lands the locale layout + async-params signature. Wave-1 06-03b unblocked. Commit: 731b601. See 06-03a-SUMMARY.md.
 - 2026-05-20: Phase 6 plan 06-02 executed — scripts/verify_phase6.py (1060 lines, 11 check_i18n_NN functions, 5-bucket dispatch A/B/C/D/E per CONTEXT.md D-06) + tests/fixtures/phase6/phi_ka.yaml (10 Georgian PHI fixtures across 5 categories + 1 hard-block) + tests/fixtures/phase6/bilingual_samples.json (30 samples: 25 clean + 5 positive-catch covering D-05 banned phrases). `python -X utf8 -m scripts.verify_phase6 --mode code-complete` emits 11-row Phase-5-style table; 2/11 PASS at Wave-0 baseline (I18N-01 + I18N-10). Wave 0 closed. 3 commits: b3cc2ff, a7dbdc8, fa1708e. See 06-02-SUMMARY.md.
 - 2026-05-20: Phase 6 plan 06-01 executed — next-intl@4.12.0 installed, viewer/proxy.ts mounted (Next.js 16 file convention), three-file i18n module (routing/request/navigation), viewer/messages/{en,ka}.json relocated, createNextIntlPlugin wired in next.config.ts. `npm run build` green (34.1s). 4 commits: 10fbdee, 2b0124a, 5a073e7, a945f55. See 06-01-SUMMARY.md.
@@ -75,6 +77,11 @@ Progress: [██░░░░░░░░] 20%
 Decisions are logged in PROJECT.md Key Decisions table.
 Recent decisions affecting current work:
 
+- Phase 6 (plan 06-04, 2026-05-21): `displayField` helper lives in `viewer/lib/i18n.ts` (NOT under `viewer/i18n/`) — distinct concerns: `viewer/i18n/{routing,request,navigation}.ts` holds next-intl wiring; `viewer/lib/i18n.ts` is consumer-facing utility code that downstream page/worker components import via `@/lib/i18n`.
+- Phase 6 (plan 06-04, 2026-05-21): Helper is EXACTLY the 10-line shape locked in CONTEXT.md §D-03 — no JSDoc body, no extra exports, no logic creep. The 5-case behavior contract lives in the unit test file, not in code comments. Anti-creep gate enforces ≤15 lines.
+- Phase 6 (plan 06-04, 2026-05-21): Test runner pinned to `npx tsx --test` (NOT vitest, NOT jest) — the verifier `check_i18n_08` production-mode path subprocess-invokes this exact command, so the runner is the contract, not the framework.
+- Phase 6 (plan 06-04, 2026-05-21): LanguageSwitcher swap uses `router.replace(pathname, {locale: newLocale})` from the createNavigation-typed router — canonical next-intl 4 idiom. Manual `pathname.replace + router.push` pattern removed entirely.
+- Phase 6 (plan 06-04, 2026-05-21): `viewer/tsconfig.json` excludes `**/__tests__/**` from compilation — node:test's required `.ts` import extension is incompatible with the viewer's bundler-mode tsc; the test dir runs under tsx at runtime, never compiled by next build.
 - Phase 6 (plan 06-03a, 2026-05-21): Whole-directory `git mv` (NOT per-file) for each of the 7 family-facing routes — git rename-detection collapses nested children (hypotheses/[id]/page.tsx + hypotheses/actions.ts) to R100 atomically, keeping the diff reviewable as a single topology change.
 - Phase 6 (plan 06-03a, 2026-05-21): Did NOT add a placeholder viewer/app/[locale]/layout.tsx in this plan — npm run build is already green without one (Next.js 16 composes the root viewer/app/layout.tsx over /[locale]/* pages), and adding a placeholder would force a content-modification commit and break this plan's pure-rename invariant. 06-03b owns the real locale layout.
 - Phase 6 (plan 06-03a, 2026-05-21): Preserved viewer/app/{api,audit,brain}/ + viewer/app/layout.tsx + viewer/app/globals.css at top level per 06-SPEC.md Out of Scope + the matcher `'/((?!api|audit|brain|_next|_vercel|.*\\..*).*)'` in viewer/proxy.ts.
@@ -113,6 +120,6 @@ Items acknowledged and carried forward:
 
 ## Session Continuity
 
-Last session: 2026-05-21T00:30:00.000Z
-Stopped at: Phase 6 plan 06-03a complete — viewer/app/[locale]/ shell landed via 10 R100 git renames; npm run build green; 8 /[locale]/* dynamic routes resolve. 06-03b unblocked.
+Last session: 2026-05-21T01:30:00.000Z
+Stopped at: Phase 6 plan 06-04 complete — displayField bilingual JSONB helper + 5-case node:test suite + LanguageSwitcher typed-nav polish. Verifier check_i18n_08 PASS (4/11 total). 06-03b next.
 Resume file: None
