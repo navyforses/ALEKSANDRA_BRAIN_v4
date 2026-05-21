@@ -1,0 +1,26 @@
+-- PostgreSQL database dump
+-- PLACEHOLDER — populated by scripts/migrations/012_runbook.md step 3 before psql apply
+--
+-- Phase 6 / Plan 06-06 authored this skeleton.
+-- Phase 6 / Plan 06-07 (autonomous=false, Shako-supervised) will replace this file
+-- with the live output of:
+--
+--   pg_dump "$SUPABASE_DB_URL" \
+--     --table=therapies \
+--     --data-only \
+--     --column-inserts \
+--     --no-owner --no-privileges \
+--     --file=scripts/migrations/012_rollback/therapies.pre012.dump
+--
+-- --column-inserts produces explicit INSERT statements that survive the
+-- TEXT-to-JSONB conversion of `name` and `evidence_summary` in migration 012.
+--
+-- ROLLBACK USAGE (if migration 012 smoke check fails):
+--   psql "$SUPABASE_DB_URL" -c "BEGIN; DELETE FROM therapies;"
+--   psql "$SUPABASE_DB_URL" -f scripts/migrations/012_rollback/therapies.pre012.dump
+--   # then schema TYPE revert (see runbook ## Rollback procedure)
+--
+-- DO NOT commit live data here. The repository placeholder is intentional.
+--
+-- Expected size at current row counts (per CLAUDE.md Phase 2.5):
+--   12 therapy candidates (5 PubMed-validated) — likely 8-20 KB

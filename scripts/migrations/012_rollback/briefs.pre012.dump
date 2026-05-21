@@ -1,0 +1,30 @@
+-- PostgreSQL database dump
+-- PLACEHOLDER — populated by scripts/migrations/012_runbook.md step 3 before psql apply
+--
+-- Phase 6 / Plan 06-06 authored this skeleton.
+-- Phase 6 / Plan 06-07 (autonomous=false, Shako-supervised) will replace this file
+-- with the live output of:
+--
+--   pg_dump "$SUPABASE_DB_URL" \
+--     --table=briefs \
+--     --data-only \
+--     --column-inserts \
+--     --no-owner --no-privileges \
+--     --file=scripts/migrations/012_rollback/briefs.pre012.dump
+--
+-- NOTE: briefs.sections is ALREADY JSONB pre-migration. Migration 012 does
+-- NOT change the column TYPE; it rewrites the SHAPE of values inside the
+-- existing JSONB (each section body becomes {en, ka}). The dump is still
+-- captured here so a partial UPDATE failure can be rolled back by restoring
+-- the pre-shape data.
+--
+-- ROLLBACK USAGE (if migration 012 smoke check fails for briefs):
+--   psql "$SUPABASE_DB_URL" -c "BEGIN; DELETE FROM briefs;"
+--   psql "$SUPABASE_DB_URL" -f scripts/migrations/012_rollback/briefs.pre012.dump
+--   # No schema TYPE revert needed — sections is JSONB before and after.
+--
+-- DO NOT commit live data here. The repository placeholder is intentional.
+--
+-- Expected size at current row counts:
+--   Phase 5 manager briefing produces briefs rows on Sundays; if no briefs
+--   have shipped yet, the dump may be very small (header + zero INSERTs).
