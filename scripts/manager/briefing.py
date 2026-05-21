@@ -42,7 +42,17 @@ from typing import Any
 
 import psycopg2
 
+from scripts.communicator._bilingual_read import display_field_py
 from scripts.ledger import _supabase_creds, _supabase_headers, load_env
+
+
+# Phase 6 Plan 06-12 / D-02 — Sunday morning manager briefing is family-Telegram.
+# Reads from aleksandra_timeline.title and therapies.name (both JSONB post-
+# migration-012) resolve to the Georgian half via display_field_py(..., 'ka').
+# The English half lives in `compose()`'s template strings and remains in `text`
+# for backward-compat dispatch — Phase 6 plan 06-12 routes the Telegram body
+# read off `.ka` from the JSONB *source* tables that drive that template.
+BRIEFING_LOCALE = "ka"
 
 
 WORD_CAP = 50
@@ -132,6 +142,10 @@ def _open():
 # Data pulls
 # ---------------------------------------------------------------------------
 def _todays_events(cur: psycopg2.extensions.cursor) -> list[dict[str, Any]]:
+    # Phase 6 Plan 06-12: aleksandra_timeline.title is JSONB post-migration-012;
+    # resolve to Georgian for the family-Telegram briefing audience. The legacy
+    # TEXT tolerance inside display_field_py keeps this read forward-compatible
+    # if the column has not yet been migrated in a given environment.
     cur.execute(
         """
         SELECT event_date, event_type, title, institution
@@ -146,7 +160,7 @@ def _todays_events(cur: psycopg2.extensions.cursor) -> list[dict[str, Any]]:
         {
             "event_date": r[0].isoformat() if r[0] else None,
             "event_type": r[1],
-            "title": r[2],
+            "title": display_field_py(r[2], BRIEFING_LOCALE),
             "institution": r[3],
         }
         for r in cur.fetchall()
@@ -165,6 +179,8 @@ def _last_24h_evidence_count(cur: psycopg2.extensions.cursor) -> int:
 
 
 def _top_therapy_this_week(cur: psycopg2.extensions.cursor) -> str | None:
+    # Phase 6 Plan 06-12: therapies.name is JSONB post-migration-012; resolve to
+    # Georgian for the family-Telegram briefing audience.
     cur.execute(
         """
         SELECT name FROM therapies
@@ -174,7 +190,10 @@ def _top_therapy_this_week(cur: psycopg2.extensions.cursor) -> str | None:
         """
     )
     row = cur.fetchone()
-    return row[0] if row else None
+    if row is None:
+        return None
+    resolved = display_field_py(row[0], BRIEFING_LOCALE)
+    return resolved or None
 
 
 def _pending_outreach_count(cur: psycopg2.extensions.cursor) -> int:
