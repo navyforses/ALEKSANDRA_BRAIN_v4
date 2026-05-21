@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { setRequestLocale } from "next-intl/server";
 import { getCount, getRows } from "@/lib/supabase";
 import DashboardCharts from "@/components/DashboardCharts";
 
@@ -45,7 +46,14 @@ function formatMoney(value: string | number | null) {
   return `$${n.toFixed(6)}`;
 }
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  params,
+}: {
+  params: Promise<{ locale: "en" | "ka" }>;
+}) {
+  const { locale } = await params;
+  setRequestLocale(locale);
+
   const [counts, runs, papers, hypotheses, runsForSpend, papersForIngestion] = await Promise.all([
     Promise.all(metricSpecs.map(([path]) => getCount(path))),
     getRows<RunRow>("runs", {

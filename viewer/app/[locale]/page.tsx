@@ -1,15 +1,22 @@
 import Link from "next/link";
+import { setRequestLocale } from "next-intl/server";
 
 // ALEKSANDRA_BRAIN v4.0 — operational entry page.
 // Real MRI viewer arrives later. Until then, this page routes the family to
 // the live dashboard and hypothesis validation workflow.
 //
-// Trust boundary: this file (viewer/app/page.tsx) is client-side.
+// Trust boundary: this file (viewer/app/[locale]/page.tsx) is client-side.
 // Per FND-01/FND-02, no imaging library imports and no remote fetch may
 // appear here or in any sibling route. The viewer/.eslintrc.json + the
 // scripts/check-no-remote-fetch.sh CI step enforce that.
 
-export default function Home() {
+export default async function Home({
+  params,
+}: {
+  params: Promise<{ locale: "en" | "ka" }>;
+}) {
+  const { locale } = await params;
+  setRequestLocale(locale);
   return (
     <main className="min-h-screen bg-stone-50 text-stone-950">
       <div className="mx-auto flex min-h-screen w-full max-w-5xl flex-col justify-center gap-8 px-5 py-10 sm:px-8">

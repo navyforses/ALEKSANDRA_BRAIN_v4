@@ -1,7 +1,14 @@
 // Phase 5 placeholder. Today's full clinical view ships in a later phase.
 // BRAIN panel mounts via root layout.
+import { setRequestLocale } from "next-intl/server";
 
-export default function TodayPage() {
+export default async function TodayPage({
+  params,
+}: {
+  params: Promise<{ locale: "en" | "ka" }>;
+}) {
+  const { locale } = await params;
+  setRequestLocale(locale);
   return (
     <div className="flex flex-col h-full space-y-4">
       <header className="border-b border-slate-200 pb-4">

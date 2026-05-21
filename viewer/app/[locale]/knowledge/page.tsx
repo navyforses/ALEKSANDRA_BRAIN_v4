@@ -1,8 +1,15 @@
 // Phase 5 placeholder. Knowledge surfaces papers, graph, hypotheses,
 // and the perception pipeline in a later phase.
 // BRAIN panel mounts via root layout.
+import { setRequestLocale } from "next-intl/server";
 
-export default function KnowledgePage() {
+export default async function KnowledgePage({
+  params,
+}: {
+  params: Promise<{ locale: "en" | "ka" }>;
+}) {
+  const { locale } = await params;
+  setRequestLocale(locale);
   return (
     <div className="flex flex-col h-full space-y-4">
       <header className="border-b border-slate-200 pb-4">

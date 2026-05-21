@@ -1,3 +1,4 @@
+import { setRequestLocale } from "next-intl/server";
 import { getRows } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
@@ -27,7 +28,14 @@ function typeCounts(events: TimelineEvent[]) {
   }, {});
 }
 
-export default async function TimelinePage() {
+export default async function TimelinePage({
+  params,
+}: {
+  params: Promise<{ locale: "en" | "ka" }>;
+}) {
+  const { locale } = await params;
+  setRequestLocale(locale);
+
   const events = await getRows<TimelineEvent>("aleksandra_timeline", {
     select: "id,event_date,event_type,title,description,institution,location,created_at,updated_at",
     order: "event_date.desc",

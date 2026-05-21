@@ -1,3 +1,4 @@
+import { setRequestLocale } from "next-intl/server";
 import { getRows } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
@@ -61,7 +62,14 @@ function relevanceLabel(paper: Paper) {
   return paper.cross_disease_source || "unclassified";
 }
 
-export default async function PapersPage() {
+export default async function PapersPage({
+  params,
+}: {
+  params: Promise<{ locale: "en" | "ka" }>;
+}) {
+  const { locale } = await params;
+  setRequestLocale(locale);
+
   const papers = await getRows<Paper>("papers", {
     select:
       "id,title,pmid,doi,ct_id,journal,publication_date,publication_year,paper_type,evidence_level,relevance_score,relevance_tags,direct_relevance,cross_disease_relevance,cross_disease_source,ai_summary,confidence_level,source,source_url,ingested_at",

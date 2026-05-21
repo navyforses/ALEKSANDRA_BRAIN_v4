@@ -1,3 +1,4 @@
+import { setRequestLocale } from "next-intl/server";
 import { getRows } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
@@ -62,7 +63,14 @@ function extractAssessmentText(raw: string | null): string | null {
   }
 }
 
-export default async function TherapiesPage() {
+export default async function TherapiesPage({
+  params,
+}: {
+  params: Promise<{ locale: "en" | "ka" }>;
+}) {
+  const { locale } = await params;
+  setRequestLocale(locale);
+
   const therapies = await getRows<Therapy>("therapies", {
     select:
       "id,name,therapy_type,mechanism_of_action,evidence_in_hie,evidence_summary,clinical_status,available_locations,approximate_cost,aleksandra_eligible,aleksandra_status,aleksandra_notes,optimal_age_window,time_sensitivity,ai_assessment,confidence_level,created_at",

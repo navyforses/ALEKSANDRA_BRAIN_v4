@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { setRequestLocale } from "next-intl/server";
 import { reviewHypothesis } from "../actions";
 import { getRows } from "@/lib/supabase";
 
@@ -74,9 +75,10 @@ function inFilter(ids: string[] | null | undefined): string {
 export default async function HypothesisDetailPage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: Promise<{ locale: "en" | "ka"; id: string }>;
 }) {
-  const { id } = await params;
+  const { locale, id } = await params;
+  setRequestLocale(locale);
 
   const hypotheses = await getRows<HypothesisDetail>("hypotheses", {
     select:

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { setRequestLocale } from "next-intl/server";
 import { reviewHypothesis } from "./actions";
 import { getRows } from "@/lib/supabase";
 
@@ -30,7 +31,14 @@ function score(value: number | null) {
   return value == null ? "n/a" : value.toFixed(2);
 }
 
-export default async function HypothesesPage() {
+export default async function HypothesesPage({
+  params,
+}: {
+  params: Promise<{ locale: "en" | "ka" }>;
+}) {
+  const { locale } = await params;
+  setRequestLocale(locale);
+
   const hypotheses = await getRows<Hypothesis>("hypotheses", {
     select:
       "id,title,description,hypothesis_type,confidence_level,novelty_score,feasibility_score,status,reviewed_at,outcome,recommended_action,supporting_papers",
