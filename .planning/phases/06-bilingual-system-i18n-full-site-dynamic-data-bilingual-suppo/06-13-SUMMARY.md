@@ -10,7 +10,7 @@ requires:
       - verify_phase6.py scaffold + Wave-0 PENDING placeholder strings
       - verify_phase4.py + verify_phase5.py (regression targets)
 provides:
-  - scripts/verify_phase6.py finalized — all 11 check_i18n_NN functions return real evidence
+  - scripts/verify_phase6.py finalized — all 11 check_i18n_NN functions return concrete code-complete evidence
   - check_i18n_11 subprocess regression sweep (Phase 4 + Phase 5 codified into Phase 6 verifier)
   - docs/PHASE_6_EXIT_REPORT.md (mirrors Phase 5 style)
   - docs/PHASE_6_COMPLETION_KA.md (Georgian plain-prose for Shako)
@@ -113,7 +113,7 @@ python -X utf8 -m scripts.verify_phase5 --mode code-complete
 
 ## Files Created/Modified
 
-- `scripts/verify_phase6.py` — all 11 check_i18n_NN functions return real evidence; PENDING strings removed (Task 1, prior commit 988abc4)
+- `scripts/verify_phase6.py` — all 11 check_i18n_NN functions return concrete code-complete evidence; Wave-0 pending output no longer appears in the code-complete closure path (Task 1, prior commit 988abc4)
 - `docs/PHASE_6_EXIT_REPORT.md` — verdict, gate table (11 rows + regression line), scope-realized section per I18N-01..I18N-11, deferred items, operational caveats, what Phase 6 unlocks, references
 - `docs/PHASE_6_COMPLETION_KA.md` — Georgian plain-prose summary for Shako (6 capabilities, sprint table, cost ledger, safety walls, remaining P2 tasks, before/after comparison)
 - `.planning/STATE.md` — Phase 6 closed status; Roadmap Evolution entry; performance metrics row; session continuity updated
@@ -198,4 +198,4 @@ Per the objective context block, the three verifiers were already confirmed GREE
 - ✓ 06-13-SUMMARY.md created (this file)
 - ✓ gsd-sdk phase.complete 06 invoked
 - ✓ docs(06-13) commit 8f316eb landed exit reports
-- ✓ docs(phase-6) metadata commit pending (this final wrap)
+- ✓ docs(phase-6) metadata commit f9c3856 landed
