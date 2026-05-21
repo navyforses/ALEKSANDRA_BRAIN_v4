@@ -2,13 +2,14 @@ import { setRequestLocale, getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { reviewHypothesis } from "./actions";
 import { getRows } from "@/lib/supabase";
+import { displayField, type BilingualField } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
 type Hypothesis = {
   id: string;
-  title: string;
-  description: string;
+  title: BilingualField;          // 06-08: JSONB {en, ka} post-migration-012
+  description: BilingualField;    // 06-08: JSONB {en, ka} post-migration-012
   hypothesis_type: string | null;
   confidence_level: string | null;
   novelty_score: number | null;
@@ -129,11 +130,11 @@ export default async function HypothesesPage({
                       href={`/hypotheses/${hypothesis.id}`}
                       className="hover:underline focus:underline focus:outline-none"
                     >
-                      {hypothesis.title}
+                      {displayField(hypothesis.title, locale)}
                     </Link>
                   </h2>
                   <p className="mt-2 max-w-4xl text-sm leading-6 text-stone-700">
-                    {hypothesis.description}
+                    {displayField(hypothesis.description, locale)}
                   </p>
                 </div>
                 <dl className="grid grid-cols-3 gap-3 text-sm lg:w-80">
@@ -165,7 +166,11 @@ export default async function HypothesesPage({
                     className="flex w-full flex-col gap-2 lg:w-96"
                   >
                     <input type="hidden" name="id" value={hypothesis.id} />
-                    <input type="hidden" name="title" value={hypothesis.title} />
+                    <input
+                      type="hidden"
+                      name="title"
+                      value={displayField(hypothesis.title, "en")}
+                    />
                     <textarea
                       name="outcome"
                       rows={2}

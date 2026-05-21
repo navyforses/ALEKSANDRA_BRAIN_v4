@@ -3,13 +3,14 @@ import { setRequestLocale, getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { reviewHypothesis } from "../actions";
 import { getRows } from "@/lib/supabase";
+import { displayField, type BilingualField } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
 type HypothesisDetail = {
   id: string;
-  title: string;
-  description: string;
+  title: BilingualField;          // 06-08: JSONB {en, ka} post-migration-012
+  description: BilingualField;    // 06-08: JSONB {en, ka} post-migration-012
   hypothesis_type: string | null;
   confidence_level: string | null;
   novelty_score: number | null;
@@ -42,7 +43,7 @@ type SupportingPaper = {
 
 type RelatedTherapy = {
   id: string;
-  name: string;
+  name: BilingualField;           // 06-08: JSONB {en, ka} post-migration-012
   therapy_type: string | null;
   evidence_in_hie: string | null;
   aleksandra_status: string | null;
@@ -175,10 +176,10 @@ export default async function HypothesisDetailPage({
             ) : null}
           </div>
           <h1 className="text-2xl font-semibold tracking-normal sm:text-3xl">
-            {hypothesis.title}
+            {displayField(hypothesis.title, locale)}
           </h1>
           <p className="max-w-4xl text-sm leading-6 text-stone-700">
-            {hypothesis.description}
+            {displayField(hypothesis.description, locale)}
           </p>
         </header>
 
@@ -294,7 +295,9 @@ export default async function HypothesisDetailPage({
             <div className="divide-y divide-stone-100">
               {therapies.rows.map((th) => (
                 <article key={th.id} className="grid gap-1 p-4">
-                  <h3 className="text-sm font-medium leading-6">{th.name}</h3>
+                  <h3 className="text-sm font-medium leading-6">
+                    {displayField(th.name, locale)}
+                  </h3>
                   <p className="text-xs text-stone-500">
                     {th.therapy_type || tTherapies("typePending")} ·{" "}
                     {tTherapies("evidenceLabel")}{" "}
@@ -338,7 +341,11 @@ export default async function HypothesisDetailPage({
             className="mt-3 grid gap-3 lg:grid-cols-[1fr_auto]"
           >
             <input type="hidden" name="id" value={hypothesis.id} />
-            <input type="hidden" name="title" value={hypothesis.title} />
+            <input
+              type="hidden"
+              name="title"
+              value={displayField(hypothesis.title, "en")}
+            />
             <textarea
               name="outcome"
               rows={3}

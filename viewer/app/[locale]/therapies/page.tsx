@@ -1,15 +1,16 @@
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import { getRows } from "@/lib/supabase";
+import { displayField, type BilingualField } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
 type Therapy = {
   id: string;
-  name: string;
+  name: BilingualField;             // 06-08: JSONB {en, ka} post-migration-012
   therapy_type: string | null;
   mechanism_of_action: string | null;
   evidence_in_hie: string | null;
-  evidence_summary: string | null;
+  evidence_summary: BilingualField; // 06-08: nullable JSONB
   clinical_status: string | null;
   available_locations: string[] | null;
   approximate_cost: string | null;
@@ -156,7 +157,9 @@ export default async function TherapiesPage({
                       {therapy.therapy_type || t("typePending")}
                     </span>
                   </div>
-                  <h2 className="mt-3 text-lg font-semibold leading-7">{therapy.name}</h2>
+                  <h2 className="mt-3 text-lg font-semibold leading-7">
+                    {displayField(therapy.name, locale)}
+                  </h2>
                   {therapy.mechanism_of_action ? (
                     <p className="mt-2 max-w-4xl text-sm leading-6 text-stone-700">
                       {therapy.mechanism_of_action}
@@ -196,12 +199,14 @@ export default async function TherapiesPage({
 
               {(() => {
                 const assessment = extractAssessmentText(therapy.ai_assessment);
-                const hasAny = therapy.evidence_summary || assessment || therapy.aleksandra_notes;
+                // 06-08: evidence_summary is JSONB; resolve to a string before truthiness gate
+                const evidence = displayField(therapy.evidence_summary, locale);
+                const hasAny = evidence || assessment || therapy.aleksandra_notes;
                 if (!hasAny) return null;
                 return (
                   <div className="mt-4 grid gap-3 border-t border-stone-100 pt-4">
-                    {therapy.evidence_summary ? (
-                      <p className="text-sm leading-6 text-stone-700">{therapy.evidence_summary}</p>
+                    {evidence ? (
+                      <p className="text-sm leading-6 text-stone-700">{evidence}</p>
                     ) : null}
                     {assessment ? (
                       <p className="text-sm leading-6 text-stone-700">{assessment}</p>

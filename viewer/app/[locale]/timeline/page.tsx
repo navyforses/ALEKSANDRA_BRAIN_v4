@@ -1,5 +1,6 @@
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import { getRows } from "@/lib/supabase";
+import { displayField, type BilingualField } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
@@ -7,8 +8,8 @@ type TimelineEvent = {
   id: string;
   event_date: string;
   event_type: string;
-  title: string;
-  description: string | null;
+  title: BilingualField;         // 06-08: JSONB {en, ka} post-migration-012
+  description: BilingualField;   // 06-08: nullable JSONB
   institution: string | null;
   location: string | null;
   created_at: string;
@@ -103,10 +104,12 @@ export default async function TimelinePage({
                   </p>
                 </div>
                 <div>
-                  <h3 className="text-base font-semibold leading-7">{event.title}</h3>
+                  <h3 className="text-base font-semibold leading-7">
+                    {displayField(event.title, locale)}
+                  </h3>
                   {event.description ? (
                     <p className="mt-2 max-w-4xl text-sm leading-6 text-stone-700">
-                      {event.description}
+                      {displayField(event.description, locale)}
                     </p>
                   ) : null}
                   <p className="mt-2 text-xs text-stone-500">
