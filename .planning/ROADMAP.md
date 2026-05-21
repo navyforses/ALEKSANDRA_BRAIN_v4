@@ -130,7 +130,7 @@ Phases execute in numeric order: 0 → 1 → 2 → 2.5 → 3 → 4 → 5 → 6
 | 3. Cognition (minimum) | 0/TBD | Closed — 11/11 PASS | 2026-05-16 |
 | 4. First Family Value | 0/TBD | Engineering closed 9/9 PASS; 14-day acceptance window in progress (closes ~2026-06-07) | 2026-05-17 (engineering) |
 | 5. BRAIN AI Manager Assistant | 0/TBD | Closed — 13/13 PASS · ALL GREEN | 2026-05-18 |
-| 6. Bilingual System (i18n) | 4/15 | Executing — Wave 0 closed + Wave 1 06-03a + 06-04 complete (displayField helper landed at viewer/lib/i18n.ts; 5-case node:test suite pinned to `npx tsx --test`; LanguageSwitcher switched to typed @/i18n/navigation router with bilingual labels; verifier 4/11 PASS); 06-03b next to mount the switcher in `[locale]/layout.tsx` | 2026-05-21 (06-04) |
+| 6. Bilingual System (i18n) | 5/15 | Executing — Wave 0 closed + Wave 1 06-03a + 06-04 + 06-05a complete (bilingual dictionaries authored: viewer/messages/{en,ka}.json 143 leaves × 2 locales across 11 namespaces; recursive key-set equality verified; 99.3% Mkhedruli coverage; verifier 4/11 PASS — check_i18n_03 page-side still PENDING until 06-05b consumes the dictionaries); 06-05b next to wire t(...) calls across 9 family-facing routes + TopNav | 2026-05-21 (06-05a) |
 
 ## Coverage
 
@@ -177,7 +177,8 @@ Plans:
 - [x] 06-03a-PLAN.md — Move 7 family-facing routes + root page.tsx under viewer/app/[locale]/ via 8 `git mv` (R100 renames; pure topology change; no content edits)
 - [ ] 06-03b-PLAN.md — Author viewer/app/[locale]/layout.tsx + update each relocated page's signature to `params: Promise<{locale: string}>` (Next.js 16 async-params)
 - [x] 06-04-PLAN.md — viewer/lib/i18n.ts displayField helper + unit test + LanguageSwitcher typed-nav polish
-- [ ] 06-05-PLAN.md — Expand viewer/messages/{en,ka}.json from 7 keys to ~60–80 keys + insert t() refs across 9 pages + locale-aware TopNav
+- [x] 06-05a-PLAN.md — Author viewer/messages/{en,ka}.json bilingual dictionaries (143 leaves × 2 locales across 11 namespaces; recursive key-set equality + 99.3% Mkhedruli coverage)
+- [ ] 06-05b-PLAN.md — Insert t() refs across 9 family-facing pages + locale-aware TopNav (consumer of 06-05a dictionaries)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 06-06-PLAN.md — Author scripts/migrations/012_i18n_jsonb.sql + per-table pg_dump rollback artifacts + RLS policy snapshots + operator runbook

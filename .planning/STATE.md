@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 6 plan 06-04 complete — displayField bilingual JSONB helper landed at viewer/lib/i18n.ts (10 lines, locked CONTEXT.md D-03 shape) + 5-case node:test suite passes under `npx tsx --test` + LanguageSwitcher.tsx polished to typed @/i18n/navigation router with bilingual labels. Verifier check_i18n_08 flipped PASS (4/11 total now). 06-04 unblocks Wave-2 viewer reads (06-08) + Wave-3 worker reads (06-09/06-10).
-last_updated: "2026-05-21T01:30:00.000Z"
-last_activity: 2026-05-21 -- Phase 6 plan 06-04 complete (displayField helper + LanguageSwitcher typed-nav polish)
+stopped_at: Phase 6 plan 06-05a complete — viewer/messages/{en,ka}.json expanded from 7-key seed to 143-leaf parallel dictionaries across 11 namespaces (Common, Navigation, Shared, Home, Dashboard, Timeline, Papers, Therapies, Hypotheses, Today, Knowledge). Recursive key-set equality verified; 99.3% Mkhedruli coverage on ka.json (only ALEKSANDRA_BRAIN proper noun stays Latin). `cd viewer && npm run build` exits 0 (17 routes). Dictionary half of I18N-03 ready — page-side t(...) rewrite + TopNav update lands in 06-05b (Wave 3).
+last_updated: "2026-05-21T02:00:00.000Z"
+last_activity: 2026-05-21 -- Phase 6 plan 06-05a complete (en.json + ka.json bilingual dictionaries; 143 leaves × 2 locales; 11 namespaces)
 progress:
   total_phases: 8
   completed_phases: 0
   total_plans: 15
-  completed_plans: 4
-  percent: 27
+  completed_plans: 5
+  percent: 33
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-13)
 ## Current Position
 
 Phase: 6 of 8 (Bilingual System i18n)
-Plan: 4 of 15 in current phase (06-04 complete — displayField helper + typed-nav LanguageSwitcher landed; 06-03b next to mount the switcher in [locale]/layout.tsx)
+Plan: 5 of 15 in current phase (06-05a complete — bilingual dictionaries authored; 11 namespaces × 143 leaves × 2 locales; 06-05b next to consume them via t(...) rewrite + TopNav update)
 Status: executing
-Last activity: 2026-05-21 -- Phase 6 plan 06-04 complete (displayField bilingual JSONB helper + LanguageSwitcher typed-nav polish)
+Last activity: 2026-05-21 -- Phase 6 plan 06-05a complete (en.json + ka.json bilingual dictionaries; 143 leaves × 2 locales; 11 namespaces; 99.3% Mkhedruli coverage)
 
-Progress: [███░░░░░░░] 27%
+Progress: [███░░░░░░░] 33%
 
 ## Performance Metrics
 
@@ -60,11 +60,13 @@ Progress: [███░░░░░░░] 27%
 | Phase 06 P06-02 | 16m     | 3 tasks | 3 files |
 | Phase 06 P06-03a | 10m     | 2 tasks | 10 files (R100 renames; 0 content modifications) |
 | Phase 06 P06-04 | 15m     | 3 tasks | 4 files (viewer/lib/i18n.ts +helper, __tests__/i18n.test.ts, LanguageSwitcher.tsx, tsconfig.json) |
+| Phase 06 P06-05a | 20m     | 3 tasks | 2 files (viewer/messages/en.json +139 leaves, viewer/messages/ka.json +139 leaves; 11 namespaces × 143 leaves × 2 locales) |
 
 ## Accumulated Context
 
 ### Roadmap Evolution
 
+- 2026-05-21: Phase 6 plan 06-05a executed — viewer/messages/{en,ka}.json bilingual dictionaries authored. Expanded both files from the 7-key Phase 5 seed (3 Common + 4 Navigation each) to 143-leaf parallel dictionaries across 11 namespaces: Common (3), Dashboard (19), Home (15), Hypotheses (32), Knowledge (3), Navigation (10), Papers (18), Shared (10), Therapies (22), Timeline (8), Today (3). Recursive key-set equality verified (en_set == ka_set; symmetric difference empty); ka.json achieves 99.3% Mkhedruli coverage (142/143; only the ALEKSANDRA_BRAIN proper noun stays Latin per CONTEXT.md guidance). D-05 banned-imperative lexicon (`უნდა`, `აუცილებლად`, `განიხილეთ`, `მოითხოვეთ`, `ითხოვეთ`) deliberately avoided in translations; `Shared.errorRetry = "სცადეთ ხელახლა"` ("Try again" button) flagged as INTENTIONAL UI label outside the CGM-04 lint scope (which targets Communicator digests, not static UI dictionaries). `cd viewer && npm run build` exits 0 (17 routes preserved, all `/[locale]/*` dynamic). One Rule 2 deviation: added 11th `Home` namespace (15 leaves) covering [locale]/page.tsx landing strings — PLAN's 10-namespace catalog did not name `Home` but the 10 required namespaces are all present; superset is permissible. Dictionary half of I18N-03 ready; full GREEN after 06-05b wires the t(...) calls in Wave 3. 2 commits: d292774, e0acd56. See 06-05a-SUMMARY.md.
 - 2026-05-21: Phase 6 plan 06-04 executed — `viewer/lib/i18n.ts` landed with the locked CONTEXT.md-D-03 `displayField(field, locale)` helper (10 lines, ≤15 anti-creep gate). `viewer/lib/__tests__/i18n.test.ts` ships a 5-case `node:test` + `node:assert/strict` unit suite covering null/undef, legacy TEXT string passthrough (both locales), `{en, ka}` object normal read, English fallback when locale missing, empty object. Runner pinned to `npx tsx --test` to match the exact subprocess invocation in `scripts/verify_phase6.py::check_i18n_08` (eliminates dual-runner ambiguity from PLAN WARNING 4). `viewer/components/LanguageSwitcher.tsx` polished: `useRouter`/`usePathname` now imported from `@/i18n/navigation` (createNavigation-typed) instead of `next/navigation`; manual `pathname.replace('/${locale}', '')` + `router.push(newPath)` replaced with canonical next-intl 4 idiom `router.replace(pathname, {locale: newLocale})`; bilingual button labels `English`/`ქართული` (Mkhedruli) per CONTEXT.md Claude's Discretion; aria-labels preserved for deterministic screen-reader intent. One Rule-3 deviation: added `**/__tests__/**` to `viewer/tsconfig.json` exclude — `node:test` ESM convention requires `.ts` extension in imports but viewer's bundler-mode tsconfig rejects this; surgically excluding the test dir keeps Next.js build clean while letting tsx run tests at runtime. `cd viewer && npm run build` exits 0 (17 routes generated); verifier flips from 3/11→4/11 PASS (I18N-08 GREEN; I18N-04 still PENDING — waits on 06-03b to mount the switcher in `[locale]/layout.tsx`). Commits: 55eee7d, 2301c0e, c2a49e3. See 06-04-SUMMARY.md.
 - 2026-05-21: Phase 6 plan 06-03a executed — viewer/app/[locale]/ structural folder move. Eight `git mv` operations relocated the 7 family-facing route directories (dashboard, timeline, papers, therapies, hypotheses, today, knowledge) + the root page.tsx (former Today landing) under viewer/app/[locale]/. All 10 file moves tracked as R100 (100% similar) renames — zero content drift, pure topology change. viewer/app/{api,audit,brain}/ and viewer/app/layout.tsx preserved at top level per SPEC Out of Scope + proxy.ts matcher exclusions. `cd viewer && npm run build` exits 0 (Turbopack, 27s wall); routes-manifest.json shows 8 dynamic /[locale]/* entries (acceptance floor ≥7). I18N-02 PARTIAL-GREEN at this plan boundary; full GREEN after 06-03b lands the locale layout + async-params signature. Wave-1 06-03b unblocked. Commit: 731b601. See 06-03a-SUMMARY.md.
 - 2026-05-20: Phase 6 plan 06-02 executed — scripts/verify_phase6.py (1060 lines, 11 check_i18n_NN functions, 5-bucket dispatch A/B/C/D/E per CONTEXT.md D-06) + tests/fixtures/phase6/phi_ka.yaml (10 Georgian PHI fixtures across 5 categories + 1 hard-block) + tests/fixtures/phase6/bilingual_samples.json (30 samples: 25 clean + 5 positive-catch covering D-05 banned phrases). `python -X utf8 -m scripts.verify_phase6 --mode code-complete` emits 11-row Phase-5-style table; 2/11 PASS at Wave-0 baseline (I18N-01 + I18N-10). Wave 0 closed. 3 commits: b3cc2ff, a7dbdc8, fa1708e. See 06-02-SUMMARY.md.
@@ -120,6 +122,6 @@ Items acknowledged and carried forward:
 
 ## Session Continuity
 
-Last session: 2026-05-21T01:30:00.000Z
-Stopped at: Phase 6 plan 06-04 complete — displayField bilingual JSONB helper + 5-case node:test suite + LanguageSwitcher typed-nav polish. Verifier check_i18n_08 PASS (4/11 total). 06-03b next.
+Last session: 2026-05-21T02:00:00.000Z
+Stopped at: Phase 6 plan 06-05a complete — bilingual dictionaries (en.json + ka.json) at 143 leaves × 2 locales across 11 namespaces; recursive key-set equality verified; 99.3% Mkhedruli coverage on ka.json. 06-05b next (page-side t(...) rewrite + TopNav update, Wave 3).
 Resume file: None
