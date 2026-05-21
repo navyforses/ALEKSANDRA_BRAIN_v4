@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 6 plan 06-08 complete — 9 displayField call sites across 4 [locale]/ pages (timeline + therapies + hypotheses list/detail); toBilingual write-side helper added to viewer/lib/i18n.ts; viewer/ confirmed to have ZERO INSERT/UPDATE call sites against the 4 target tables (all Python writers correctly DEFERRED to 06-09 per planner's own Task 1 classification table). cd viewer && npm run build exits 0 (21 static pages, 8 [locale]/* dynamic routes preserved); verify_phase6 --mode code-complete = 8/11 PASS (no regression; I18N-08 stays GREEN). Wave 2 fully consumed; Wave 3a next (06-10 + 06-11).
-last_updated: "2026-05-21T11:32:11.034Z"
+stopped_at: Completed 06-10-PLAN.md (PHI bilingual redactor; 13/13 pytest GREEN; Phase 3 CGM-02 no regression)
+last_updated: "2026-05-21T11:51:38.937Z"
 last_activity: 2026-05-21
 progress:
   total_phases: 8
   completed_phases: 0
   total_plans: 15
-  completed_plans: 10
-  percent: 67
+  completed_plans: 11
+  percent: 73
 ---
 
 # Project State
@@ -26,11 +26,11 @@ See: .planning/PROJECT.md (updated 2026-05-13)
 ## Current Position
 
 Phase: 6 of 8 (Bilingual System i18n)
-Plan: 10 of 15 in current phase (06-08 complete — 9 displayField call sites across timeline/therapies/hypotheses (list + detail) pages; toBilingual write-side helper in viewer/lib/i18n.ts; viewer/ confirmed to have zero INSERT/UPDATE call sites against the 4 target tables — Python writers correctly DEFERRED to 06-09; build green; verifier 8/11 PASS, no regression. Wave 2 fully consumed; Wave 3a 06-10 + 06-11 next)
+Plan: 11 of 15 in current phase (06-08 complete — 9 displayField call sites across timeline/therapies/hypotheses (list + detail) pages; toBilingual write-side helper in viewer/lib/i18n.ts; viewer/ confirmed to have zero INSERT/UPDATE call sites against the 4 target tables — Python writers correctly DEFERRED to 06-09; build green; verifier 8/11 PASS, no regression. Wave 2 fully consumed; Wave 3a 06-10 + 06-11 next)
 Status: Ready to execute
 Last activity: 2026-05-21
 
-Progress: [███████░░░] 67%
+Progress: [███████░░░] 73%
 
 ## Performance Metrics
 
@@ -66,6 +66,7 @@ Progress: [███████░░░] 67%
 | Phase 06 P06-07 | tracking-only | 0 exec tasks (Shako-run apply 2026-05-20; artifact capture DEFERRED) | 4 files (SUMMARY + STATE + ROADMAP + new maintenance todo) |
 | Phase 06 P06-05b | 22m | 3 tasks | 10 files (9 [locale]/ page.tsx + TopNav.tsx; 129 t() refs × 10 namespaces) |
 | Phase 06 P08 | 28m | 3 tasks | 5 files |
+| Phase 06 P06-10 | 8min | 3 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -121,6 +122,9 @@ Recent decisions affecting current work:
 - [Phase ?]: Phase 6 (plan 06-08, 2026-05-21): Hidden form inputs for reviewHypothesis server action use displayField(title, 'en') — locale-invariant audit trail. Server action writes to outcome (TEXT, not JSONB), so no downstream shape transformation needed.
 - [Phase ?]: Phase 6 (plan 06-08, 2026-05-21): RelatedTherapy.name on hypotheses/[id] detail page widened to BilingualField — even though it's a denormalized read, the underlying therapies.name column is JSONB; row interface must reflect that.
 - [Phase ?]: Phase 6 (plan 06-08, 2026-05-21): Therapies' evidence_summary truthiness gate refactored — BilingualField object is unconditionally truthy, so the gate must resolve to a string via displayField before checking. Single 'evidence' variable used in both gate and render.
+- [Phase ?]: Mkhedruli-suffix lookahead (?=\b|-) preserves Georgian case markers in redacted output — Avoids consuming the Georgian case marker so 'BMC-ში' → 'a U.S. hospital-ში' keeps sentence grammatical (06-10)
+- [Phase ?]: Deterministic _CLINICIAN_PATTERNS literal list for PHI scrubbing — DB-derived consent.known_doctor_names was empty under no-DB / test conditions, leaking Dr. Hien. Literal fallback runs in all contexts; DB names augment (06-10)
+- [Phase ?]: redact_bilingual({en, ka}, consent) is a pure wrapper over redact() — Single-string redact() signature unchanged → Phase 3 CGM-02 invariants preserved (12/12 still PASS); bilingual OR-block contract is the only new behavior (06-10)
 
 ### Pending Todos
 
@@ -146,6 +150,6 @@ Items acknowledged and carried forward:
 
 ## Session Continuity
 
-Last session: 2026-05-21T11:32:11.022Z
-Stopped at: Phase 6 plan 06-08 complete — 9 displayField call sites across 4 [locale]/ pages (timeline + therapies + hypotheses list/detail); toBilingual write-side helper added to viewer/lib/i18n.ts; viewer/ confirmed to have ZERO INSERT/UPDATE call sites against the 4 target tables (all Python writers correctly DEFERRED to 06-09 per planner's own Task 1 classification table). cd viewer && npm run build exits 0 (21 static pages, 8 [locale]/* dynamic routes preserved); verify_phase6 --mode code-complete = 8/11 PASS (no regression; I18N-08 stays GREEN). Wave 2 fully consumed; Wave 3a next (06-10 + 06-11).
+Last session: 2026-05-21T11:51:38.921Z
+Stopped at: Completed 06-10-PLAN.md (PHI bilingual redactor; 13/13 pytest GREEN; Phase 3 CGM-02 no regression)
 Resume file: None
