@@ -78,6 +78,7 @@ export default async function HypothesisDetailPage({
   const t = await getTranslations("Hypotheses");
   const tNav = await getTranslations("Navigation");
   const tPapers = await getTranslations("Papers");
+  const tTherapies = await getTranslations("Therapies");
   const tShared = await getTranslations("Shared");
 
   function score(value: number | null) {
@@ -295,9 +296,11 @@ export default async function HypothesisDetailPage({
                 <article key={th.id} className="grid gap-1 p-4">
                   <h3 className="text-sm font-medium leading-6">{th.name}</h3>
                   <p className="text-xs text-stone-500">
-                    {th.therapy_type || "type pending"} · {tPapers("evidenceLabel")}{" "}
-                    {th.evidence_in_hie || tShared("unknown")} · {t("aleksandraFor")}:{" "}
-                    {th.aleksandra_status || "not_considered"}
+                    {th.therapy_type || tTherapies("typePending")} ·{" "}
+                    {tTherapies("evidenceLabel")}{" "}
+                    {th.evidence_in_hie || tTherapies("evidenceUnknown")} ·{" "}
+                    {tTherapies("aleksandraFor")}:{" "}
+                    {th.aleksandra_status || tTherapies("statusNotConsidered")}
                   </p>
                 </article>
               ))}
