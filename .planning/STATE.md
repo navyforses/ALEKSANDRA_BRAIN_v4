@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: milestone_complete
-stopped_at: Phase 6 closed 2026-05-21 — verify_phase6 --mode code-complete 11/11 PASS · ALL GREEN; cumulative 89/89; see docs/PHASE_6_EXIT_REPORT.md
-last_updated: "2026-05-21T21:30:00.000Z"
+status: verifying
+stopped_at: Phase 6 closed — verify_phase6 --mode code-complete 11/11 PASS · ALL GREEN; cumulative 89/89; see docs/PHASE_6_EXIT_REPORT.md
+last_updated: "2026-05-22T02:02:27.218Z"
 last_activity: 2026-05-21
 progress:
-  total_phases: 8
-  completed_phases: 8
+  total_phases: 9
+  completed_phases: 1
   total_plans: 15
   completed_plans: 15
   percent: 100
@@ -93,6 +93,7 @@ Progress: [██████████] 100% (Phase 6 closed)
 - 2026-05-20: Phase 6 plan 06-01 executed — next-intl@4.12.0 installed, viewer/proxy.ts mounted (Next.js 16 file convention), three-file i18n module (routing/request/navigation), viewer/messages/{en,ka}.json relocated, createNextIntlPlugin wired in next.config.ts. `npm run build` green (34.1s). 4 commits: 10fbdee, 2b0124a, 5a073e7, a945f55. See 06-01-SUMMARY.md.
 - 2026-05-20: Phase 6 added — Bilingual System (i18n): full site + dynamic data bilingual support (en/ka). Frontend static localization, Supabase JSONB for dynamic content, AI agents emit en+ka pairs, Telegram/Gmail audience routing. Seed: docs/I18N_PLAN.md.
 - 2026-05-20: Phase 5 retro-added to Phase Details section (engineering closed 2026-05-18, 13/13 PASS); Progress table refreshed to reflect Phase 4 + 5 closure.
+- Phase 06.1 inserted after Phase 6: Bilingual Polish — close 3 /ka i18n gaps (BRAIN panel UI, enum labels, DB content backfill) (URGENT)
 
 ### Decisions
 
