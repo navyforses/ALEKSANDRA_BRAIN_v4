@@ -81,6 +81,47 @@
     "subtitle": "სტატიები, გრაფი, ჰიპოთეზები, აღქმის პაიპლაინი — მალე.",
     "title": "ცოდნა"
   },
+  "Manager": {
+    "title": "ტვინი",
+    "active": "აქტიური",
+    "activityLog": "აქტივობის ჟურნალი",
+    "activityUnreachable": "აქტივობის არხი მიუწვდომელია: {error}",
+    "noActivity": "ბოლოდროინდელი აქტივობა არ არის. დასაწყებად ატვირთეთ ფაილი ან ჩაწერეთ ხმოვანი შენიშვნა.",
+    "summarize": {
+      "undidAction": "მოქმედება გაუქმდა {id}…",
+      "addedAppointment": "დაემატა ვიზიტი „{title}“ ({date})",
+      "logged": "დაფიქსირდა „{title}“",
+      "newTherapy": "ახალი თერაპიის კანდიდატი: {name}",
+      "appendedNote": "თერაპიას დაემატა შენიშვნა",
+      "dismissed": "მიღების ჩანაწერი უარყოფილია",
+      "pattern": "შაბლონი: {description}",
+      "fallback": "{action} — {table}"
+    },
+    "relativeTime": {
+      "justNow": "ახლახ",
+      "minutesAgo": "{n} წთ წინ",
+      "hoursAgo": "{n} სთ წინ"
+    },
+    "email": {
+      "writeToPlaceholder": "მისწერე … შესახებ …",
+      "drafting": "მზადდება…",
+      "draftEmail": "წერილის მონახაზი",
+      "draftStaged": "✓ Gmail-ის მონახაზი მზადაა {contact}-თვის",
+      "openGmailNote": "გახსენით Gmail → Drafts გადასახედად და გასაგზავნად. ავტომატურად არასოდეს იგზავნება.",
+      "draftBlocked": "მონახაზი დაიბლოკა: {reason}",
+      "contactFallback": "კონტაქტი"
+    },
+    "input": {
+      "askPlaceholder": "ჰკითხეთ ტვინს ან ატვირთეთ ფაილი...",
+      "attach": "მიმაგრება"
+    },
+    "voice": {
+      "recording": "მიმდინარეობს ჩაწერა…",
+      "transcribing": "ტრანსკრიფცია…",
+      "retry": "ხელახლა",
+      "holdToTalk": "დააჭირეთ სალაპარაკოდ"
+    }
+  },
   "Navigation": {
     "audit": "აუდიტი",
     "brain": "ტვინი",

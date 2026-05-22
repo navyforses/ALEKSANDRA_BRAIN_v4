@@ -81,6 +81,47 @@
     "subtitle": "Papers, graph, hypotheses, perception pipeline — coming soon.",
     "title": "Knowledge"
   },
+  "Manager": {
+    "title": "BRAIN",
+    "active": "Active",
+    "activityLog": "Activity Log",
+    "activityUnreachable": "Activity feed unreachable: {error}",
+    "noActivity": "No recent activity. Drop a file or speak a note to start.",
+    "summarize": {
+      "undidAction": "Undid action {id}…",
+      "addedAppointment": "Added appointment '{title}' ({date})",
+      "logged": "Logged '{title}'",
+      "newTherapy": "New therapy candidate: {name}",
+      "appendedNote": "Appended note to therapy",
+      "dismissed": "Dismissed an intake drop",
+      "pattern": "Pattern: {description}",
+      "fallback": "{action} on {table}"
+    },
+    "relativeTime": {
+      "justNow": "just now",
+      "minutesAgo": "{n}m ago",
+      "hoursAgo": "{n}h ago"
+    },
+    "email": {
+      "writeToPlaceholder": "Write to … about …",
+      "drafting": "Drafting…",
+      "draftEmail": "Draft email",
+      "draftStaged": "✓ Gmail draft staged for {contact}",
+      "openGmailNote": "Open Gmail → Drafts to review and send. Never auto-sent.",
+      "draftBlocked": "Draft blocked: {reason}",
+      "contactFallback": "contact"
+    },
+    "input": {
+      "askPlaceholder": "Ask BRAIN or drop file...",
+      "attach": "Attach"
+    },
+    "voice": {
+      "recording": "Recording…",
+      "transcribing": "Transcribing…",
+      "retry": "Retry",
+      "holdToTalk": "Hold to talk"
+    }
+  },
   "Navigation": {
     "audit": "Audit",
     "brain": "Brain",
