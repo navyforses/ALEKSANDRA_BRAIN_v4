@@ -81,6 +81,9 @@ export default async function HypothesisDetailPage({
   const tPapers = await getTranslations("Papers");
   const tTherapies = await getTranslations("Therapies");
   const tShared = await getTranslations("Shared");
+  const tStatus = await getTranslations("HypothesisStatus");
+  const tType = await getTranslations("HypothesisType");
+  const tConf = await getTranslations("ConfidenceLevel");
 
   function score(value: number | null) {
     return value == null ? tShared("na") : value.toFixed(2);
@@ -159,10 +162,10 @@ export default async function HypothesisDetailPage({
             <span
               className={`rounded-md border px-2 py-1 font-mono text-xs ${tone(hypothesis.status)}`}
             >
-              {hypothesis.status || t("statusNew")}
+              {hypothesis.status ? (tStatus.has(hypothesis.status) ? tStatus(hypothesis.status) : hypothesis.status) : t("statusNew")}
             </span>
             <span className="font-mono text-xs text-stone-500">
-              {hypothesis.hypothesis_type || t("typeOther")}
+              {hypothesis.hypothesis_type ? (tType.has(hypothesis.hypothesis_type) ? tType(hypothesis.hypothesis_type) : hypothesis.hypothesis_type) : t("typeOther")}
             </span>
             {hypothesis.urgency ? (
               <span className="font-mono text-xs text-stone-500">
@@ -189,7 +192,7 @@ export default async function HypothesisDetailPage({
               {t("confidence")}
             </p>
             <p className="mt-2 text-xl font-semibold">
-              {hypothesis.confidence_level || tShared("na")}
+              {hypothesis.confidence_level ? (tConf.has(hypothesis.confidence_level) ? tConf(hypothesis.confidence_level) : hypothesis.confidence_level) : tShared("na")}
             </p>
           </div>
           <div className="rounded-md border border-stone-200 bg-white p-4">

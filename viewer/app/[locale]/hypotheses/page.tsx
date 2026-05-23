@@ -38,6 +38,9 @@ export default async function HypothesesPage({
   const t = await getTranslations("Hypotheses");
   const tNav = await getTranslations("Navigation");
   const tShared = await getTranslations("Shared");
+  const tStatus = await getTranslations("HypothesisStatus");
+  const tType = await getTranslations("HypothesisType");
+  const tConf = await getTranslations("ConfidenceLevel");
 
   function score(value: number | null) {
     return value == null ? tShared("na") : value.toFixed(2);
@@ -119,10 +122,10 @@ export default async function HypothesesPage({
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="rounded-md border border-current/20 px-2 py-1 font-mono text-xs">
-                      {hypothesis.status || t("statusNew")}
+                      {hypothesis.status ? (tStatus.has(hypothesis.status) ? tStatus(hypothesis.status) : hypothesis.status) : t("statusNew")}
                     </span>
                     <span className="font-mono text-xs text-stone-500">
-                      {hypothesis.hypothesis_type || t("typeOther")}
+                      {hypothesis.hypothesis_type ? (tType.has(hypothesis.hypothesis_type) ? tType(hypothesis.hypothesis_type) : hypothesis.hypothesis_type) : t("typeOther")}
                     </span>
                   </div>
                   <h2 className="mt-3 text-lg font-semibold leading-7">
@@ -140,7 +143,7 @@ export default async function HypothesesPage({
                 <dl className="grid grid-cols-3 gap-3 text-sm lg:w-80">
                   <div>
                     <dt className="font-mono text-xs uppercase text-stone-500">{t("confidence")}</dt>
-                    <dd className="mt-1 font-semibold">{hypothesis.confidence_level || tShared("na")}</dd>
+                    <dd className="mt-1 font-semibold">{hypothesis.confidence_level ? (tConf.has(hypothesis.confidence_level) ? tConf(hypothesis.confidence_level) : hypothesis.confidence_level) : tShared("na")}</dd>
                   </div>
                   <div>
                     <dt className="font-mono text-xs uppercase text-stone-500">{t("novelty")}</dt>

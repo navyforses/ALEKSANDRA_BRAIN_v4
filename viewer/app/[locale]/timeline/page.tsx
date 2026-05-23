@@ -32,6 +32,7 @@ export default async function TimelinePage({
   setRequestLocale(locale);
   const t = await getTranslations("Timeline");
   const tShared = await getTranslations("Shared");
+  const tEvt = await getTranslations("TimelineEventType");
 
   function formatDate(value: string | null) {
     if (!value) return tShared("notListed");
@@ -81,7 +82,7 @@ export default async function TimelinePage({
           <section className="flex flex-wrap gap-2">
             {Object.entries(counts).map(([type, count]) => (
               <span key={type} className="rounded-md bg-white px-3 py-2 text-sm text-stone-700 ring-1 ring-stone-200">
-                <span className="font-mono text-xs uppercase text-stone-500">{type}</span>{" "}
+                <span className="font-mono text-xs uppercase text-stone-500">{tEvt.has(type) ? tEvt(type) : type}</span>{" "}
                 <span className="font-semibold">{count}</span>
               </span>
             ))}
@@ -100,7 +101,7 @@ export default async function TimelinePage({
                     {formatDate(event.event_date)}
                   </p>
                   <p className="mt-1 font-mono text-xs uppercase text-stone-500">
-                    {event.event_type}
+                    {tEvt.has(event.event_type) ? tEvt(event.event_type) : event.event_type}
                   </p>
                 </div>
                 <div>
