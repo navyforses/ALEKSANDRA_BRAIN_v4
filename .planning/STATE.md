@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: verifying
-stopped_at: Phase 6 closed — verify_phase6 --mode code-complete 11/11 PASS · ALL GREEN; cumulative 89/89; see docs/PHASE_6_EXIT_REPORT.md
-last_updated: "2026-05-22T02:02:27.218Z"
+stopped_at: Phase 06.1 Plan 01 closed — Manager namespace (29 keys × 2) + 5 BRAIN components wired; verify_phase6 11/11 + verify_phase5 13/13 + verify_phase4 9/9 GREEN
+last_updated: "2026-05-23T01:05:33.892Z"
 last_activity: 2026-05-21
 progress:
   total_phases: 9
   completed_phases: 1
-  total_plans: 15
-  completed_plans: 15
-  percent: 100
+  total_plans: 18
+  completed_plans: 16
+  percent: 89
 ---
 
 # Project State
@@ -30,7 +30,7 @@ Plan: 15/15 complete — Phase 6 fully consumed across Wave 1–4. verify_phase6
 Status: No active phase. Phase 4 acceptance window monitored to closure (~2026-06-07). Two P2 maintenance todos pending: migration 012 rollback-artifact capture + Georgian lexicon native-speaker re-verify.
 Last activity: 2026-05-21
 
-Progress: [██████████] 100% (Phase 6 closed)
+Progress: [█████████░] 89%
 
 ## Performance Metrics
 
@@ -72,6 +72,7 @@ Progress: [██████████] 100% (Phase 6 closed)
 | Phase 06 P06-09 | 25m | 3 tasks | 5 files |
 | Phase 06 P06-12 | 15m | 5 tasks | 6 files |
 | Phase 06 P06-13 | ~20m | 2 doc-task + 1 metadata task | 6 files (PHASE_6_EXIT_REPORT.md + PHASE_6_COMPLETION_KA.md + STATE + ROADMAP + REQUIREMENTS + CLAUDE.md) |
+| Phase 06.1 P01 | 3h33m | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -142,6 +143,10 @@ Recent decisions affecting current work:
 - [Phase 6 (plan 06-12, 2026-05-21)]: Per-file locale constants (TELEGRAM_LOCALE='ka', GMAIL_LOCALE='en', BRIEFING_LOCALE='ka') over inline literals — single point of audit; negative-grep acceptance checks become structurally trivial.
 - [Phase 6 (plan 06-12, 2026-05-21)]: n8n zero-touch confirmed — workflows/_phase6_notes.md documents 5-workflow audit table; backlog item filed for daily_digest.json reactivation. Pattern 7 finding holds for all Phase 6 changes.
 - [Phase 6 (plan 06-12, 2026-05-21)]: bilingual-dryrun CLIs use JSONB-shaped fixture rows (not live DB reads) so verifier remains hermetic; dry-run exercises all four display_field_py input shapes.
+- [Phase ?]: Phase 06.1 (plan 06.1-01, 2026-05-22): summarize(row, t) and relativeTime(iso, t) accept t as an argument rather than being inlined — keeps them pure module-level helpers, preserves Phase 5 testability, single render-branch call site in ActivityFeed.tsx
+- [Phase ?]: Phase 06.1 (plan 06.1-01, 2026-05-22): Translated dormant InputBar / VoiceRecorder per D-02 (cheap, may be re-mounted) — single-pass i18n coverage avoids follow-up plan when they re-mount
+- [Phase ?]: Phase 06.1 (plan 06.1-01, 2026-05-22): Manager namespace placed alphabetically between Knowledge and Navigation — minimizes merge surface for 06.1-02 (depends_on=[06.1-01]) which appends 4 ENUM namespaces
+- [Phase ?]: Phase 06.1 (plan 06.1-01, 2026-05-22): Server async + client hooks pattern for the BRAIN panel — BrainPanel.tsx becomes async (await getTranslations) while ActivityFeed/EmailIntent/InputBar/VoiceRecorder use useTranslations; never mix the two import paths in a single file
 
 ### Pending Todos
 
@@ -167,6 +172,6 @@ Items acknowledged and carried forward:
 
 ## Session Continuity
 
-Last session: 2026-05-21T21:30:00.000Z
-Stopped at: Phase 6 closed — verify_phase6 --mode code-complete 11/11 PASS · ALL GREEN; cumulative 89/89; see docs/PHASE_6_EXIT_REPORT.md
+Last session: 2026-05-23T01:05:33.868Z
+Stopped at: Phase 06.1 Plan 01 closed — Manager namespace (29 keys × 2) + 5 BRAIN components wired; verify_phase6 11/11 + verify_phase5 13/13 + verify_phase4 9/9 GREEN
 Resume file: None
