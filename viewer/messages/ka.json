@@ -4,6 +4,12 @@
     "loading": "იტვირთება...",
     "save": "შენახვა"
   },
+  "ConfidenceLevel": {
+    "high": "მაღალი",
+    "moderate": "ზომიერი",
+    "low": "დაბალი",
+    "very_low": "ძალიან დაბალი"
+  },
   "Dashboard": {
     "accessPosture": "წვდომის რეჟიმი",
     "accessPostureBody": "მხოლოდ სერვერზე რენდერებული მონაცემები. სერვისის რწმუნებები რჩება სერვერზე, MRI მონაცემები ამ გვერდიდან არასოდეს იტვირთება.",
@@ -75,6 +81,28 @@
     "typeOther": "სხვა",
     "underReview": "გადახედვის ქვეშ",
     "urgencyPrefix": "გადაუდებლობა"
+  },
+  "HypothesisStatus": {
+    "new": "ახალი",
+    "under_review": "განხილვაში",
+    "promising": "პერსპექტიული",
+    "pursuing": "მიმდინარე",
+    "tested": "ტესტირებული",
+    "confirmed": "დადასტურებული",
+    "rejected": "უარყოფილი",
+    "archived": "დაარქივებული"
+  },
+  "HypothesisType": {
+    "drug_repurposing": "წამლის გადანიშვნა",
+    "pathway_target": "სამიზნე გზა",
+    "combination_therapy": "კომბინირებული თერაპია",
+    "timing_optimization": "დროის ოპტიმიზაცია",
+    "cross_disease_inference": "დაავადებათაშორისი დასკვნა",
+    "plasticity_mechanism": "პლასტიკურობის მექანიზმი",
+    "biomarker_discovery": "ბიომარკერის აღმოჩენა",
+    "technology_application": "ტექნოლოგიის გამოყენება",
+    "rehabilitation_innovation": "სარეაბილიტაციო ინოვაცია",
+    "other": "სხვა"
   },
   "Knowledge": {
     "fallback": "მანამდე გამოიყენეთ მართვის პანელი ცოცხალი მაჩვენებლებისთვის და მთავარი სტატიებისთვის.",
@@ -199,6 +227,19 @@
     "shown": "ნაჩვენები",
     "subtitle": "ძირითადი მოვლენების მხოლოდ-კითხვადი ქრონოლოგიური ჩანაწერი, რომელიც გამოიყენება ოჯახის სამუშაო პროცესის ხილვადობისთვის და კვლევითი კონტექსტისთვის.",
     "title": "ქრონოლოგია"
+  },
+  "TimelineEventType": {
+    "SYSTEM_MILESTONE": "სისტემური ეტაპი",
+    "PROGRAM_ENROLLMENT": "პროგრამაში ჩართვა",
+    "MEDICATION_CHANGE": "მედიკამენტის ცვლილება",
+    "APPOINTMENT": "ვიზიტი",
+    "RELOCATION": "გადასვლა",
+    "MRI_SCAN": "MRI სკანი",
+    "DIAGNOSIS": "დიაგნოზი",
+    "BIRTH": "დაბადება",
+    "appointment": "ვიზიტი",
+    "medication_change": "მედიკამენტის ცვლილება",
+    "observation": "დაკვირვება"
   },
   "Today": {
     "comingSoon": "ყოველდღიური კლინიკური ხედი — მალე.",

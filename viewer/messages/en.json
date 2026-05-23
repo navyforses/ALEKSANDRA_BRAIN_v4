@@ -4,6 +4,12 @@
     "loading": "Loading...",
     "save": "Save"
   },
+  "ConfidenceLevel": {
+    "high": "High",
+    "moderate": "Moderate",
+    "low": "Low",
+    "very_low": "Very low"
+  },
   "Dashboard": {
     "accessPosture": "Access posture",
     "accessPostureBody": "Server-rendered data only. Service credentials remain on the server, and MRI data is never fetched here.",
@@ -75,6 +81,28 @@
     "typeOther": "other",
     "underReview": "Under review",
     "urgencyPrefix": "urgency"
+  },
+  "HypothesisStatus": {
+    "new": "New",
+    "under_review": "Under review",
+    "promising": "Promising",
+    "pursuing": "Pursuing",
+    "tested": "Tested",
+    "confirmed": "Confirmed",
+    "rejected": "Rejected",
+    "archived": "Archived"
+  },
+  "HypothesisType": {
+    "drug_repurposing": "Drug repurposing",
+    "pathway_target": "Pathway target",
+    "combination_therapy": "Combination therapy",
+    "timing_optimization": "Timing optimization",
+    "cross_disease_inference": "Cross-disease inference",
+    "plasticity_mechanism": "Plasticity mechanism",
+    "biomarker_discovery": "Biomarker discovery",
+    "technology_application": "Technology application",
+    "rehabilitation_innovation": "Rehabilitation innovation",
+    "other": "Other"
   },
   "Knowledge": {
     "fallback": "Until then, use the dashboard for live counts and top papers.",
@@ -199,6 +227,19 @@
     "shown": "Shown",
     "subtitle": "Read-only chronological record of key events used for family workflow visibility and research context.",
     "title": "Timeline"
+  },
+  "TimelineEventType": {
+    "SYSTEM_MILESTONE": "System milestone",
+    "PROGRAM_ENROLLMENT": "Program enrollment",
+    "MEDICATION_CHANGE": "Medication change",
+    "APPOINTMENT": "Appointment",
+    "RELOCATION": "Relocation",
+    "MRI_SCAN": "MRI scan",
+    "DIAGNOSIS": "Diagnosis",
+    "BIRTH": "Birth",
+    "appointment": "Appointment",
+    "medication_change": "Medication change",
+    "observation": "Observation"
   },
   "Today": {
     "comingSoon": "Daily clinical view — coming soon.",
