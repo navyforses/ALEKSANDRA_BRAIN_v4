@@ -6,6 +6,7 @@
 // now the parent decides what to do with the typed text or transcript.
 
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import VoiceRecorder from '@/components/BrainPanel/VoiceRecorder'
 
 export interface InputBarProps {
@@ -15,6 +16,7 @@ export interface InputBarProps {
 }
 
 export default function InputBar({ onSubmit, onAttach, onError }: InputBarProps) {
+  const t = useTranslations('Manager')
   const [text, setText] = useState('')
 
   function handleKey(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -34,7 +36,7 @@ export default function InputBar({ onSubmit, onAttach, onError }: InputBarProps)
     <div className="rounded-md border border-slate-300 bg-white shadow-sm flex items-center p-2 gap-2">
       <input
         type="text"
-        placeholder="Ask BRAIN or drop file..."
+        placeholder={t('input.askPlaceholder')}
         value={text}
         onChange={(e) => setText(e.target.value)}
         onKeyDown={handleKey}
@@ -42,7 +44,7 @@ export default function InputBar({ onSubmit, onAttach, onError }: InputBarProps)
       />
 
       <label className="inline-flex items-center justify-center h-8 px-3 text-xs font-medium rounded-md border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 cursor-pointer">
-        Attach
+        {t('input.attach')}
         <input type="file" className="hidden" onChange={handleFile} />
       </label>
 

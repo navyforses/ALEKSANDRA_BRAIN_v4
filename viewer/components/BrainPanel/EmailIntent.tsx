@@ -5,6 +5,7 @@
 // scope only; Shako reviews + clicks Send in Gmail UI.
 
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 
 interface DraftSummary {
   contact_name: string | null
@@ -27,6 +28,7 @@ interface ApiResponse {
 type Status = 'idle' | 'pending' | 'staged' | 'blocked' | 'error'
 
 export default function EmailIntent() {
+  const t = useTranslations('Manager')
   const [text, setText] = useState('')
   const [status, setStatus] = useState<Status>('idle')
   const [result, setResult] = useState<ApiResponse | null>(null)
@@ -64,7 +66,7 @@ export default function EmailIntent() {
           type="text"
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="Write to … about …"
+          placeholder={t('email.writeToPlaceholder')}
           className="flex-1 px-2 py-1 text-sm bg-white border border-slate-300 rounded-md outline-none placeholder:text-slate-400 text-slate-800"
           disabled={status === 'pending'}
         />
@@ -78,27 +80,27 @@ export default function EmailIntent() {
               : 'bg-slate-900 text-white hover:bg-slate-800')
           }
         >
-          {status === 'pending' ? 'Drafting…' : 'Draft email'}
+          {status === 'pending' ? t('email.drafting') : t('email.draftEmail')}
         </button>
       </form>
 
       {status === 'staged' && result?.draft && (
         <div className="border border-medical-green/30 bg-medical-green/10 rounded-md px-3 py-2 text-xs text-slate-700">
           <div className="font-medium text-medical-green">
-            ✓ Gmail draft staged for {result.contact_name ?? 'contact'}
+            {t('email.draftStaged', { contact: result.contact_name ?? t('email.contactFallback') })}
           </div>
           <div className="mt-1 text-slate-600">
             <span className="font-mono text-[11px]">{result.draft.subject}</span>
           </div>
           <div className="mt-1 text-[11px] text-slate-500">
-            Open Gmail → Drafts to review and send. Never auto-sent.
+            {t('email.openGmailNote')}
           </div>
         </div>
       )}
 
       {status === 'blocked' && result && (
         <div className="border border-medical-orange/30 bg-medical-orange/10 rounded-md px-3 py-2 text-xs text-medical-orange">
-          Draft blocked: {result.block_reason ?? 'unknown'}
+          {t('email.draftBlocked', { reason: result.block_reason ?? 'unknown' })}
         </div>
       )}
 

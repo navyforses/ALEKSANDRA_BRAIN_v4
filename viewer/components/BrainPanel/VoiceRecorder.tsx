@@ -7,6 +7,7 @@
 // state never serializes it to localStorage / IndexedDB.
 
 import { useEffect, useRef, useState } from 'react'
+import { useTranslations } from 'next-intl'
 
 type Status = 'idle' | 'recording' | 'transcribing' | 'error'
 
@@ -16,6 +17,7 @@ export interface VoiceRecorderProps {
 }
 
 export default function VoiceRecorder({ onTranscript, onError }: VoiceRecorderProps) {
+  const t = useTranslations('Manager')
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
   const streamRef = useRef<MediaStream | null>(null)
@@ -82,10 +84,10 @@ export default function VoiceRecorder({ onTranscript, onError }: VoiceRecorderPr
   }
 
   const label =
-    status === 'recording' ? 'Recording…'
-    : status === 'transcribing' ? 'Transcribing…'
-    : status === 'error' ? 'Retry'
-    : 'Hold to talk'
+    status === 'recording' ? t('voice.recording')
+    : status === 'transcribing' ? t('voice.transcribing')
+    : status === 'error' ? t('voice.retry')
+    : t('voice.holdToTalk')
 
   return (
     <button
