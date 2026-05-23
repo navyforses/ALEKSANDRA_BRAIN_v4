@@ -4,14 +4,14 @@ milestone: v1.0
 milestone_name: milestone
 status: verifying
 stopped_at: Phase 06.1 Plan 01 closed — Manager namespace (29 keys × 2) + 5 BRAIN components wired; verify_phase6 11/11 + verify_phase5 13/13 + verify_phase4 9/9 GREEN
-last_updated: "2026-05-23T03:34:38.363Z"
+last_updated: "2026-05-23T10:29:44.915Z"
 last_activity: 2026-05-21
 progress:
   total_phases: 9
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 18
-  completed_plans: 17
-  percent: 94
+  completed_plans: 18
+  percent: 100
 ---
 
 # Project State
@@ -96,6 +96,7 @@ Progress: [█████████░] 89%
 - 2026-05-20: Phase 5 retro-added to Phase Details section (engineering closed 2026-05-18, 13/13 PASS); Progress table refreshed to reflect Phase 4 + 5 closure.
 - Phase 06.1 inserted after Phase 6: Bilingual Polish — close 3 /ka i18n gaps (BRAIN panel UI, enum labels, DB content backfill) (URGENT)
 - Phase 06.1 edited: Plan 06.1-02 (enum labels) complete — 4 new namespaces (ConfidenceLevel 4 / HypothesisStatus 8 / HypothesisType 10 / TimelineEventType 11 = 33 leaves added per dictionary), wired 3 server pages with t.has() raw-value fallback (timeline event_type tag + count chips, hypotheses list status/type/confidence, hypotheses/[id] detail same — Rule 3 anticipatory extension). verify_phase6 --mode code-complete 11/11 PASS, verify_phase4 9/9, verify_phase5 13/13 GREEN. Commits c62f224 + f6c0dab. Phase 6.1 progress 2/3 plans done; 06.1-03 (backfill) remaining.
+- Phase 06.1 edited: Plan 06.1-03 Tasks 1+2 done (script ceb189b, runbook 40daad9). Task 3 (production backfill) is autonomous=false — awaiting Shako's supervised run per scripts/migrations/013_runbook.md. Phase 6.1: 2.66/3 plans done (06.1-01 + 06.1-02 closed; 06.1-03 partial pending checkpoint).
 
 ### Decisions
 
