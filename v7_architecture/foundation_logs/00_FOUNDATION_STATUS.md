@@ -2,7 +2,7 @@
 
 **Date:** 2026-05-24
 **Verifier:** `scripts/verify_v7_foundation.py`
-**Last run:** 21/25 PASS
+**Last run:** **25/25 PASS — FOUNDATION COMPLETE** (git tag `v7-foundation-ready`)
 
 ---
 
@@ -15,9 +15,9 @@
 | 0.3 | Python deps (PyMC, DoWhy, NumPyro, ...) | DONE | `03_uv_install.log` + `03_imports_check.log` (15/15 imports PASS) |
 | 0.4 | Docker TVB pull + smoke test | DONE | image 10.6 GB; container start+stop verified |
 | 0.5 | Frontend libs (plotly, vis, xyflow) | DONE | `05_npm_install.log` (271 packages) |
-| 0.6 | AI model downloads | **BLOCKED** | needs HF_TOKEN |
-| 0.7 | `.env` keys | DONE (placeholders) | HF_TOKEN value still empty |
-| 0.8 | Verifier 25/25 | **21/25** | `08_verifier_run3.log` |
+| 0.6 | AI model downloads | DONE | MedGemma 4B 8.1 GB · TxGemma 9B 18 GB · MedSigLIP 3.3 GB; `06_model_downloads.log` |
+| 0.7 | `.env` keys | DONE | all 25 verifier-tracked env vars set |
+| 0.8 | Verifier 25/25 | **DONE** | `08_verifier_run4.log` — 25/25 PASS |
 
 ---
 
@@ -36,33 +36,25 @@
 
 ---
 
-## 4 remaining checks (all block on HF_TOKEN)
+## How Foundation reached 25/25 (HF_TOKEN unblock)
 
-```
-FAIL  hf_token_set            → user adds HF_TOKEN to .env
-FAIL  medgemma_4b_downloaded  → blocked on HF_TOKEN + license accept
-FAIL  txgemma_9b_downloaded   → blocked on HF_TOKEN + license accept
-FAIL  medsiglip_downloaded    → blocked on HF_TOKEN + license accept
-```
+Initial verifier run hit 21/25; the 4 blocked checks all depended on an
+HF_TOKEN with access to Google's gated medical models. A fine-grained
+token created at https://huggingface.co/settings/tokens initially failed
+with HTTP 403 — root cause was the missing "Read access to public gated
+repositories" permission, not the license accepts (those were already
+done). After adding the 3 model slugs (`google/medgemma-4b-it`,
+`google/txgemma-9b-chat`, `google/medsiglip-448`) to the token's
+"Repositories permissions" with all 4 checkboxes enabled, file-resolve
+URLs went from 403 → 200 and `scripts/download_v7_models.py` pulled all
+3 models cleanly:
 
-### Unblock procedure (~30-90 min for downloads)
+- `~/models/medgemma-4b`   8.1 GB
+- `~/models/txgemma-9b`   18 GB
+- `~/models/medsiglip`     3.3 GB
+- **Total disk used:** 29 GB
 
-1. **Get HF_TOKEN.** Visit https://huggingface.co/settings/tokens → "New token" → name `aleksandra-v7` → role `Read` → create → copy.
-2. **Paste into `.env` line ~172**: `HF_TOKEN=hf_...`
-3. **Accept 3 model licenses** (gated by Google, instant approval after click):
-   - https://huggingface.co/google/medgemma-4b-it
-   - https://huggingface.co/google/txgemma-9b-chat
-   - https://huggingface.co/google/medsiglip-448
-4. **Run download:**
-   ```bash
-   .venv-v7/Scripts/python.exe scripts/download_v7_models.py
-   ```
-   Expected: ~28 GB total, 30-90 min depending on bandwidth. `resume_download=True` is set, safe to interrupt.
-5. **Re-run verifier:**
-   ```bash
-   .venv-v7/Scripts/python.exe scripts/verify_v7_foundation.py
-   ```
-   Target: 25/25 PASS.
+Total download time: ~46 minutes. TxGemma 9B (18 GB) dominated.
 
 ---
 
@@ -75,6 +67,7 @@ FAIL  medsiglip_downloaded    → blocked on HF_TOKEN + license accept
 | `.env.local` filename | `.env` (existing v6.0 convention) | Project already uses `.env`; v7.0 keys appended to same file. |
 | `huggingface-cli` command | `hf` (new official CLI) | huggingface_hub 1.x deprecated `huggingface-cli`. `hf` ships in the same package. |
 | TVB image "~2 GB" | actual 10.6 GB | Doc estimate stale — current `thevirtualbrain/tvb-run:latest` includes full SciPy + Jupyter + neuro stack. |
+| TVB port `8888:8888` | actual `8888:8080` | TVB Framework web UI listens on **port 8080** inside the container, not 8888. Verified by HTTP 200 probe. Helper `scripts/run_tvb.sh` uses the correct mapping. The base image also prints a deprecation notice ("Updates discontinued after 26.7.x"); revisit upstream image choice during Phase 7.0 simulation work. |
 | Vertex AI / GCP | NOT signed up | Foundation doc marks it OPTIONAL ("only if MedGemma 27B cloud"). MVP uses MedGemma 4B local + HF Inference Endpoint if larger models become necessary. |
 
 ---
@@ -89,6 +82,26 @@ FAIL  medsiglip_downloaded    → blocked on HF_TOKEN + license accept
 
 ---
 
+## Phase 7.0 smoke tests (post-install validation)
+
+Ran on 2026-05-24 after the verifier hit 21/25, to confirm the new
+stack is not just importable but actually usable:
+
+| Test | Result | Detail |
+|---|---|---|
+| PyMC NUTS sampling | PASS | 21 s for 2 chains × 1000 draws. Posterior means within tolerance of synthetic truth (alpha Δ=0.053, beta Δ=0.016, sigma Δ=0.015). |
+| DoWhy ATE estimation | PASS | Backdoor linear regression on a synthetic Z→T→Y graph. Estimate 1.4817 vs truth 1.50, Δ=0.018 (tol 0.15). |
+| TVB Framework web UI | PASS | Container starts in ~27 s, web UI returns HTTP 200 at `http://localhost:8888/` (host port → container port 8080). |
+
+Side findings: PyMC prints `g++ not available` and falls back to the
+pure-Python sampler. Acceptable for MVP; install `gxx`/MSVC build tools
+later if NUTS speed becomes a bottleneck.
+
+Smoke-test scripts live at `v7_architecture/foundation_logs/smoke_*.py`
+and the TVB launcher is at `scripts/run_tvb.sh`.
+
+---
+
 ## Constraints honored
 
 - [x] Did not touch v6.0 production stack (no n8n restart, no Neo4j migration).
@@ -100,10 +113,11 @@ FAIL  medsiglip_downloaded    → blocked on HF_TOKEN + license accept
 
 ## Next action
 
-Decide between:
-
-1. **Provide HF_TOKEN now** → run `download_v7_models.py` → reach 25/25 → tag commit `v7-foundation-ready`. Recommended path.
-2. **Skip models for now** → commit current 21/25 progress under tag `v7-foundation-partial` → revisit Phase 0.6 later.
-3. **Hold off on git commits** → keep everything local until you've reviewed `requirements-v7.txt`, `verify_v7_foundation.py`, and the `.env` v7.0 section.
-
-After Foundation 25/25: proceed to v7.0 Phase 7.0 (Belief State Foundation) per `v7_architecture/AI_BRAIN.md` section 4.
+Foundation 25/25 PASS — tagged as `v7-foundation-ready`. Proceed to
+v7.0 Phase 7.0 (Belief State Foundation) per
+`v7_architecture/AI_BRAIN.md` section 4. The recommended path is a fresh
+chat session using `v7_architecture/70_PHASES/PROMPT_FOR_VSCODE.md` as
+the session prompt — but note that the v7_architecture/ docs themselves
+have a known squishy-token bug, separately tracked in
+`C:/Users/jinch/.claude/plans/vscode-confirm-and-plan-prompt-md-vs-squishy-token.md`.
+Resolve that cleanup BEFORE handing the prompts to a new AI session.
