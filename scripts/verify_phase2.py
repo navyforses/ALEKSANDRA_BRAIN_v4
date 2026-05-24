@@ -370,7 +370,14 @@ def check_gate_c(report: Report) -> None:
     n_sonnet = sum(
         1 for h in hyps if (h.get("generated_by") or "").startswith("claude-sonnet")
     )
-    n_titled = sum(1 for h in hyps if (h.get("title") or "").strip())
+
+    def _title_text(h):
+        t = h.get("title")
+        if isinstance(t, dict):
+            return (t.get("en") or t.get("ka") or "").strip()
+        return (t or "").strip()
+
+    n_titled = sum(1 for h in hyps if _title_text(h))
     report.add(
         Check(
             "2C.1",
@@ -407,7 +414,14 @@ def check_gate_d(report: Report) -> None:
     )
     rows = r.json() if r.status_code == 200 else []
     n_evaluating = len(rows)
-    n_dossier = sum(1 for t in rows if (t.get("evidence_summary") or "").strip())
+
+    def _es_text(t):
+        v = t.get("evidence_summary")
+        if isinstance(v, dict):
+            return (v.get("en") or v.get("ka") or "").strip()
+        return (v or "").strip()
+
+    n_dossier = sum(1 for t in rows if _es_text(t))
     n_upgraded = sum(
         1 for t in rows if t.get("evidence_in_hie") not in (None, "theoretical")
     )
