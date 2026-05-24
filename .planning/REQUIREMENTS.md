@@ -79,6 +79,12 @@
 - [x] **I18N-10**: PHI redactor runs on both `.en` and `.ka` strings via `redact_bilingual({en, ka}, consent)` wrapper; imperative-verb lint extended with 8 Georgian D-05 entries (`უნდა`, `აუცილებლად`, `განიხილეთ`, `მოითხოვეთ`, `ითხოვეთ`, `სცადეთ`, `გაითვალისწინეთ`, `მართებთ`); Phase 3 CGM-04 English invariants unchanged
 - [x] **I18N-11**: After Phase 6 lands, `verify_phase4 --mode code-complete` exits 0 with 9/9 PASS and `verify_phase5 --mode code-complete` exits 0 with 13/13 PASS; `check_i18n_11` spawns both as subprocesses to codify the regression sweep into the Phase 6 verifier itself
 
+### Bilingual Polish — i18n Gap Closure (Phase 6.1)
+
+- [x] **I18N-12**: BRAIN panel sidebar UI fully translates on `/ka/*` routes — new `Manager` namespace (29 keys × 2 locales) drives `BrainPanel.tsx` + `ActivityFeed.tsx` + `EmailIntent.tsx` + `InputBar.tsx` + `VoiceRecorder.tsx`; server component uses `await getTranslations("Manager")`, client components use `useTranslations("Manager")`; ICU args for `summarize()` + `relativeTime()` templates
+- [x] **I18N-13**: Enum-label rendering on `/ka/{timeline,hypotheses,hypotheses/[id]}` uses 4 new namespaces (`TimelineEventType` 11 leaves, `HypothesisStatus` 8, `HypothesisType` 10, `ConfidenceLevel` 4 = 33 leaves added per dictionary); raw-value fallback via `t.has(v) ? t(v) : v` so unknown DB values never crash; raw enums preserved for `tone()` classNames + server-action form `value=` attributes
+- [x] **I18N-14**: DB content bilingual backfill of the 6 JSONB columns migration 012 mirrored (`aleksandra_timeline.{title,description}`, `hypotheses.{title,description}`, `therapies.{name,evidence_summary}`) via translator primitive (direct `anthropic.messages.create` with translation system prompt — NOT `compose_bilingual`); 57/64 populated fields recovered to real Mkhedruli Georgian (89%); 7 fully blank rows (en+ka empty) remain for user manual rebuild via Phase 5 Manager. Incident note: original 013 backfill used `compose_bilingual` (drafting tool) and corrupted 62 fields — recovered via 014 header-extraction + 015 sonnet-4-6 retry
+
 ## v2 Requirements
 
 Deferred to a later milestone, not in the current roadmap.
@@ -191,12 +197,15 @@ Explicitly excluded. Documented to prevent scope creep.
 | I18N-09 | Phase 6 | Validated (2026-05-21) |
 | I18N-10 | Phase 6 | Validated (2026-05-21) |
 | I18N-11 | Phase 6 | Validated (2026-05-21) |
+| I18N-12 | Phase 6.1 | Validated (2026-05-22) |
+| I18N-13 | Phase 6.1 | Validated (2026-05-22) |
+| I18N-14 | Phase 6.1 | Validated with P2 incident (2026-05-24) — 57/64 fields recovered; 7 blank rows deferred to user |
 
 **Coverage:**
-- v1 requirements: 52 total (41 v1.0 + 11 i18n in v1.1)
-- Mapped to phases: 52
+- v1 requirements: 55 total (41 v1.0 + 11 i18n in v1.1 + 3 i18n polish in v1.2)
+- Mapped to phases: 55
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-05-13*
-*Last updated: 2026-05-21 — Phase 6 (Bilingual System i18n) closed; 11 I18N requirements validated (89/89 cumulative verifier coverage)*
+*Last updated: 2026-05-24 — Phase 6.1 (Bilingual Polish) closed; 14 I18N requirements validated (89/89 cumulative verifier coverage preserved; verify_phase2 JSONB-aware patch landed)*

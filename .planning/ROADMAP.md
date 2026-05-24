@@ -205,14 +205,14 @@ Plans:
 *Mode: yolo*
 *v2 phases (Cognition-full, Action interactivity, Visualization, HIPAA posture) live in REQUIREMENTS.md and are explicitly out of v1 scope.*
 
-### Phase 06.1: Bilingual Polish (i18n gap closure) (INSERTED)
+### Phase 06.1: Bilingual Polish (i18n gap closure) (INSERTED) — ✅ CLOSED 2026-05-24
 
 **Goal:** Deliver a fully Georgian /ka experience — UI chrome (BRAIN panel), enum labels, and existing data content.
 **Requirements**: I18N-12, I18N-13, I18N-14
 **Depends on:** Phase 6
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans executed
 
 Plans:
 - [x] 06.1-01-PLAN.md — BRAIN panel i18n (Manager namespace + 5 components) [wave 1, autonomous]
 - [x] 06.1-02-PLAN.md — ENUM label translation (4 namespaces + timeline/hypotheses) [wave 1, autonomous]
-- [ ] 06.1-03-PLAN.md — DB content bilingual backfill (013 script + Shako-run checkpoint) [wave 2, autonomous:false]
+- [x] 06.1-03-PLAN.md — DB content bilingual backfill (013 script + Shako-run checkpoint) [wave 2, autonomous:false] — closed with P2 incident: 57/64 fields recovered via 014 header-extraction + 015 sonnet-4-6 retry; 7 blank rows deferred to user manual rebuild via Phase 5 Manager

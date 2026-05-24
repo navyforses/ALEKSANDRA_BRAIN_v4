@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: verifying
-stopped_at: Phase 06.1 Plan 01 closed — Manager namespace (29 keys × 2) + 5 BRAIN components wired; verify_phase6 11/11 + verify_phase5 13/13 + verify_phase4 9/9 GREEN
-last_updated: "2026-05-23T10:29:44.915Z"
-last_activity: 2026-05-21
+stopped_at: Phase 06.1 CLOSED 2026-05-24 — all 3 plans done; 06.1-03 backfill recovered 57/64 fields (P2 incident, 7 blank rows deferred to user manual rebuild); verify_phase2 JSONB-aware fix landed (migration-012 regression resolved)
+last_updated: "2026-05-24T00:00:00.000Z"
+last_activity: 2026-05-24
 progress:
   total_phases: 9
   completed_phases: 2
@@ -25,9 +25,9 @@ See: .planning/PROJECT.md (updated 2026-05-13)
 
 ## Current Position
 
-Phase: 6 of 8 — **CLOSED 2026-05-21** (Bilingual System i18n)
-Plan: 15/15 complete — Phase 6 fully consumed across Wave 1–4. verify_phase6 --mode code-complete → 11/11 PASS · ALL GREEN; verify_phase4 --mode code-complete → 9/9 PASS; verify_phase5 --mode code-complete → 13/13 PASS. Cumulative project verifier coverage: 89/89 PASS. See docs/PHASE_6_EXIT_REPORT.md + docs/PHASE_6_COMPLETION_KA.md.
-Status: No active phase. Phase 4 acceptance window monitored to closure (~2026-06-07). Two P2 maintenance todos pending: migration 012 rollback-artifact capture + Georgian lexicon native-speaker re-verify.
+Phase: 6.1 (inserted) — **CLOSED 2026-05-24** (Bilingual Polish / i18n gap closure)
+Plan: 3/3 complete — 06.1-01 BRAIN panel i18n (Manager namespace + 5 components), 06.1-02 enum-label translation (4 namespaces, 33 leaves added per dictionary), 06.1-03 DB content backfill (57/64 fields recovered to real Mkhedruli via translator primitive — direct anthropic.messages.create — after 013's compose_bilingual misuse corrupted 62 fields; recovery via 014 header-extraction + 015 sonnet-4-6 retry). verify_phase2 patched to handle JSONB shape from migration 012 (was crashing dict.strip()). Cumulative project verifier coverage: 89/89 GREEN modulo pre-existing operational caveat (phase2_5 B.1 n8n perception_tick on Railway not firing in 7d — independent of Phase 6.1 work).
+Status: No active phase. Phase 4 acceptance window monitored to closure (~2026-06-07). Three deferred items: (1) user manual rebuild for 7 fully-blank rows via Phase 5 Manager (hypotheses + therapies); (2) Shako: disconnect Cloudflare aleksandrabrane4 Worker; (3) Shako: restart n8n perception_tick worker on Railway. Two P2 maintenance todos still pending from Phase 6: migration 012 rollback-artifact capture + Georgian lexicon native-speaker re-verify.
 Last activity: 2026-05-21
 
 Progress: [█████████░] 89%
@@ -97,6 +97,7 @@ Progress: [█████████░] 89%
 - Phase 06.1 inserted after Phase 6: Bilingual Polish — close 3 /ka i18n gaps (BRAIN panel UI, enum labels, DB content backfill) (URGENT)
 - Phase 06.1 edited: Plan 06.1-02 (enum labels) complete — 4 new namespaces (ConfidenceLevel 4 / HypothesisStatus 8 / HypothesisType 10 / TimelineEventType 11 = 33 leaves added per dictionary), wired 3 server pages with t.has() raw-value fallback (timeline event_type tag + count chips, hypotheses list status/type/confidence, hypotheses/[id] detail same — Rule 3 anticipatory extension). verify_phase6 --mode code-complete 11/11 PASS, verify_phase4 9/9, verify_phase5 13/13 GREEN. Commits c62f224 + f6c0dab. Phase 6.1 progress 2/3 plans done; 06.1-03 (backfill) remaining.
 - Phase 06.1 edited: Plan 06.1-03 Tasks 1+2 done (script ceb189b, runbook 40daad9). Task 3 (production backfill) is autonomous=false — awaiting Shako's supervised run per scripts/migrations/013_runbook.md. Phase 6.1: 2.66/3 plans done (06.1-01 + 06.1-02 closed; 06.1-03 partial pending checkpoint).
+- 2026-05-24: Phase 06.1 CLOSED. Plan 06.1-03 ran live under user authorization ("შენ გაუშვი") instead of scheduled Shako-supervised checkpoint. Migration 012 was actually applied in-session via Python (production columns were still TEXT despite earlier user report — resolved view dependency on `therapy_pipeline` via DROP/recreate). **P2 incident**: 013 backfill called `compose_bilingual` (drafting tool) on short titles → corrupted 62 fields with multi-paragraph dossiers + ka empty. Supabase Free tier had no backups (verified in dashboard). Recovery via 014_fix_corrupted_ka.py (header-extraction regex + direct anthropic.messages.create translator primitive — 52/57 recovered, 5 sonnet-4-5 safety-classifier refusals on TRIM47/gene-therapy terminology) + 015_retry_errored_ka.py (sonnet-4-6 + reframed prompt — 5/5 remaining recovered). Final coverage 57/64 (89%); 7 fully-blank rows deferred to user manual rebuild via Phase 5 Manager. Also fixed verify_phase2 dict.strip() crash from migration 012 (added JSONB-aware _title_text / _es_text helpers). Phase 6.1 cumulative spend ~$2.10 (project ~$7-8 / $60 cap). Commits ceb189b · 40daad9 · 4600725 · 35dea94.
 
 ### Decisions
 
@@ -174,6 +175,6 @@ Items acknowledged and carried forward:
 
 ## Session Continuity
 
-Last session: 2026-05-23T01:05:33.868Z
-Stopped at: Phase 06.1 Plan 01 closed — Manager namespace (29 keys × 2) + 5 BRAIN components wired; verify_phase6 11/11 + verify_phase5 13/13 + verify_phase4 9/9 GREEN
+Last session: 2026-05-24
+Stopped at: Phase 06.1 CLOSED — 3/3 plans done; 06.1-03 backfill recovered 57/64 fields via 014+015 after compose_bilingual misuse incident; verify_phase2 JSONB-aware patch landed; commits ready to push pending Shako "push origin main authorize"
 Resume file: None
