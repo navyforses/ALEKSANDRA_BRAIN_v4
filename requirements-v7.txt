@@ -1,0 +1,46 @@
+# ALEKSANDRA_BRAIN v7.0 Foundation requirements
+# Source: v7_architecture/00_FOUNDATION_PREREQUISITES.md section 3
+# Generated: 2026-05-24
+# Hardware note: Windows + Intel Arc GPU → jax[cpu] (no Metal/CUDA backend available)
+
+# --- Bayesian core (NEW v7.0) ---
+pymc>=5.18
+numpyro>=0.16
+jax[cpu]>=0.4.30
+arviz>=0.20
+
+# --- Causal reasoning (NEW v7.0) ---
+# Note: causalnex dropped — last release 0.12.1 (2022) pins pandas<2.0,
+# incompatible with PyMC/transformers pandas 2.x stack. Use pgmpy for DAG
+# editing/visualization instead (pandas 2.x compatible, actively maintained).
+dowhy>=0.12
+pgmpy>=0.1.25
+econml>=0.15
+
+# --- Existing v6.0 stack (re-pinned for v7.0 venv) ---
+crewai>=1.14
+anthropic>=0.40
+google-generativeai>=0.8
+litellm>=1.50
+
+# --- Schemas + safety ---
+pydantic>=2.0
+pydantic-settings>=2.0
+
+# --- Data + ML ---
+numpy>=1.26
+scipy>=1.13
+pandas>=2.2
+scikit-learn>=1.5
+
+# --- Medical AI clients ---
+huggingface-hub>=0.25
+transformers>=4.46
+accelerate>=1.0
+
+# --- Monitoring ---
+langfuse>=2.50
+
+# --- Utility ---
+psutil>=5.9
+python-dotenv>=1.0
