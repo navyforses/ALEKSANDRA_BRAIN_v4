@@ -1,0 +1,24 @@
+=== 3+ back-to-back clusters per file ===
+v7_architecture/B0_USER_GUIDES/PROMPT_FOR_VSCODE.md:6
+v7_architecture/A0_OPERATIONS/PROMPT_FOR_VSCODE.md:5
+v7_architecture/90_INTEGRATION/PROMPT_FOR_VSCODE.md:5
+v7_architecture/80_VERIFIERS/PROMPT_FOR_VSCODE.md:5
+v7_architecture/70_PHASES/PROMPT_FOR_VSCODE.md:5
+v7_architecture/60_SITE_VIEWS/PROMPT_FOR_VSCODE.md:5
+v7_architecture/50_TECH/PROMPT_FOR_VSCODE.md:5
+v7_architecture/40_RULES/PROMPT_FOR_VSCODE.md:5
+v7_architecture/00_MASTER/PROMPT_FOR_VSCODE.md:5
+v7_architecture/30_DIMENSIONS/PROMPT_FOR_VSCODE.md:4
+v7_architecture/20_PILLARS/PROMPT_FOR_VSCODE.md:4
+v7_architecture/10_PHILOSOPHY/PROMPT_FOR_VSCODE.md:4
+v7_architecture/HANDOUT_FOR_SHAKO_KA.md:2
+v7_architecture/VSCODE_CONFIRM_AND_PLAN_PROMPT.md:1
+v7_architecture/B0_USER_GUIDES/README.md:1
+v7_architecture/A0_OPERATIONS/README.md:1
+v7_architecture/80_VERIFIERS/README.md:1
+v7_architecture/50_TECH/README.md:1
+v7_architecture/40_RULES/README.md:1
+v7_architecture/30_DIMENSIONS/README.md:1
+v7_architecture/10_PHILOSOPHY/README.md:1
+v7_architecture/00_MASTER/README.md:1
+v7_architecture/00_FOUNDATION_PREREQUISITES.md:1

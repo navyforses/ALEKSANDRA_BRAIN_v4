@@ -1,0 +1,257 @@
+# brain/belief/dimensions.toml
+# Phase 7.0 Day 6 — 13-dimension catalog of Aleksandra's digital twin
+#
+# Placeholder prior_params + "TBD-Day-{7|8|9}-librarian-{A|B|C}" citations.
+# Days 7-9 v7-librarian work replaces the placeholder values + citations
+# with literature-grounded priors (PubMed PMIDs / DOIs).
+#
+# Schema validated by `brain/belief/schema.py::load_dimensions_from_toml`.
+# Field names mirror `brain/belief/persistence.py::BeliefDimension` exactly.
+#
+# Reference: ALEKSANDRA_BRAIN_v7_DIGITAL_TWIN_ARCHITECTURE.md §3 (13-D table).
+
+# ──────────────────────────────────────────────────────────────────────────
+# DIM 1 — Cyst volume (% of brain) — Beta
+# ──────────────────────────────────────────────────────────────────────────
+# Lit anchor: BONBID-HIE (Bao et al., Sci Data 2025, n=133) — over half the
+# HIE cohort have lesions occupying <1% of brain volume; right-skewed long
+# tail of severe cystic/total-brain-injury cases. Beta(0.6, 6.4) → mean
+# ≈ 0.086 (8.6%), mode at 0, 90th percentile ≈ 30%. Encodes "most lesions
+# tiny, severe minority can be very large" — matches Aleksandra's
+# diffuse-cystic phenotype as upper-tail draw.
+[[dimensions]]
+name = "cyst_volume_pct"
+distribution = "beta"
+prior_params = { alpha = 0.6, beta = 6.4 }
+units = "percent"
+valid_min = 0.0
+valid_max = 100.0
+citation = "PMID:39799120 (https://pubmed.ncbi.nlm.nih.gov/39799120/); PMID:26981220 (https://pubmed.ncbi.nlm.nih.gov/26981220/)"
+
+# DIM 2 — Brainstem function — Categorical (3 states: impaired|partial|intact)
+# Lit anchor: Brainstem tegmental lesions review (Sarnat-frame, PMID
+# 26981220) — autopsy series report brainstem involvement in 93% of
+# severely asphyxiated infants, but MRI captures only ~44% in vivo;
+# basal-ganglia-thalamus + brainstem co-injury carries up to 50%
+# neonatal/infant mortality. Population-level prior over the severe-HIE
+# space (NOT conditioned on Aleksandra's preserved-brainstem phenotype):
+# impaired-leaning with non-trivial mass on intact.
+[[dimensions]]
+name = "brainstem_function"
+distribution = "categorical"
+prior_params = { probs = [0.45, 0.35, 0.20] }
+units = "state_index"
+valid_min = 0
+valid_max = 2
+citation = "PMID:26981220 (https://pubmed.ncbi.nlm.nih.gov/26981220/)"
+
+# DIM 3 — Seizure frequency (per day) — Poisson
+# Lit anchor: Murray et al. (PMID 27595841, n=47) median total seizure
+# burden 151.6 min in abnormal-outcome group, severe HIE subgroup median
+# 206.1 min over monitoring; plus 3-day cEEG cohort (PMID 41089184, n=191):
+# Day-1 mean 35m39s, Day-2 11m19s, Day-3 6m03s of ictal activity, 34% of
+# cohort experiencing any seizures. Assuming ~2-min mean seizure duration,
+# Day-1 burden ≈ 17 events for seizing subset → ~6 events/day averaged
+# across ALL patients (incl. 66% with zero). Untreated prior μ=0.8
+# events/day balances high-burden minority with seizure-free majority.
+[[dimensions]]
+name = "seizure_freq_per_day"
+distribution = "poisson"
+prior_params = { mu = 0.8 }
+units = "events_per_day"
+valid_min = 0.0
+valid_max = 100.0
+citation = "PMID:27595841 (https://pubmed.ncbi.nlm.nih.gov/27595841/); PMID:41089184 (https://pubmed.ncbi.nlm.nih.gov/41089184/)"
+
+# DIM 4 — Muscle tone (Hammersmith score) — Normal
+# Lit anchor: Romeo et al. HINE-in-HIE-with-hypothermia (PMID 31426574,
+# n=41) — 12-mo median 73, range 13-78; HINE <67 always = motor
+# impairment, <40 = severe spastic-dystonic CP. Romeo typically-developing
+# normative data (PMID 39327954, n=70) — 6-mo median 67-74. Severe-HIE
+# population spans 13-50; broader prior also covers mild-HIE 60-75. μ=40,
+# σ=18 covers 22-58 at ±1σ, 4-76 at ±2σ — Aleksandra-profile severe HIE.
+[[dimensions]]
+name = "muscle_tone_hammersmith"
+distribution = "normal"
+prior_params = { mu = 40.0, sigma = 18.0 }
+units = "hammersmith_score"
+valid_min = 0.0
+valid_max = 100.0
+citation = "PMID:31426574 (https://pubmed.ncbi.nlm.nih.gov/31426574/); PMID:39327954 (https://pubmed.ncbi.nlm.nih.gov/39327954/)"
+
+# DIM 5 — Eye tracking (seconds per visual target) — Gamma
+# Lit anchor: Pueyo et al. CVI eye-tracking (PMID 40151356, n=39 CVI vs 41
+# controls) — optimal CVI threshold fixation frequency <1.183/sec → mean
+# fixation duration ≈ 0.85 sec per fixation. For sustained tracking on a
+# single target, CVI-affected infants 0-12 mo typically achieve 1-5 sec
+# before disengagement. Gamma(α=1.5, β=0.5) → mean = α/β = 3.0 sec,
+# var = α/β² = 6.0, sd ≈ 2.45 sec; right tail extends to ~12-15 sec for
+# milder-CVI cases. Note: cohort age skewed older (mean 4.7 yr) — prior
+# may underestimate disengagement in 0-12 mo; flagged for Day-11+
+# evidence-row recalibration.
+[[dimensions]]
+name = "eye_tracking_seconds"
+distribution = "gamma"
+prior_params = { alpha = 1.5, beta = 0.5 }
+units = "seconds"
+valid_min = 0.0
+valid_max = 60.0
+citation = "PMID:40151356 (https://pubmed.ncbi.nlm.nih.gov/40151356/)"
+
+# DIM 6 — Head control (seconds vertical) — Normal
+# Lit anchor: Romeo et al. HINE-in-HIE-with-hypothermia (PMID 31426574,
+# n=41) — at 12 mo, severe-HIE infants with HINE <40 show "incomplete
+# head control"; HINE head-control item scores 0-3 (3 = full vertical
+# hold ≥30 sec). AIMS preterm-brain-injury comparison (PMID 36900838,
+# n=50 PIBI vs 97 HFI) — prone postural-control scores 4-6 mo: brain-
+# injury mean 5 vs healthy full-term mean 7. For severe HIE / cystic
+# encephalomalacia at 6-12 mo, vertical-hold typically 0-15 sec.
+# μ=8, σ=10 covers 0-18 at ±1σ, right tail to ~28 sec for partial-
+# control cases; truncation at 0 floor handled by valid_min.
+[[dimensions]]
+name = "head_control_seconds"
+distribution = "normal"
+prior_params = { mu = 8.0, sigma = 10.0 }
+units = "seconds"
+valid_min = 0.0
+valid_max = 300.0
+citation = "PMID:31426574 (https://pubmed.ncbi.nlm.nih.gov/31426574/); PMID:36900838 (https://pubmed.ncbi.nlm.nih.gov/36900838/)"
+
+# DIM 7 — GMFCS level (1-5) — Categorical
+# Lit anchor: Palisano et al. (PMID 9183258, 1997) — foundational 5-level
+# GMFCS system. Rosenbaum et al. (PMID 12234229, 2002, n=657) — motor
+# development curves by GMFCS level. GMFCS-E&R (PMID 18318732, 2008).
+# Severe-HIE specific: 42-child cohort split 10 GMFCS I-II / 10 III-IV /
+# 22 Level V (≈52% Level V); Chalak (PMID 24743133, n=62) — 6/7 severe
+# NE survivors had developmental delays. Severe HIE / cystic
+# encephalomalacia phenotype skews heavily to Levels IV-V. Prior:
+# [Level I 0.05, II 0.10, III 0.15, IV 0.25, V 0.45] — V-mode, sum=1.0.
+[[dimensions]]
+name = "gmfcs_level"
+distribution = "categorical"
+prior_params = { probs = [0.05, 0.10, 0.15, 0.25, 0.45] }
+units = "level"
+valid_min = 1
+valid_max = 5
+citation = "PMID:9183258 (https://pubmed.ncbi.nlm.nih.gov/9183258/); PMID:12234229 (https://pubmed.ncbi.nlm.nih.gov/12234229/); PMID:18318732 (https://pubmed.ncbi.nlm.nih.gov/18318732/); PMID:24743133 (https://pubmed.ncbi.nlm.nih.gov/24743133/)"
+
+# DIM 8 — Bayley cognitive composite — Normal
+# Lit anchor: Bayley-III population norm μ=100, σ=15. Chalak et al. (PMID
+# 24743133, 2014, n=62 HIE post-hypothermia) — Bayley-III cognitive
+# composite median 85 (IQR 70-90), 13% scored <70; 6/7 (86%) severe-NE
+# survivors had delays. Finder et al. (PMID 31710357, 2020, n=471 BiHiVE2
+# cohort) — mild-HIE cognitive 97.6 ± 11.9 vs controls 103.6 ± 14.6.
+# Severe HIE / cystic encephalomalacia phenotype: cognitive scores
+# typically cluster at 55-75 (many at the Bayley-III floor of 55).
+# μ=65, σ=18 covers 47-83 at ±1σ — Aleksandra-profile severe HIE prior.
+[[dimensions]]
+name = "bayley_cognitive"
+distribution = "normal"
+prior_params = { mu = 65.0, sigma = 18.0 }
+units = "bayley_iii_composite"
+valid_min = 40.0
+valid_max = 160.0
+citation = "PMID:24743133 (https://pubmed.ncbi.nlm.nih.gov/24743133/); PMID:31710357 (https://pubmed.ncbi.nlm.nih.gov/31710357/)"
+
+# DIM 9 — Feeding capability (4 stages) — Categorical
+# Stages: NG-tube | partial-oral | full-oral-puree | full-oral-solid
+# Lit anchor: Martinovski et al. (PMID 39761677, 2025, n=123 mod/severe
+# HIE) — at discharge: 77% oral, 9% NG, 14% G-tube; G-tube subgroup
+# overrepresents severe HIE + brainstem injury + seizures + prolonged
+# ventilation. Pandya et al. (PMID 37140459, 2023, n=240) — 12%
+# discharged with G/G-tube; cooled cohort took 9 days to full oral
+# vs 4.5 days uncooled. Severe HIE / cystic encephalomalacia phenotype
+# at 0-12 mo: heavy on tube-dependent and partial-oral, sparse on
+# full-oral-solid. Prior [NG 0.40, partial-oral 0.35, full-puree 0.20,
+# full-solid 0.05] — sum=1.0.
+[[dimensions]]
+name = "feeding_stage"
+distribution = "categorical"
+prior_params = { probs = [0.40, 0.35, 0.20, 0.05] }
+units = "stage_index"
+valid_min = 0
+valid_max = 3
+citation = "PMID:39761677 (https://pubmed.ncbi.nlm.nih.gov/39761677/); PMID:37140459 (https://pubmed.ncbi.nlm.nih.gov/37140459/)"
+
+# DIM 10 — Respiratory apnea (per-day occurrence) — Bernoulli
+# Lit anchor: Quattrocchi et al. brainstem-tegmental-lesions review
+# (PMID 26981220, 2016) — brainstem involvement in severe HIE associates
+# with ventilatory disturbances (periodic breathing, decreased respiratory
+# drive, central apnea from medullary/vagal-nucleus lesions); autopsy
+# series report brainstem injury in 93% severely-asphyxiated infants.
+# Pandya et al. (PMID 37140459, 2023, n=240) — severe-HIE subgroup had
+# prolonged respiratory support + intubation. Population-level prior over
+# severe-HIE space (NOT conditioned on Aleksandra's preserved-brainstem
+# phenotype): p=0.20 → 20% per-day apnea probability. Aleksandra's
+# preserved-brainstem evidence row will shift posterior downward toward
+# baseline-population rate via Day 11+ update.py wiring.
+[[dimensions]]
+name = "respiratory_apnea_per_day"
+distribution = "bernoulli"
+prior_params = { p = 0.20 }
+units = "probability"
+valid_min = 0.0
+valid_max = 1.0
+citation = "PMID:26981220 (https://pubmed.ncbi.nlm.nih.gov/26981220/); PMID:37140459 (https://pubmed.ncbi.nlm.nih.gov/37140459/)"
+
+# DIM 11 — CSF biomarker panel (NSE, S100B, GFAP, Tau) — Vector (multivariate normal)
+# Lit anchor: Dietrick et al. 2020 J Pediatr (PMID 32610169) — CSF cohort
+# (n=30 NE Sarnat 2-3, n=30 controls): CSF Tau median 243.1 pg/mL (IQR
+# 115.1-541.0) in NE vs 111.4 (32.8-182.3) in controls → ~2.2× elevation
+# (z ≈ +1.8 on log-scale). Bersani et al. 2012 Front Neurol (PMID 23130015)
+# — biomarker-cohort review: serum NSE >40 μg/L (cut-off ≈ +2.5σ above
+# normal-neonate mean) discriminates mod-severe HIE; cord S100B >2.02 μg/L
+# predicts mod-severe HIE (sens 86.7%/spec 88%; ≈ +3σ tail); CSF GFAP ≥0.15
+# ng/mL predicts abnormal MRI (≈ +2σ). Vector ordering [NSE, S100B, GFAP,
+# Tau]; σ per-marker reflects cohort IQR breadth (~1 z-unit).
+[[dimensions]]
+name = "csf_biomarkers"
+distribution = "vector"
+prior_params = { mu_vec = [2.5, 3.0, 2.0, 1.8], sigma_vec = [1.0, 1.2, 0.8, 0.9] }
+units = "z_score"
+valid_min = -5.0
+valid_max = 5.0
+citation = "PMID:32610169 (https://pubmed.ncbi.nlm.nih.gov/32610169/); PMID:23130015 (https://pubmed.ncbi.nlm.nih.gov/23130015/)"
+
+# DIM 12 — Neuroplasticity window remaining — Exponential decay
+# Lit anchor: Johnston 2009 Dev Disabil Res Rev (PMID 19489084) — "Plasticity
+# in the developing brain: implications for rehabilitation" — synaptic
+# overproduction peaks first 2 postnatal years, pruning through early
+# adolescence; activity-dependent plasticity enhanced in the developing
+# brain. Hensch 2005 Nat Rev Neurosci (PMID 16261181) — critical-period
+# mechanism review: closure mediated by parvalbumin-interneuron maturation
+# + extracellular-matrix consolidation (perineuronal nets), with cortical
+# critical-period windows opening then closing at developmentally-defined
+# times. For severe HIE 0-12 mo, taking half-life ≈ 1 year (365 days) as
+# the midpoint of the 0-2-year peak: lam = ln(2)/365 ≈ 0.00190. Resource
+# remaining ≈ exp(-lam·t); at t=300 days (Aleksandra ~9 mo) ≈ 0.566; at
+# t=730 days (2-year window close) ≈ 0.249.
+[[dimensions]]
+name = "neuroplasticity_resource"
+distribution = "exp_decay"
+prior_params = { lam = 0.0019 }
+units = "decay_rate_per_day"
+valid_min = 0.0
+valid_max = 1.0
+citation = "PMID:19489084 (https://pubmed.ncbi.nlm.nih.gov/19489084/); PMID:16261181 (https://pubmed.ncbi.nlm.nih.gov/16261181/)"
+
+# DIM 13 — Family readiness — Categorical (4 states)
+# States: overwhelmed | coping | stable | thriving
+# Lit anchor: Saoud et al. 2025 BMC Pediatr (PMID 40776994) — Tunisian
+# cross-sectional cohort, n=71 mothers of children with CP, Zarit-Burden
+# Interview 4-tier distribution: no burden 15.5%, light 45.1%, moderate
+# 38.0%, heavy 1.4%. Inverse-map burden → readiness (heavy=overwhelmed,
+# moderate=coping, light=stable, none=thriving): probs = [0.014, 0.380,
+# 0.451, 0.155]. Cross-supported by systematic review (PMID 37012010,
+# n=3109 caregivers, 16 studies) reporting CP severity (GMFCS/MACS/CFCS)
+# moderately correlates with ZBI burden (r ≈ 0.50, p<0.01). Tier:
+# cohort/cross-sectional — softer than HIE-specific RCT data; flagged
+# for native-Georgian-context recalibration in Day 11+ evidence updates.
+[[dimensions]]
+name = "family_readiness"
+distribution = "categorical"
+prior_params = { probs = [0.014, 0.380, 0.451, 0.155] }
+units = "state_index"
+valid_min = 0
+valid_max = 3
+citation = "PMID:40776994 (https://pubmed.ncbi.nlm.nih.gov/40776994/); PMID:37012010 (https://pubmed.ncbi.nlm.nih.gov/37012010/)"
