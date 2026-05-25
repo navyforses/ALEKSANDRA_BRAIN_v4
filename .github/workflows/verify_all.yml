@@ -1,0 +1,70 @@
+# Phase 7.5 Rule #13 — Constitutional CI gate.
+#
+# Every push to main and every pull_request runs the full Phase 7.0
+# through 7.5 verifier suite. A non-zero exit from any verifier fails
+# the job; for PRs this prevents merge. The push event runs the same
+# job informationally (the verifier exit code propagates to the GH
+# Actions UI but does not auto-revert the push).
+#
+# Reference:
+#   - v7_architecture/70_PHASES/75_PHASE_7_5_CONSTITUTIONAL_2W.md §4
+#     verifier check 13
+#   - .github/workflows/secret-scan.yml — workflow style precedent
+
+name: Verifier CI (Phase 7.0 – 7.5)
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify_all_phases:
+    name: verify_phase_7_0..7_5 (Rule #13)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies (best effort)
+        # Phase 7.5 does not pin a single requirements.txt; the v7 venv
+        # is set up locally. CI uses a best-effort pip install on whatever
+        # requirements file exists; failures here do not block, but the
+        # verifiers themselves WILL fail if a required dep is missing.
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt || true
+          fi
+          if [ -f requirements-v7.txt ]; then
+            pip install -r requirements-v7.txt || true
+          fi
+          # Core deps that every verifier imports.
+          pip install pydantic psycopg2-binary numpy scipy pymc arviz \
+            || true
+        continue-on-error: true
+
+      - name: Run Phase 7.0 – 7.5 verifiers (code-complete mode)
+        # Phase 7.5 Rule #13: every PR that fails any verifier blocks
+        # merge. The chain runs sequentially; the first non-zero exit
+        # stops the job. SUPABASE_DB_URL is intentionally NOT set in
+        # CI so every verifier runs in code-complete mode.
+        run: |
+          set -euo pipefail
+          python scripts/verify_phase_7_0.py --mode code-complete
+          python scripts/verify_phase_7_1.py --mode code-complete
+          python scripts/verify_phase_7_2.py --mode code-complete
+          python scripts/verify_phase_7_3.py --mode code-complete
+          python scripts/verify_phase_7_4.py --mode code-complete
+          python scripts/verify_phase_7_5.py --mode code-complete

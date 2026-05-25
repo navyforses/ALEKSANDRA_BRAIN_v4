@@ -81,6 +81,15 @@ class ConvergenceError(RuntimeError):
     """Posterior sampler did not converge — rhat or ess_bulk gate failed."""
 
 
+class BeliefWithoutEvidenceError(ValueError):
+    """Phase 7.5 Rule #8 — posterior update requires at least one evidence row.
+
+    Anthropic Constitutional AI pattern: the rule lives at the entry of
+    update() so a future code path cannot accidentally call update(None)
+    and silently advance the posterior with no informative input.
+    """
+
+
 # ---------------------------------------------------------------------------
 # PosteriorDelta — return value of update()
 # ---------------------------------------------------------------------------
@@ -302,6 +311,18 @@ def update(
         ConvergenceError: sampler didn't converge and strict=True.
         RuntimeError: dimension lookup returned None.
     """
+    # Phase 7.5 Rule #8 physical enforcement — Constitutional AI pattern.
+    # update() refuses any null evidence at the very top so a downstream
+    # code path cannot silently advance the posterior without an
+    # informative input. The check fires BEFORE injection resolution so
+    # tests that pass None deliberately hit this branch.
+    if evidence is None:
+        raise BeliefWithoutEvidenceError(
+            "Phase 7.5 Rule #8: posterior update requires at least one "
+            "evidence item. Pass a BeliefEvidence instance — empty/null "
+            "evidence is forbidden."
+        )
+
     # Resolve injection points to defaults.
     _load_dim = dimension_loader or get_dimension_by_id
     _lookup_evidence = evidence_lookup or get_evidence_by_hash
