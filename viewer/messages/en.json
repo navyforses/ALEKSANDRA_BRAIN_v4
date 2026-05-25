@@ -1,4 +1,27 @@
 {
+  "Audit": {
+    "title": "Audit log",
+    "subtitle": "Every BRAIN-applied action, newest first. Undo works for the last {undoLimit} actions within {undoWindow}.",
+    "colWhen": "When",
+    "colAction": "Action",
+    "colTarget": "Target",
+    "colSource": "Source",
+    "emptyState": "No actions yet."
+  },
+  "Brain": {
+    "title": "Digital Twin / 3D Model",
+    "controls": "Controls",
+    "fullscreen": "Fullscreen",
+    "doctorView": "Doctor View (Clinical)",
+    "parentView": "Parent View (Simplified)",
+    "researcherView": "Researcher View (TVB)",
+    "toggleLayers": "Toggle Layers",
+    "viewerLabel": "3D Viewer",
+    "inDevelopment": "In development",
+    "dropMriHint": "Drop an MRI file (.nii or .nii.gz) here to render Aleksandra's brain in three dimensions. Mount point is wired; the viewer is under construction.",
+    "legendDamaged": "Damaged (HIE)",
+    "legendPreserved": "Preserved"
+  },
   "Common": {
     "cancel": "Cancel",
     "loading": "Loading...",

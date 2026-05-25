@@ -1,23 +1,21 @@
 'use client'
 
-// Phase 5 Day 5 — full audit history page.
-
+import { useTranslations } from 'next-intl'
 import ActionRow from '@/components/AuditLog/ActionRow'
 import { useManagerActivity } from '@/lib/realtime'
 
-export default function AuditLogPage() {
+export default function AuditLogClient() {
+  const t = useTranslations('Audit')
   const { rows, error, refresh } = useManagerActivity({ intervalMs: 6000, limit: 100 })
 
   return (
     <div className="flex flex-col h-full space-y-4">
       <header className="border-b border-slate-200 pb-4">
         <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
-          Audit log
+          {t('title')}
         </h1>
         <p className="mt-2 text-sm text-slate-500">
-          Every BRAIN-applied action, newest first. Undo works for the last
-          {' '}<span className="font-mono">30</span> actions within{' '}
-          <span className="font-mono">24h</span>.
+          {t('subtitle', { undoLimit: 30, undoWindow: '24h' })}
         </p>
       </header>
 
@@ -31,10 +29,10 @@ export default function AuditLogPage() {
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-xs uppercase text-slate-500 sticky top-0">
             <tr>
-              <th className="px-3 py-2 text-left font-medium">When</th>
-              <th className="px-3 py-2 text-left font-medium">Action</th>
-              <th className="px-3 py-2 text-left font-medium">Target</th>
-              <th className="px-3 py-2 text-left font-medium">Source</th>
+              <th className="px-3 py-2 text-left font-medium">{t('colWhen')}</th>
+              <th className="px-3 py-2 text-left font-medium">{t('colAction')}</th>
+              <th className="px-3 py-2 text-left font-medium">{t('colTarget')}</th>
+              <th className="px-3 py-2 text-left font-medium">{t('colSource')}</th>
               <th className="px-3 py-2 text-right font-medium">&nbsp;</th>
             </tr>
           </thead>
@@ -42,7 +40,7 @@ export default function AuditLogPage() {
             {rows.length === 0 ? (
               <tr>
                 <td colSpan={5} className="px-3 py-6 text-center text-xs text-slate-400 italic">
-                  No actions yet.
+                  {t('emptyState')}
                 </td>
               </tr>
             ) : (
