@@ -1,11 +1,12 @@
-// Phase 6 (06-03b Rule 3 deviation): sibling root layout for the /brain subtree.
-// The locale-scoped [locale]/layout.tsx owns <html lang={locale}> for family routes;
-// /brain lives OUTSIDE the next-intl proxy matcher (viewer/proxy.ts) and therefore needs
-// its own root layout. Per Next.js 16 file conventions, when app/layout.tsx is a
-// children pass-through, every subtree without a parent <html>/<body> wrapper becomes
-// its own root layout (docs/01-app/.../layout.md line 142-146).
+// Sibling root layout for the /brain subtree. /brain is excluded from the
+// next-intl proxy matcher (viewer/proxy.ts) so we lock the locale to 'en'
+// via setRequestLocale + wrap in NextIntlClientProvider — TopNav is an async
+// server component that calls getTranslations('Navigation') and needs the
+// request-level locale context that the proxy normally provides under [locale]/.
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import { NextIntlClientProvider } from "next-intl";
+import { setRequestLocale } from "next-intl/server";
 import TopNav from "@/components/layout/TopNav";
 import "../globals.css";
 
@@ -16,18 +17,22 @@ export const metadata: Metadata = {
   description: "Pediatric HIE System Integrator",
 };
 
-export default function BrainRootLayout({
+export default async function BrainRootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  setRequestLocale("en");
+
   return (
     <html lang="en" className={`${inter.variable} h-full antialiased`}>
       <body className="h-screen w-screen overflow-hidden bg-background text-foreground flex flex-col font-sans">
-        <header className="h-[60px] flex-shrink-0 border-b border-slate-200 bg-white">
-          <TopNav />
-        </header>
-        <main className="flex-1 overflow-hidden p-8">{children}</main>
+        <NextIntlClientProvider locale="en">
+          <header className="h-[60px] flex-shrink-0 border-b border-slate-200 bg-white">
+            <TopNav />
+          </header>
+          <main className="flex-1 overflow-hidden p-8">{children}</main>
+        </NextIntlClientProvider>
       </body>
     </html>
   );
