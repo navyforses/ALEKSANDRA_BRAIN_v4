@@ -1,0 +1,75 @@
+# brain/active/templates_ka.toml
+# Phase 7.4 Day 5 — 13 KA question templates, one per BeliefDimension.
+#
+# Hand-authored Mkhedruli. Wife-facing. 2-4 sentences each.
+# Anti-loop rules (Phase 6.1 lesson):
+#   - never use ცარიელი, ცამეტი, ფარული, ცდილია 2x in same paragraph
+#   - use digit 13 (never word) for numbers
+#   - no em-dashes
+#   - idiomatic Mkhedruli
+# Placeholder: {eig_pct} — fractional uncertainty reduction in percent.
+
+[cyst_volume_pct]
+template = "გთხოვ ალექსანდრას ბოლო MRI ანგარიში გადააგზავნე ამ კვირას. რადიოლოგი ხშირად აფიქსირებს ცისტის მოცულობას პროცენტში. ეს ცოდნა {eig_pct}%-ით აზუსტებს ჩვენს მოდელს."
+variables = ["eig_pct"]
+expected_format = "float_value"
+
+[brainstem_function]
+template = "ბოლო ნევროლოგიურ ვიზიტზე ექიმმა როგორ შეაფასა ალექსანდრას ღეროს ფუნქცია: დაზიანებული, ნაწილობრივი, თუ შენარჩუნებული? პასუხი {eig_pct}%-ით აზუსტებს ღეროს მდგომარეობის შეფასებას."
+variables = ["eig_pct"]
+expected_format = "categorical_choice"
+
+[seizure_freq_per_day]
+template = "ბოლო 24 საათში რამდენი გულყრის ეპიზოდი ნახე ალექსანდრასთან? უბრალოდ ციფრი მიწერე. ეს რიცხვი {eig_pct}%-ით ამცირებს ჩვენი მოდელის გაურკვევლობას გულყრის სიხშირეზე."
+variables = ["eig_pct"]
+expected_format = "integer_count"
+
+[muscle_tone_hammersmith]
+template = "ფიზიოთერაპევტს სთხოვე ამ კვირის HINE შეფასების ჯამური ქულა და მიწერე. ერთი ციფრი საკმარისია. შედეგი {eig_pct}%-ით ამდიდრებს ჩვენს მონაცემს კუნთის ტონუსზე."
+variables = ["eig_pct"]
+expected_format = "integer_count"
+
+[eye_tracking_seconds]
+template = "გთხოვ ხუთწუთიანი ვიდეო გადაიღე წითელი ბურთით 30 სმ-ის დაშორებიდან და დააფიქსირე ყველაზე ხანგრძლივი თვალის დაჭერა წამებში. ეს დაკვირვება {eig_pct}%-ით აზუსტებს თვალყურის ფუნქციის შეფასებას."
+variables = ["eig_pct"]
+expected_format = "integer_seconds"
+
+[head_control_seconds]
+template = "მუცელზე დააწვინე ალექსანდრა ერთი წუთით და დაითვალე რამდენ წამს იჭერს თავს ვერტიკალურად. ერთი ციფრი მიწერე. ეს {eig_pct}%-ით აზუსტებს ჩვენი მოდელის შეფასებას ღეროს კონტროლზე."
+variables = ["eig_pct"]
+expected_format = "integer_seconds"
+
+[gmfcs_level]
+template = "ფიზიოთერაპევტმა ბოლო ვიზიტზე რომელი GMFCS დონე დააფიქსირა: 1, 2, 3, 4 თუ 5? დონის რიცხვი მიწერე. ეს {eig_pct}%-ით აზუსტებს მოტორული შესაძლებლობის შეფასებას."
+variables = ["eig_pct"]
+expected_format = "scale_0_5"
+
+[bayley_cognitive]
+template = "როცა მომდევნო Bayley-III გამოცდის შედეგი იცი, კოგნიტური ქვეტესტის ჯამური ქულა მიწერე. ეს მონაცემი {eig_pct}%-ით ამდიდრებს კოგნიტური განვითარების მოდელს. დროებითი ანგარიში PT-სგანაც გამოდგება."
+variables = ["eig_pct"]
+expected_format = "integer_count"
+
+[feeding_stage]
+template = "ამ კვირას როგორ იკვებება ალექსანდრა: ნაზონდით, ნაწილობრივ პერორალურად, სრულად პერორალური პიურეთი, თუ მყარი საკვებით? ერთი ვარიანტი ამოირჩიე. პასუხი {eig_pct}%-ით აზუსტებს კვების ეტაპის შეფასებას."
+variables = ["eig_pct"]
+expected_format = "categorical_choice"
+
+[respiratory_apnea_per_day]
+template = "ბოლო 24 საათში სახლის მონიტორმა აპნოეს ეპიზოდი დააფიქსირა? კი თუ არა. პასუხი {eig_pct}%-ით აზუსტებს რესპირატორული რისკის შეფასებას."
+variables = ["eig_pct"]
+expected_format = "boolean"
+
+[csf_biomarkers]
+template = "თუ ბოლო ლუმბური პუნქციის ანალიზის შედეგი გაქვს, NSE, S100B, GFAP ან Tau-ის ერთი მნიშვნელობა მიწერე. ერთი მონაცემიც კი {eig_pct}%-ით აზუსტებს ბიომარკერების მოდელს."
+variables = ["eig_pct"]
+expected_format = "float_value"
+
+[neuroplasticity_resource]
+template = "დაადასტურე დღევანდელი თარიღით ალექსანდრას ასაკი დღეებში. ეს რიცხვი {eig_pct}%-ით აზუსტებს ნეიროპლასტიკურობის ფანჯრის გათვლას."
+variables = ["eig_pct"]
+expected_format = "integer_count"
+
+[family_readiness]
+template = "0-დან 5-მდე როგორ გრძნობდა თავი ოჯახი ამ კვირას? 0 ნიშნავს გადატვირთულს, 5 აყვავებულს. პასუხი {eig_pct}%-ით აზუსტებს ოჯახის მზადყოფნის შეფასებას."
+variables = ["eig_pct"]
+expected_format = "scale_0_5"
