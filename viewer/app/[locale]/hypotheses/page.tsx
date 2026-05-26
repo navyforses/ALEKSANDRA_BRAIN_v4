@@ -3,6 +3,7 @@ import { Link } from "@/i18n/navigation";
 import { reviewHypothesis } from "./actions";
 import { getRows } from "@/lib/supabase";
 import { displayField, type BilingualField } from "@/lib/i18n";
+import SimulationGraph from "@/components/hypotheses/SimulationGraph";
 
 export const dynamic = "force-dynamic";
 
@@ -218,6 +219,11 @@ export default async function HypothesesPage({
                   {hypothesis.outcome}
                 </p>
               ) : null}
+
+              <SimulationGraph
+                hypothesisId={hypothesis.id}
+                locale={locale}
+              />
             </article>
           ))}
           {hypotheses.rows.length === 0 ? (

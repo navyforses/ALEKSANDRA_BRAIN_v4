@@ -268,5 +268,124 @@
     "comingSoon": "Daily clinical view — coming soon.",
     "fallback": "Awaiting calendar pipeline, vitals stream, and observation log.",
     "title": "Today"
+  },
+  "Twin": {
+    "phaseLabel": "Phase 7.6 Digital Twin",
+    "title": "Twin status",
+    "subtitle": "Posterior distribution across 13 modeled dimensions of ალექსანდრა's clinical and developmental state. Values reflect the current belief snapshot.",
+    "dimensionsCount": "Dimensions",
+    "evidence30d": "Evidence (30 days)",
+    "mockNotice": "Structural build: rendered from a deterministic mock snapshot. Backend wiring lands in a follow-up sprint.",
+    "privacyFooter": "Privacy posture: no MRI bytes, no medical record numbers. Posterior values only.",
+    "posteriorOverview": "Posterior overview",
+    "lastUpdated": "Last updated",
+    "mean": "Mean",
+    "hdiLow": "HDI low",
+    "hdiHigh": "HDI high",
+    "discreteSummary": "Discrete distribution — see categorical detail view.",
+    "ciAnnotation": "80% credible interval: {low} to {high}",
+    "dimensions": {
+      "cyst_volume_pct": "Cyst volume (% of brain)",
+      "brainstem_function": "Brainstem function",
+      "seizure_freq_per_day": "Seizure frequency (per day)",
+      "muscle_tone_hammersmith": "Muscle tone (Hammersmith)",
+      "eye_tracking_seconds": "Eye tracking (seconds)",
+      "head_control_seconds": "Head control (seconds vertical)",
+      "gmfcs_level": "GMFCS level",
+      "bayley_cognitive": "Bayley cognitive composite",
+      "feeding_stage": "Feeding stage",
+      "respiratory_apnea_per_day": "Respiratory apnea (per day)",
+      "csf_biomarkers": "CSF biomarker panel",
+      "neuroplasticity_resource": "Neuroplasticity window",
+      "family_readiness": "Family readiness"
+    }
+  },
+  "Drift": {
+    "phaseLabel": "Phase 7.6 Belief Drift",
+    "title": "Belief drift over time",
+    "subtitle": "Posterior mean trajectory across the last 30 days for each dimension. Diamond markers indicate days where new evidence updated the belief.",
+    "dimensions": "Dimensions tracked",
+    "evidenceEvents": "Evidence events",
+    "mockNotice": "Structural build: rendered from a deterministic synthetic drift series. Backend wiring lands in a follow-up sprint.",
+    "howToRead": "Click a dimension chip to toggle its trace. Hover any point to see the value on that day.",
+    "timelineHeading": "Posterior mean timeline",
+    "xAxis": "Date",
+    "yAxis": "Posterior mean",
+    "evidence": "evidence"
+  },
+  "Causal": {
+    "phaseLabel": "Phase 7.6 Causal Graph",
+    "title": "Causal graph",
+    "subtitle": "Structural causal model: nodes represent variables, edges represent directed mechanisms with citations.",
+    "nodes": "Nodes",
+    "edges": "Edges",
+    "mockNotice": "Structural build: rendered from the reference SCM (Vigabatrin to Seizure frequency). Live SCM CRUD lands in a follow-up sprint.",
+    "howToRead": "Edge color encodes relationship type: green causes, red inhibits, blue mediates, amber confounds, purple moderates. Click a node to see parents, children, mechanisms, and citations.",
+    "selectedNode": "Selected node",
+    "parents": "Parents",
+    "children": "Children",
+    "noParents": "No incoming edges in this graph.",
+    "noChildren": "No outgoing edges in this graph.",
+    "noSelection": "Pick a node on the left to see its mechanism trail."
+  },
+  "Simulate": {
+    "phaseLabel": "Phase 7.6 Simulation Studio",
+    "title": "Simulation studio",
+    "subtitle": "Build a scenario, run the simulation, compare against a control. Output is a posterior over outcomes, never a recommendation.",
+    "scenariosSaved": "Scenarios saved",
+    "defaultScm": "Default SCM",
+    "mockNotice": "Structural build: comparison rendered from a deterministic Vigabatrin-vs-control reference run. Backend wiring lands in a follow-up sprint.",
+    "decisionFooter": "Decision authority stays with ალექსანდრა's clinicians. This studio surfaces uncertainty; it does not prescribe.",
+    "builder": "Scenario builder",
+    "scenarioName": "Scenario name",
+    "nSamples": "Samples",
+    "horizonDays": "Horizon (days)",
+    "runSimulation": "Run simulation ({samples} samples)",
+    "running": "Running...",
+    "errSamplesRange": "Samples must be between 10 and 10000.",
+    "errHorizonRange": "Horizon must be between 1 and 2000 days.",
+    "errMinIntervention": "Add at least one Intervention node.",
+    "errNameRequired": "Scenario name is required.",
+    "noResultsYet": "No comparison yet. Build a scenario and run a simulation.",
+    "results": "Results",
+    "palette": {
+      "Intervention": "Intervention",
+      "Outcome": "Outcome",
+      "Confounder": "Confounder",
+      "Mediator": "Mediator"
+    },
+    "verdict": {
+      "A_better": "A better",
+      "B_better": "B better",
+      "tie": "Tie",
+      "ambiguous": "Ambiguous"
+    }
+  },
+  "SnapshotWidget": {
+    "title": "Twin snapshot",
+    "loading": "Loading twin snapshot...",
+    "dimensionsSuffix": "dimensions"
+  },
+  "SimulationGraph": {
+    "title": "Expected benefit",
+    "noSim": "Simulation not yet attached"
+  },
+  "TwinImpactFilter": {
+    "title": "Twin impact sort",
+    "description": "Sort by how much each paper would shift the digital-twin posterior (Kullback-Leibler divergence). Falls back to relevance score when the twin estimate is missing.",
+    "sortByKl": "Sorting by KL divergence",
+    "sortByRelevance": "Sorting by relevance score"
+  },
+  "ActiveQuestionsSection": {
+    "title": "Active questions this week",
+    "loading": "Loading active questions...",
+    "empty": "No questions in the queue right now.",
+    "questionsSuffix": "in queue",
+    "status": {
+      "open": "Open",
+      "responded": "Responded",
+      "skipped": "Skipped",
+      "expired": "Expired"
+    }
   }
 }

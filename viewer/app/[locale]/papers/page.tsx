@@ -1,5 +1,6 @@
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import { getRows } from "@/lib/supabase";
+import TwinImpactFilter from "@/components/research/TwinImpactFilter";
 
 export const dynamic = "force-dynamic";
 
@@ -132,6 +133,8 @@ export default async function PapersPage({
             <p className="mt-2 text-xl font-semibold">{formatDate(papers.rows[0]?.ingested_at ?? null)}</p>
           </div>
         </section>
+
+        <TwinImpactFilter />
 
         <section className="rounded-md border border-stone-200 bg-white">
           <div className="border-b border-stone-200 p-4">

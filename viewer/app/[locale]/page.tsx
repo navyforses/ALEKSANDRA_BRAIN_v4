@@ -1,5 +1,8 @@
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
+import { fetchBeliefSnapshot } from "@/lib/api/belief";
+import { isEnabled } from "@/lib/flags";
+import SnapshotWidget from "@/components/twin/SnapshotWidget";
 
 // ALEKSANDRA_BRAIN v4.0 — operational entry page.
 // Real MRI viewer arrives later. Until then, this page routes the family to
@@ -9,6 +12,10 @@ import { Link } from "@/i18n/navigation";
 // Per FND-01/FND-02, no imaging library imports and no remote fetch may
 // appear here or in any sibling route. The viewer/.eslintrc.json + the
 // scripts/check-no-remote-fetch.sh CI step enforce that.
+//
+// Phase 7.6 refactor: prepends a SnapshotWidget (13-dim posterior summary)
+// gated by FEATURE_FLAGS.STATUS_COCKPIT_TWIN_WIDGET so the family sees the
+// digital-twin state at the top of the cockpit. NO-GO action: flip flag.
 
 export default async function Home({
   params,
@@ -18,9 +25,16 @@ export default async function Home({
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations("Home");
+
+  const showTwinWidget = isEnabled("STATUS_COCKPIT_TWIN_WIDGET");
+  const snapshot = showTwinWidget ? await fetchBeliefSnapshot() : null;
+
   return (
     <main className="min-h-screen bg-stone-50 text-stone-950">
       <div className="mx-auto flex min-h-screen w-full max-w-5xl flex-col justify-center gap-8 px-5 py-10 sm:px-8">
+        {snapshot ? (
+          <SnapshotWidget initialSnapshot={snapshot} locale={locale} />
+        ) : null}
         <header>
           <p className="font-mono text-xs uppercase text-cyan-700">{t("phaseLabel")}</p>
           <h1 className="mt-2 text-4xl font-semibold tracking-normal sm:text-5xl">
