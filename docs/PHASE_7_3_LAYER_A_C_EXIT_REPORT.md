@@ -197,3 +197,5 @@ Estimated total Shako wall time: ~10 min (env + pre-flight backup + apply + veri
 - PMID 7686614 (Lippa & Loftis, GABA-T inhibition, 1993) — Vigabatrin mediator coefficient
 - PMID 32713850 (Pellock et al., infantile spasms age-of-onset, 2020) — Vigabatrin intervention citation
 - PMID 19489084 (Hensch, neuroplasticity critical periods, 2009) — physiotherapy intervention citation
+
+## See also: PHASE_7_3_LAYER_B_EXIT_REPORT.md (Layer B closure, Phase 7.3 Days 6-10).
