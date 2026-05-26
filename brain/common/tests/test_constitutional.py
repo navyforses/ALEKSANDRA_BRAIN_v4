@@ -49,11 +49,17 @@ from brain.common.guards import (
 # ---------------------------------------------------------------------------
 # Check 1 - Rule #1 MRI client-only (structural)
 # ---------------------------------------------------------------------------
-def test_check_7_5_01_csp_and_dicom_rejector_present_in_middleware_ts():
-    """Rule #1 - viewer/middleware.ts exists with CSP + DICOM rejector."""
+def test_check_7_5_01_csp_and_dicom_rejector_present_in_proxy_ts():
+    """Rule #1 - viewer/proxy.ts hosts CSP + DICOM rejector.
+
+    Originally lived in viewer/middleware.ts; merged into proxy.ts in
+    commit 1073cec to resolve the Next.js 16 + next-intl 4.x
+    'middleware.ts and proxy.ts both detected' build conflict. The
+    constitutional surface is identical; only the file name changed.
+    """
     root = Path(__file__).resolve().parents[3]
-    mw = root / "viewer" / "middleware.ts"
-    assert mw.exists(), "viewer/middleware.ts missing"
+    mw = root / "viewer" / "proxy.ts"
+    assert mw.exists(), "viewer/proxy.ts missing"
     src = mw.read_text(encoding="utf-8")
     assert "Content-Security-Policy" in src
     assert "application/dicom" in src
