@@ -146,10 +146,13 @@ def check_mng_01(report: Report) -> None:
         "BrainPanel" in locale_layout_src and "<BrainPanel" in locale_layout_src
     )
     # Post-Phase-6 (06-03a): family-facing routes live under app/[locale]/.
+    # Post-viewer-refactor c38c856: brain joined the [locale]/ tree alongside today/knowledge.
     today = (VIEWER / "app" / "today" / "page.tsx").exists() or (
         VIEWER / "app" / "[locale]" / "today" / "page.tsx"
     ).exists()
-    brain_route = (VIEWER / "app" / "brain" / "page.tsx").exists()
+    brain_route = (VIEWER / "app" / "brain" / "page.tsx").exists() or (
+        VIEWER / "app" / "[locale]" / "brain" / "page.tsx"
+    ).exists()
     know = (VIEWER / "app" / "knowledge" / "page.tsx").exists() or (
         VIEWER / "app" / "[locale]" / "knowledge" / "page.tsx"
     ).exists()
