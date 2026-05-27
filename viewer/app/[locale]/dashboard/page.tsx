@@ -1,44 +1,39 @@
 import { setRequestLocale, getTranslations } from "next-intl/server";
-import { Link } from "@/i18n/navigation";
 import { getCount, getRows } from "@/lib/supabase";
 import DashboardCharts from "@/components/DashboardCharts";
+import {
+  AssistantPanel,
+  CommandCenterShell,
+  CommandMetricCard,
+  DarkGlassPanel,
+  EvidencePipeline,
+  InsightCard,
+  NeuralHeroVisual,
+  SectionHeader,
+  StatusPill,
+} from "@/components/prototype/PrototypeKit";
 
 export const dynamic = "force-dynamic";
 
-type RunRow = {
-  kind: string;
-  agent_id: string | null;
-  start_time: string;
-  exit_status: string;
-  token_cost: string | number | null;
-};
+type Tone = "cyan" | "emerald" | "amber" | "rose" | "violet" | "slate" | "stone";
 
-type PaperRow = {
-  title: string;
-  pmid: string | null;
-  ct_id: string | null;
-  relevance_score: number | null;
-  direct_relevance: boolean | null;
-  cross_disease_source: string | null;
-  ingested_at?: string;
-};
-
-type HypothesisRow = {
-  status: string | null;
-};
+type RunRow = { kind: string; agent_id: string | null; start_time: string; exit_status: string; token_cost: string | number | null };
+type PaperRow = { title: string; pmid: string | null; ct_id: string | null; relevance_score: number | null; direct_relevance: boolean | null; cross_disease_source: string | null; ingested_at?: string };
+type HypothesisRow = { status: string | null };
 
 const metricSpecs = [
-  ["evidence_ledger", "metricEvidenceLedger"],
-  ["papers", "metricPapers"],
-  ["paper_chunks", "metricChunks"],
-  ["hypotheses", "metricHypotheses"],
+  ["evidence_ledger", "metricEvidenceLedger", "cyan"],
+  ["papers", "metricPapers", "violet"],
+  ["paper_chunks", "metricChunks", "slate"],
+  ["hypotheses", "metricHypotheses", "emerald"],
 ] as const;
 
-function statusTone(status: string | null) {
-  if (status === "confirmed") return "bg-emerald-50 text-emerald-800 ring-emerald-200";
-  if (status === "promising" || status === "pursuing") return "bg-cyan-50 text-cyan-800 ring-cyan-200";
-  if (status === "rejected") return "bg-rose-50 text-rose-800 ring-rose-200";
-  return "bg-stone-100 text-stone-700 ring-stone-200";
+function statusTone(status: string | null): Tone {
+  if (status === "confirmed") return "emerald";
+  if (status === "promising" || status === "pursuing") return "cyan";
+  if (status === "rejected") return "rose";
+  if (status === "under_review") return "amber";
+  return "stone";
 }
 
 function formatMoney(value: string | number | null) {
@@ -46,43 +41,20 @@ function formatMoney(value: string | number | null) {
   return `$${n.toFixed(6)}`;
 }
 
-export default async function DashboardPage({
-  params,
-}: {
-  params: Promise<{ locale: "en" | "ka" }>;
-}) {
+export default async function DashboardPage({ params }: { params: Promise<{ locale: "en" | "ka" }> }) {
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations("Dashboard");
-  const tNav = await getTranslations("Navigation");
   const tShared = await getTranslations("Shared");
+  const isKa = locale === "ka";
 
   const [counts, runs, papers, hypotheses, runsForSpend, papersForIngestion] = await Promise.all([
     Promise.all(metricSpecs.map(([path]) => getCount(path))),
-    getRows<RunRow>("runs", {
-      select: "kind,agent_id,start_time,exit_status,token_cost",
-      order: "start_time.desc",
-      limit: 8,
-    }),
-    getRows<PaperRow>("papers", {
-      select: "title,pmid,ct_id,relevance_score,direct_relevance,cross_disease_source",
-      order: "relevance_score.desc.nullslast",
-      limit: 6,
-    }),
-    getRows<HypothesisRow>("hypotheses", {
-      select: "status",
-      limit: 200,
-    }),
-    getRows<RunRow>("runs", {
-      select: "start_time,token_cost",
-      order: "start_time.desc",
-      limit: 300,
-    }),
-    getRows<PaperRow & { ingested_at: string }>("papers", {
-      select: "ingested_at,relevance_score",
-      order: "ingested_at.desc",
-      limit: 200,
-    }),
+    getRows<RunRow>("runs", { select: "kind,agent_id,start_time,exit_status,token_cost", order: "start_time.desc", limit: 8 }),
+    getRows<PaperRow>("papers", { select: "title,pmid,ct_id,relevance_score,direct_relevance,cross_disease_source", order: "relevance_score.desc.nullslast", limit: 6 }),
+    getRows<HypothesisRow>("hypotheses", { select: "status", limit: 200 }),
+    getRows<RunRow>("runs", { select: "start_time,token_cost", order: "start_time.desc", limit: 300 }),
+    getRows<PaperRow & { ingested_at: string }>("papers", { select: "ingested_at,relevance_score", order: "ingested_at.desc", limit: 200 }),
   ]);
 
   const configured = counts.some((c) => c.configured) || runs.configured;
@@ -92,189 +64,105 @@ export default async function DashboardPage({
     return acc;
   }, {});
 
-  // Group spends and ingestion over the last 30 days
   const dates = Array.from({ length: 30 }, (_, i) => {
     const d = new Date();
     d.setDate(d.getDate() - (29 - i));
-    return d.toISOString().split("T")[0]; // YYYY-MM-DD
+    return d.toISOString().split("T")[0];
   });
-
   const dailySpends = dates.map((date) => {
     const dayRuns = (runsForSpend?.rows || []).filter((r) => r.start_time?.startsWith(date));
     const cost = dayRuns.reduce((sum, r) => sum + Number(r.token_cost ?? 0), 0);
     return { date, cost, tokens: 0 };
   });
-
   const dailyIngestion = dates.map((date) => {
-    const dayPapers = (papersForIngestion?.rows || []).filter(
-      (p) => p.ingested_at && p.ingested_at.startsWith(date)
-    );
+    const dayPapers = (papersForIngestion?.rows || []).filter((p) => p.ingested_at && p.ingested_at.startsWith(date));
     const count = dayPapers.length;
-    const avgRelevance =
-      count > 0
-        ? dayPapers.reduce((sum, p) => sum + (p.relevance_score ?? 0), 0) / count
-        : 0;
+    const avgRelevance = count > 0 ? dayPapers.reduce((sum, p) => sum + (p.relevance_score ?? 0), 0) / count : 0;
     return { date, count, avgRelevance };
   });
-
-  const hypothesisCounts = Object.entries(statusCounts).map(([status, count]) => ({
-    status,
-    count,
-  }));
+  const hypothesisCounts = Object.entries(statusCounts).map(([status, count]) => ({ status, count }));
 
   return (
-    <main className="min-h-screen bg-stone-50 text-stone-950">
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-5 py-6 sm:px-8">
-        <nav className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-200 pb-4">
-          <div className="flex items-center gap-2">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-            </span>
-            <Link href="/" className="font-mono text-sm font-semibold tracking-normal hover:text-stone-700 transition-colors">
-              ALEKSANDRA_BRAIN
-            </Link>
-          </div>
-          <div className="flex flex-wrap items-center gap-2 text-sm">
-            <Link className="rounded-md bg-white px-3 py-2 text-stone-900 ring-1 ring-stone-200 shadow-sm transition-all" href="/dashboard">
-              {tNav("dashboard")}
-            </Link>
-            <Link className="rounded-md px-3 py-2 text-stone-700 hover:bg-white transition-all" href="/hypotheses">
-              {tNav("hypotheses")}
-            </Link>
-            <Link className="rounded-md px-3 py-2 text-stone-700 hover:bg-white transition-all" href="/papers">
-              {tNav("papers")}
-            </Link>
-            <Link className="rounded-md px-3 py-2 text-stone-700 hover:bg-white transition-all" href="/therapies">
-              {tNav("therapies")}
-            </Link>
-            <Link className="rounded-md px-3 py-2 text-stone-700 hover:bg-white transition-all" href="/timeline">
-              {tNav("timeline")}
-            </Link>
-          </div>
-        </nav>
+    <CommandCenterShell>
+      <section className="grid gap-5 xl:grid-cols-[0.82fr_1.42fr_0.86fr]">
+        <DarkGlassPanel className="self-start">
+          <StatusPill tone="cyan" dark>{t("phaseLabel")}</StatusPill>
+          <h1 className="mt-5 text-4xl font-semibold tracking-[-0.055em] text-white sm:text-5xl">{t("title")}</h1>
+          <p className="mt-5 text-sm leading-7 text-slate-300">{t("subtitle")}</p>
+          {!configured ? <div className="mt-5 rounded-2xl border border-amber-300/20 bg-amber-300/10 p-4 text-sm leading-6 text-amber-100">{t("configWarning")}</div> : null}
+        </DarkGlassPanel>
 
-        <header className="grid gap-4 lg:grid-cols-[1.3fr_0.7fr]">
-          <div>
-            <p className="font-mono text-xs uppercase text-cyan-700">{t("phaseLabel")}</p>
-            <h1 className="mt-1 text-3xl font-semibold tracking-normal sm:text-4xl">
-              {t("title")}
-            </h1>
-            <p className="mt-3 max-w-3xl text-sm leading-6 text-stone-600">
-              {t("subtitle")}
-            </p>
+        <NeuralHeroVisual
+          title={isKa ? "Clinical command center" : "Clinical command center"}
+          subtitle={isKa ? "გენერირებული Concept A mockup-ის ცენტრალური brain/network ვიზუალი ახლა რეალურ frontend-შია." : "The generated Concept A brain/network visual is now implemented as a real frontend surface."}
+        />
+
+        <AssistantPanel
+          title={isKa ? "ოპერაციული შეჯამება" : "Operational brief"}
+          body={isKa ? "მარჯვენა პანელი იმეორებს mockup-ის assistant card-ს: რას უნდა შეხედოს გუნდმა ახლა." : "The right panel mirrors the mockup assistant card: what the team should inspect now."}
+          items={isKa ? ["Evidence ingestion ჯანმრთელია?", "რომელი ჰიპოთეზა ელოდება review-ს?", "ხარჯი კონტროლის ქვეშაა?", "რომელი წყაროა ყველაზე relevant?"] : ["Is evidence ingestion healthy?", "Which hypothesis awaits review?", "Is spend under control?", "Which source is most relevant?"]}
+        />
+      </section>
+
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {metricSpecs.map(([, labelKey, tone], index) => (
+          <CommandMetricCard
+            key={labelKey}
+            label={t(labelKey)}
+            value={counts[index]?.count.toLocaleString() ?? "0"}
+            hint={counts[index]?.configured ? t("liveSupabaseCount") : t("configurationPending")}
+            tone={tone}
+          />
+        ))}
+      </section>
+
+      <DarkGlassPanel>
+        <SectionHeader dark eyebrow={isKa ? "Research-to-care pipeline" : "Research-to-care pipeline"} title={isKa ? "Concept A pipeline: ingest → map → triage → track." : "Concept A pipeline: ingest → map → triage → track."} subtitle={isKa ? "Dashboard აღარ არის ცხრილების გროვა; იგი აჩვენებს workflow-ს, რომელიც clinical review-მდე მიდის." : "The dashboard is no longer a pile of tables; it shows a workflow that leads into clinical review."} />
+        <div className="mt-6">
+          <EvidencePipeline dark steps={[
+            { label: "Ingest", title: isKa ? "წყაროების მიღება" : "Source intake", body: isKa ? "paper, trial და audit data შედის evidence queue-ში." : "Papers, trials, and audit data enter the evidence queue.", tone: "cyan" },
+            { label: "Map", title: isKa ? "მექანიზმების რუკა" : "Mechanism map", body: isKa ? "სიგნალები უკავშირდება HIE recovery მექანიზმებს." : "Signals link to HIE recovery mechanisms.", tone: "violet" },
+            { label: "Triage", title: isKa ? "კლინიკური triage" : "Clinical triage", body: isKa ? "ჰიპოთეზები იღებს priority და confidence სტატუსს." : "Hypotheses receive priority and confidence status.", tone: "amber" },
+            { label: "Track", title: isKa ? "პროგრესის დროითი ხაზი" : "Progress timeline", body: isKa ? "შემდეგი review ინიშნება timeline-ში." : "Next review is scheduled into the timeline.", tone: "emerald" },
+          ]} />
+        </div>
+      </DarkGlassPanel>
+
+      {configured ? <DarkGlassPanel><DashboardCharts hypothesisCounts={hypothesisCounts} dailySpends={dailySpends} dailyIngestion={dailyIngestion} totalSpendLimitDaily={10.0} totalSpendLimitMonthly={60.0} /></DarkGlassPanel> : null}
+
+      <section className="grid gap-4 xl:grid-cols-[0.82fr_1.18fr]">
+        <DarkGlassPanel>
+          <SectionHeader dark eyebrow={isKa ? "ჰიპოთეზების მდგომარეობა" : "Hypothesis state"} title={t("hypothesisStatus")} subtitle={isKa ? "Mockup-ის status chips აჩვენებს რომელ იდეას სჭირდება მოძრაობა." : "Mockup-style status chips show which ideas need movement."} />
+          <div className="mt-5 flex flex-wrap gap-2">
+            {Object.entries(statusCounts).length > 0 ? Object.entries(statusCounts).map(([status, count]) => <StatusPill key={status} tone={statusTone(status)} dark>{status}: {count}</StatusPill>) : <p className="text-sm leading-7 text-slate-400">{t("emptyHypotheses")}</p>}
           </div>
-          <div className="rounded-md border border-stone-200 bg-white p-4 shadow-sm transition-all hover:shadow-md duration-300">
-            <p className="font-mono text-xs uppercase text-stone-500">{t("accessPosture")}</p>
-            <p className="mt-2 text-sm leading-6 text-stone-700">
-              {t("accessPostureBody")}
-            </p>
-            <p className="mt-3 text-sm font-medium text-emerald-700 flex items-center gap-1.5">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-              {t("rlsSmoke")}
-            </p>
-          </div>
-        </header>
-
-        {!configured ? (
-          <section className="rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
-            {t("configWarning")}
-          </section>
-        ) : null}
-
-        <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {metricSpecs.map(([, labelKey], index) => (
-            <div key={labelKey} className="rounded-md border border-stone-200 bg-white p-4 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md hover:border-stone-300">
-              <p className="font-mono text-xs uppercase text-stone-500">{t(labelKey)}</p>
-              <p className="mt-2 text-3xl font-semibold tracking-normal">
-                {counts[index]?.count.toLocaleString() ?? 0}
-              </p>
-              <p className="mt-1 text-xs text-stone-500">{counts[index]?.error || t("liveSupabaseCount")}</p>
-            </div>
-          ))}
-        </section>
-
-        {/* Dynamic Analytics Charts Component */}
-        {configured && (
-          <section className="rounded-md border border-stone-200 bg-stone-100/30 p-5">
-            <DashboardCharts
-              hypothesisCounts={hypothesisCounts}
-              dailySpends={dailySpends}
-              dailyIngestion={dailyIngestion}
-              totalSpendLimitDaily={10.0}
-              totalSpendLimitMonthly={60.0}
-            />
-          </section>
-        )}
-
-        <section className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
-          <div className="rounded-md border border-stone-200 bg-white">
-            <div className="border-b border-stone-200 p-4">
-              <h2 className="text-base font-semibold">{t("hypothesisStatus")}</h2>
-            </div>
-            <div className="flex flex-wrap gap-2 p-4">
-              {Object.entries(statusCounts).length > 0 ? (
-                Object.entries(statusCounts).map(([status, count]) => (
-                  <span
-                    key={status}
-                    className={`rounded-md px-3 py-2 text-sm ring-1 ${statusTone(status)}`}
-                  >
-                    {status}: <span className="font-semibold">{count}</span>
-                  </span>
-                ))
-              ) : (
-                <p className="text-sm text-stone-500">{t("emptyHypotheses")}</p>
-              )}
-            </div>
-          </div>
-
-          <div className="rounded-md border border-stone-200 bg-white">
-            <div className="border-b border-stone-200 p-4">
-              <h2 className="text-base font-semibold">{t("latestEvents")}</h2>
-            </div>
-            <div className="divide-y divide-stone-100">
-              {runs.rows.map((run) => (
-                <div key={`${run.kind}-${run.start_time}`} className="grid gap-2 p-4 sm:grid-cols-[1fr_auto]">
-                  <div>
-                    <p className="font-medium">{run.kind}</p>
-                    <p className="text-xs text-stone-500">
-                      {run.agent_id || t("system")} · {new Date(run.start_time).toLocaleString()}
-                    </p>
-                  </div>
-                  <div className="text-left sm:text-right">
-                    <p className="text-sm">{run.exit_status}</p>
-                    <p className="font-mono text-xs text-stone-500">{formatMoney(run.token_cost)}</p>
-                  </div>
-                </div>
-              ))}
-              {runs.rows.length === 0 ? <p className="p-4 text-sm text-stone-500">{t("emptyRuns")}</p> : null}
-            </div>
-          </div>
-        </section>
-
-        <section className="rounded-md border border-stone-200 bg-white">
-          <div className="border-b border-stone-200 p-4">
-            <h2 className="text-base font-semibold">{t("topPapers")}</h2>
-          </div>
-          <div className="divide-y divide-stone-100">
-            {papers.rows.map((paper) => (
-              <article key={`${paper.pmid || paper.ct_id || paper.title}`} className="grid gap-2 p-4 md:grid-cols-[auto_1fr]">
-                <div className="font-mono text-sm text-cyan-700">
-                  {paper.relevance_score == null ? tShared("na") : paper.relevance_score.toFixed(2)}
-                </div>
-                <div>
-                  <h3 className="text-sm font-medium leading-6">{paper.title}</h3>
-                  <p className="mt-1 text-xs text-stone-500">
-                    {paper.pmid ? `PMID ${paper.pmid}` : paper.ct_id || tShared("sourcePending")} ·{" "}
-                    {paper.direct_relevance ? "direct HIE" : paper.cross_disease_source || "cross-source"}
-                  </p>
-                </div>
-              </article>
+        </DarkGlassPanel>
+        <DarkGlassPanel>
+          <SectionHeader dark eyebrow={isKa ? "ბოლო აქტივობა" : "Latest activity"} title={t("latestEvents")} subtitle={isKa ? "კლინიკური command center-ის ქვედა activity rail." : "The lower activity rail of the clinical command center."} />
+          <div className="mt-5 grid gap-3">
+            {runs.rows.map((run) => (
+              <div key={`${run.kind}-${run.start_time}`} className="grid gap-2 rounded-2xl border border-white/10 bg-white/[0.055] p-4 sm:grid-cols-[1fr_auto]">
+                <div><p className="font-medium text-white">{run.kind}</p><p className="mt-1 text-xs text-slate-400">{run.agent_id || t("system")} · {new Date(run.start_time).toLocaleString()}</p></div>
+                <div className="text-left sm:text-right"><p className="text-sm text-slate-200">{run.exit_status}</p><p className="font-mono text-xs text-slate-500">{formatMoney(run.token_cost)}</p></div>
+              </div>
             ))}
-            {papers.rows.length === 0 ? <p className="p-4 text-sm text-stone-500">{t("emptyPapers")}</p> : null}
+            {runs.rows.length === 0 ? <p className="text-sm text-slate-400">{t("emptyRuns")}</p> : null}
           </div>
-        </section>
-      </div>
-    </main>
+        </DarkGlassPanel>
+      </section>
+
+      <DarkGlassPanel>
+        <SectionHeader dark eyebrow="Evidence intelligence" title={t("topPapers")} subtitle={isKa ? "Top relevance sources რჩება live data-ით, მაგრამ უკვე ჯდება command center-ის ვიზუალში." : "Top relevance sources remain live data, now inside the command-center visual system."} />
+        <div className="mt-5 grid gap-3">
+          {papers.rows.map((paper) => (
+            <article key={`${paper.pmid || paper.ct_id || paper.title}`} className="grid gap-3 rounded-2xl border border-white/10 bg-white/[0.055] p-4 md:grid-cols-[5rem_1fr]">
+              <div className="font-mono text-sm font-semibold text-cyan-200">{paper.relevance_score == null ? tShared("na") : paper.relevance_score.toFixed(2)}</div>
+              <div><h3 className="text-sm font-medium leading-6 text-white">{paper.title}</h3><p className="mt-1 text-xs text-slate-400">{paper.pmid ? `PMID ${paper.pmid}` : paper.ct_id || tShared("sourcePending")} · {paper.direct_relevance ? "direct HIE" : paper.cross_disease_source || "cross-source"}</p></div>
+            </article>
+          ))}
+          {papers.rows.length === 0 ? <p className="text-sm text-slate-400">{t("emptyPapers")}</p> : null}
+        </div>
+      </DarkGlassPanel>
+    </CommandCenterShell>
   );
 }

@@ -1,15 +1,28 @@
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import { getRows } from "@/lib/supabase";
 import { displayField, type BilingualField } from "@/lib/i18n";
+import {
+  AssistantPanel,
+  CommandCenterShell,
+  CommandMetricCard,
+  DarkGlassPanel,
+  DemoDataNotice,
+  InsightCard,
+  SectionHeader,
+  StatusPill,
+  TimelineRail,
+} from "@/components/prototype/PrototypeKit";
 
 export const dynamic = "force-dynamic";
+
+type Tone = "cyan" | "emerald" | "amber" | "rose" | "violet" | "slate" | "stone";
 
 type TimelineEvent = {
   id: string;
   event_date: string;
   event_type: string;
-  title: BilingualField;         // 06-08: JSONB {en, ka} post-migration-012
-  description: BilingualField;   // 06-08: nullable JSONB
+  title: BilingualField;
+  description: BilingualField;
   institution: string | null;
   location: string | null;
   created_at: string;
@@ -23,16 +36,21 @@ function typeCounts(events: TimelineEvent[]) {
   }, {});
 }
 
-export default async function TimelinePage({
-  params,
-}: {
-  params: Promise<{ locale: "en" | "ka" }>;
-}) {
+function toneForType(type: string): Tone {
+  if (type.includes("therapy") || type.includes("intervention")) return "emerald";
+  if (type.includes("assessment") || type.includes("clinical")) return "cyan";
+  if (type.includes("risk") || type.includes("warning")) return "amber";
+  if (type.includes("research") || type.includes("paper")) return "violet";
+  return "slate";
+}
+
+export default async function TimelinePage({ params }: { params: Promise<{ locale: "en" | "ka" }> }) {
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations("Timeline");
   const tShared = await getTranslations("Shared");
   const tEvt = await getTranslations("TimelineEventType");
+  const isKa = locale === "ka";
 
   function formatDate(value: string | null) {
     if (!value) return tShared("notListed");
@@ -46,85 +64,59 @@ export default async function TimelinePage({
     limit: 100,
   });
   const counts = typeCounts(events.rows);
+  const latestDate = formatDate(events.rows[0]?.event_date ?? null);
+
+  const railEvents = events.rows.map((event) => {
+    const typeLabel = tEvt.has(event.event_type) ? tEvt(event.event_type) : event.event_type;
+    const location = [event.institution, event.location].filter(Boolean).join(" | ") || t("locationPending");
+    const description = displayField(event.description, locale);
+    return {
+      time: formatDate(event.event_date),
+      title: `${displayField(event.title, locale)} · ${typeLabel}`,
+      body: description ? `${description} ${location}` : location,
+      tone: toneForType(event.event_type),
+    };
+  });
 
   return (
-    <main className="min-h-screen bg-stone-50 text-stone-950">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-5 py-6 sm:px-8">
-        <header className="grid gap-4 lg:grid-cols-[1fr_auto]">
-          <div>
-            <p className="font-mono text-xs uppercase text-cyan-700">{t("phaseLabel")}</p>
-            <h1 className="mt-1 text-3xl font-semibold tracking-normal sm:text-4xl">
-              {t("title")}
-            </h1>
-            <p className="mt-3 max-w-3xl text-sm leading-6 text-stone-600">
-              {t("subtitle")}
-            </p>
-          </div>
-          <div className="grid min-w-64 grid-cols-2 gap-3">
-            <div className="rounded-md border border-stone-200 bg-white p-4">
-              <p className="font-mono text-xs uppercase text-stone-500">{t("shown")}</p>
-              <p className="mt-2 text-2xl font-semibold">{events.rows.length}</p>
-            </div>
-            <div className="rounded-md border border-stone-200 bg-white p-4">
-              <p className="font-mono text-xs uppercase text-stone-500">{t("latest")}</p>
-              <p className="mt-2 text-2xl font-semibold">{formatDate(events.rows[0]?.event_date ?? null)}</p>
-            </div>
-          </div>
-        </header>
+    <CommandCenterShell>
+      <section className="grid gap-5 xl:grid-cols-[1.3fr_0.7fr]">
+        <DarkGlassPanel className="p-6 sm:p-8">
+          <StatusPill tone="cyan" dark>{t("phaseLabel")}</StatusPill>
+          <h1 className="mt-5 max-w-5xl text-4xl font-semibold tracking-[-0.055em] text-white sm:text-6xl">{t("title")}</h1>
+          <p className="mt-5 max-w-4xl text-sm leading-7 text-slate-300">{t("subtitle")}</p>
+        </DarkGlassPanel>
+        <AssistantPanel title={isKa ? "Longitudinal tracker" : "Longitudinal tracker"} body={isKa ? "Timeline ახლა ჰგავს generated journey mockup-ს: ცალკე ჩანაწერები გადაიქცა readable progress rail-ად." : "The timeline now follows the generated journey mockup: isolated records become a readable progress rail."} items={isKa ? ["რა მოხდა ადრე?", "რა შეიცვალა ჩარევის შემდეგ?", "რა კითხვას აჩენს შემდეგი review-სთვის?"] : ["What happened before?", "What changed after intervention?", "What question does this raise for the next review?"]} />
+      </section>
 
-        {events.error ? (
-          <section className="rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
-            {events.error}
-          </section>
-        ) : null}
+      {events.error ? <DemoDataNotice title={isKa ? "Timeline data channel" : "Timeline data channel"} body={events.error} /> : null}
 
-        {Object.keys(counts).length > 0 ? (
-          <section className="flex flex-wrap gap-2">
-            {Object.entries(counts).map(([type, count]) => (
-              <span key={type} className="rounded-md bg-white px-3 py-2 text-sm text-stone-700 ring-1 ring-stone-200">
-                <span className="font-mono text-xs uppercase text-stone-500">{tEvt.has(type) ? tEvt(type) : type}</span>{" "}
-                <span className="font-semibold">{count}</span>
-              </span>
-            ))}
-          </section>
-        ) : null}
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <CommandMetricCard label={t("shown")} value={events.rows.length} hint={isKa ? "ქრონოლოგიური ჩანაწერი" : "longitudinal records"} tone="cyan" />
+        <CommandMetricCard label={t("latest")} value={latestDate} hint={isKa ? "ბოლო დაფიქსირებული მოვლენა" : "most recent recorded event"} tone="emerald" />
+        <CommandMetricCard label={isKa ? "Event types" : "Event types"} value={Object.keys(counts).length} hint={isKa ? "დაჯგუფებული კატეგორიები" : "grouped categories"} tone="violet" />
+        <CommandMetricCard label={isKa ? "Clinical memory" : "Clinical memory"} value={railEvents.length > 0 ? "on" : "—"} hint={isKa ? "გუნდისთვის და ოჯახისთვის" : "for team and family"} tone="amber" />
+      </section>
 
-        <section className="rounded-md border border-stone-200 bg-white">
-          <div className="border-b border-stone-200 p-4">
-            <h2 className="text-base font-semibold">{t("events")}</h2>
+      <section className="grid gap-4 lg:grid-cols-3">
+        <InsightCard dark label={isKa ? "Progress" : "Progress"} title={isKa ? "პროგრესი ჩანს დროში, არა მხოლოდ ცალკე ჩანაწერებად." : "Progress is visible over time, not as isolated notes."} body={isKa ? "Timeline აერთიანებს მკურნალობას, შეფასებებს, კვლევით იდეებს და observation data-ს, რათა გუნდი ხედავდეს ცვლილების მიმართულებას." : "The timeline connects therapies, assessments, research ideas, and observation data so the team can see the direction of change."} tone="cyan" />
+        <InsightCard dark label={isKa ? "Context" : "Context"} title={isKa ? "ყოველ მოვლენას აქვს წყარო და ადგილი." : "Every event keeps source and place."} body={isKa ? "institution/location metadata ეხმარება ოჯახს გაიხსენოს სად მოხდა შეფასება ან ჩარევა." : "Institution and location metadata help the family recall where an assessment or intervention happened."} tone="slate" />
+        <InsightCard dark label={isKa ? "Clinical review" : "Clinical review"} title={isKa ? "გადაწყვეტილება ეფუძნება ცვლილების ისტორიას." : "Decision-making uses the history of change."} body={isKa ? "როდესაც ახალი ჰიპოთეზა ან თერაპია განიხილება, timeline აჩვენებს რა შეიცვალა მანამდე და შემდეგ." : "When a hypothesis or therapy is reviewed, the timeline shows what changed before and after."} tone="emerald" />
+      </section>
+
+      {Object.keys(counts).length > 0 ? (
+        <DarkGlassPanel>
+          <SectionHeader dark eyebrow={isKa ? "Event mix" : "Event mix"} title={isKa ? "მოვლენები დაჯგუფებულია ტიპების მიხედვით." : "Events are grouped by type."} subtitle={isKa ? "ეს ჯგუფები ეხმარება გუნდს დაინახოს არის თუ არა timeline therapy-heavy, assessment-heavy ან research-heavy." : "These groups help the team see whether the timeline is therapy-heavy, assessment-heavy, or research-heavy."} />
+          <div className="mt-5 flex flex-wrap gap-2">
+            {Object.entries(counts).map(([type, count]) => <StatusPill key={type} tone={toneForType(type)} dark>{tEvt.has(type) ? tEvt(type) : type}: {count}</StatusPill>)}
           </div>
-          <div className="divide-y divide-stone-100">
-            {events.rows.map((event) => (
-              <article key={event.id} className="grid gap-4 p-4 md:grid-cols-[9rem_1fr]">
-                <div>
-                  <p className="font-mono text-sm font-semibold text-cyan-700">
-                    {formatDate(event.event_date)}
-                  </p>
-                  <p className="mt-1 font-mono text-xs uppercase text-stone-500">
-                    {tEvt.has(event.event_type) ? tEvt(event.event_type) : event.event_type}
-                  </p>
-                </div>
-                <div>
-                  <h3 className="text-base font-semibold leading-7">
-                    {displayField(event.title, locale)}
-                  </h3>
-                  {event.description ? (
-                    <p className="mt-2 max-w-4xl text-sm leading-6 text-stone-700">
-                      {displayField(event.description, locale)}
-                    </p>
-                  ) : null}
-                  <p className="mt-2 text-xs text-stone-500">
-                    {[event.institution, event.location].filter(Boolean).join(" | ") || t("locationPending")}
-                  </p>
-                </div>
-              </article>
-            ))}
-            {events.rows.length === 0 ? (
-              <p className="p-4 text-sm text-stone-500">{t("emptyList")}</p>
-            ) : null}
-          </div>
-        </section>
-      </div>
-    </main>
+        </DarkGlassPanel>
+      ) : null}
+
+      <DarkGlassPanel>
+        <SectionHeader dark eyebrow={isKa ? "Longitudinal tracker" : "Longitudinal tracker"} title={t("events")} subtitle={isKa ? "ქრონოლოგია უნდა იყოს ოჯახისათვის გასაგები და კლინიკური გუნდისთვის საკმარისად დეტალური." : "The chronology should be understandable for the family and detailed enough for the clinical team."} />
+        <div className="mt-6">{railEvents.length > 0 ? <TimelineRail dark events={railEvents} /> : <DemoDataNotice title={isKa ? "Timeline ჯერ ცარიელია" : "Timeline is empty"} body={t("emptyList")} />}</div>
+      </DarkGlassPanel>
+    </CommandCenterShell>
   );
 }

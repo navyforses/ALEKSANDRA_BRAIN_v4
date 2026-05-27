@@ -1,16 +1,30 @@
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import { getRows } from "@/lib/supabase";
 import { displayField, type BilingualField } from "@/lib/i18n";
+import {
+  AssistantPanel,
+  CommandCenterShell,
+  CommandMetricCard,
+  DarkGlassPanel,
+  DemoDataNotice,
+  EvidencePipeline,
+  InsightCard,
+  SafetyBoundary,
+  SectionHeader,
+  StatusPill,
+} from "@/components/prototype/PrototypeKit";
 
 export const dynamic = "force-dynamic";
 
+type Tone = "cyan" | "emerald" | "amber" | "rose" | "violet" | "slate" | "stone";
+
 type Therapy = {
   id: string;
-  name: BilingualField;             // 06-08: JSONB {en, ka} post-migration-012
+  name: BilingualField;
   therapy_type: string | null;
   mechanism_of_action: string | null;
   evidence_in_hie: string | null;
-  evidence_summary: BilingualField; // 06-08: nullable JSONB
+  evidence_summary: BilingualField;
   clinical_status: string | null;
   available_locations: string[] | null;
   approximate_cost: string | null;
@@ -24,46 +38,33 @@ type Therapy = {
   created_at: string | null;
 };
 
-function tone(value: string | null) {
-  if (value === "proven" || value === "receiving" || value === "completed") {
-    return "border-emerald-300 bg-emerald-50 text-emerald-900";
-  }
-  if (value === "promising" || value === "planned" || value === "applied" || value === "evaluating") {
-    return "border-cyan-300 bg-cyan-50 text-cyan-900";
-  }
-  if (value === "disproven" || value === "ineligible" || value === "declined") {
-    return "border-rose-300 bg-rose-50 text-rose-900";
-  }
-  return "border-stone-200 bg-white text-stone-800";
+function tone(value: string | null): Tone {
+  if (value === "proven" || value === "receiving" || value === "completed") return "emerald";
+  if (value === "promising" || value === "planned" || value === "applied" || value === "evaluating") return "cyan";
+  if (value === "disproven" || value === "ineligible" || value === "declined") return "rose";
+  if (value === "critical") return "amber";
+  return "stone";
 }
 
-// Defensive parser: some `ai_assessment` rows are stringified dossier objects
-// (e.g. {"source_hypothesis_id":..., "dossier":"..."}) due to upstream pipeline
-// drift. Extract the actual `dossier` text when present; otherwise hide.
 function extractAssessmentText(raw: string | null): string | null {
   if (!raw) return null;
   const trimmed = raw.trim();
-  if (!trimmed.startsWith("{")) return raw; // plain text — render as-is
+  if (!trimmed.startsWith("{")) return raw;
   try {
     const parsed = JSON.parse(trimmed);
-    if (parsed && typeof parsed === "object" && typeof parsed.dossier === "string") {
-      return parsed.dossier;
-    }
-    return null; // JSON without dossier — hide rather than dump raw object
+    if (parsed && typeof parsed === "object" && typeof parsed.dossier === "string") return parsed.dossier;
+    return null;
   } catch {
-    return null; // malformed JSON — hide
+    return null;
   }
 }
 
-export default async function TherapiesPage({
-  params,
-}: {
-  params: Promise<{ locale: "en" | "ka" }>;
-}) {
+export default async function TherapiesPage({ params }: { params: Promise<{ locale: "en" | "ka" }> }) {
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations("Therapies");
   const tShared = await getTranslations("Shared");
+  const isKa = locale === "ka";
 
   function yesNo(value: boolean | null) {
     if (value == null) return tShared("unknown");
@@ -75,157 +76,81 @@ export default async function TherapiesPage({
   }
 
   const therapies = await getRows<Therapy>("therapies", {
-    select:
-      "id,name,therapy_type,mechanism_of_action,evidence_in_hie,evidence_summary,clinical_status,available_locations,approximate_cost,aleksandra_eligible,aleksandra_status,aleksandra_notes,optimal_age_window,time_sensitivity,ai_assessment,confidence_level,created_at",
+    select: "id,name,therapy_type,mechanism_of_action,evidence_in_hie,evidence_summary,clinical_status,available_locations,approximate_cost,aleksandra_eligible,aleksandra_status,aleksandra_notes,optimal_age_window,time_sensitivity,ai_assessment,confidence_level,created_at",
     order: "name.asc",
     limit: 100,
   });
 
   const active = therapies.rows.filter((tr) => tr.aleksandra_status === "receiving").length;
-  const watching = therapies.rows.filter((tr) =>
-    ["planned", "applied", "evaluating"].includes(tr.aleksandra_status || ""),
-  ).length;
+  const watching = therapies.rows.filter((tr) => ["planned", "applied", "evaluating"].includes(tr.aleksandra_status || "")).length;
   const promising = therapies.rows.filter((tr) => tr.evidence_in_hie === "promising").length;
+  const eligible = therapies.rows.filter((tr) => tr.aleksandra_eligible).length;
+  const critical = therapies.rows.filter((tr) => tr.time_sensitivity === "critical").length;
 
   return (
-    <main className="min-h-screen bg-stone-50 text-stone-950">
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-5 py-6 sm:px-8">
-        <header className="grid gap-4 lg:grid-cols-[1fr_auto]">
-          <div>
-            <p className="font-mono text-xs uppercase text-cyan-700">{t("phaseLabel")}</p>
-            <h1 className="mt-1 text-3xl font-semibold tracking-normal sm:text-4xl">
-              {t("title")}
-            </h1>
-            <p className="mt-3 max-w-3xl text-sm leading-6 text-stone-600">
-              {t("subtitle")}
-            </p>
-          </div>
-          <div className="grid min-w-72 grid-cols-3 gap-3">
-            <div className="rounded-md border border-stone-200 bg-white p-4">
-              <p className="font-mono text-xs uppercase text-stone-500">{t("shown")}</p>
-              <p className="mt-2 text-2xl font-semibold">{therapies.rows.length}</p>
-            </div>
-            <div className="rounded-md border border-stone-200 bg-white p-4">
-              <p className="font-mono text-xs uppercase text-stone-500">{t("active")}</p>
-              <p className="mt-2 text-2xl font-semibold">{active}</p>
-            </div>
-            <div className="rounded-md border border-stone-200 bg-white p-4">
-              <p className="font-mono text-xs uppercase text-stone-500">{t("watching")}</p>
-              <p className="mt-2 text-2xl font-semibold">{watching}</p>
-            </div>
-          </div>
-        </header>
+    <CommandCenterShell>
+      <section className="grid gap-5 xl:grid-cols-[1.3fr_0.7fr]">
+        <DarkGlassPanel className="p-6 sm:p-8">
+          <StatusPill tone="emerald" dark>{t("phaseLabel")}</StatusPill>
+          <h1 className="mt-5 max-w-5xl text-4xl font-semibold tracking-[-0.055em] text-white sm:text-6xl">{t("title")}</h1>
+          <p className="mt-5 max-w-4xl text-sm leading-7 text-slate-300">{t("subtitle")}</p>
+        </DarkGlassPanel>
+        <AssistantPanel title={isKa ? "Therapy pathway copilot" : "Therapy pathway copilot"} body={isKa ? "Generated mockup-ის იდეა აქ გამოიყენება თერაპიებისთვის: evidence, access, age window, status და safety boundary ერთ card-ში ჩანს." : "The generated mockup language is applied to therapies: evidence, access, age window, status, and safety boundary sit inside one card."} items={isKa ? ["არ არის რეკომენდაცია", "არის decision support", "ყველა გზა საჭიროებს ექიმის approval-ს"] : ["Not a recommendation", "Decision support only", "Every path needs clinician approval"]} />
+      </section>
 
-        {therapies.error ? (
-          <section className="rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
-            {therapies.error}
-          </section>
-        ) : null}
+      {therapies.error ? <DemoDataNotice title={isKa ? "Therapies data channel" : "Therapies data channel"} body={therapies.error} /> : null}
 
-        <section className="grid gap-3 sm:grid-cols-3">
-          <div className="rounded-md border border-stone-200 bg-white p-4">
-            <p className="font-mono text-xs uppercase text-stone-500">{t("promisingEvidence")}</p>
-            <p className="mt-2 text-xl font-semibold">{promising}</p>
-          </div>
-          <div className="rounded-md border border-stone-200 bg-white p-4">
-            <p className="font-mono text-xs uppercase text-stone-500">{t("eligibleYes")}</p>
-            <p className="mt-2 text-xl font-semibold">
-              {therapies.rows.filter((tr) => tr.aleksandra_eligible).length}
-            </p>
-          </div>
-          <div className="rounded-md border border-stone-200 bg-white p-4">
-            <p className="font-mono text-xs uppercase text-stone-500">{t("timeCritical")}</p>
-            <p className="mt-2 text-xl font-semibold">
-              {therapies.rows.filter((tr) => tr.time_sensitivity === "critical").length}
-            </p>
-          </div>
-        </section>
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        <CommandMetricCard label={t("shown")} value={therapies.rows.length} hint={isKa ? "თერაპიული ჩანაწერი" : "therapy records"} tone="slate" />
+        <CommandMetricCard label={t("active")} value={active} hint={isKa ? "მიმდინარე ჩართული გზა" : "currently active pathways"} tone="emerald" />
+        <CommandMetricCard label={t("watching")} value={watching} hint={isKa ? "დაგეგმილი ან შესაფასებელი" : "planned or under evaluation"} tone="cyan" />
+        <CommandMetricCard label={t("eligibleYes")} value={eligible} hint={isKa ? "ინდივიდუალური განხილვისთვის" : "for individual review"} tone="violet" />
+        <CommandMetricCard label={t("timeCritical")} value={critical} hint={isKa ? "სწრაფი review" : "fast review"} tone="amber" />
+      </section>
 
-        <section className="grid gap-4">
-          {therapies.rows.map((therapy) => (
-            <article key={therapy.id} className="rounded-md border border-stone-200 bg-white p-4">
-              <div className="grid gap-4 lg:grid-cols-[1fr_auto]">
-                <div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className={`rounded-md border px-2 py-1 font-mono text-xs ${tone(therapy.aleksandra_status)}`}>
-                      {therapy.aleksandra_status || t("statusNotConsidered")}
-                    </span>
-                    <span className={`rounded-md border px-2 py-1 font-mono text-xs ${tone(therapy.evidence_in_hie)}`}>
-                      {t("evidenceLabel")} {therapy.evidence_in_hie || t("evidenceUnknown")}
-                    </span>
-                    <span className="font-mono text-xs text-stone-500">
-                      {therapy.therapy_type || t("typePending")}
-                    </span>
-                  </div>
-                  <h2 className="mt-3 text-lg font-semibold leading-7">
-                    {displayField(therapy.name, locale)}
-                  </h2>
-                  {therapy.mechanism_of_action ? (
-                    <p className="mt-2 max-w-4xl text-sm leading-6 text-stone-700">
-                      {therapy.mechanism_of_action}
-                    </p>
-                  ) : null}
-                </div>
-                <dl className="grid gap-3 text-sm sm:grid-cols-3 lg:w-96">
+      <DarkGlassPanel>
+        <SectionHeader dark eyebrow={isKa ? "Therapy workflow" : "Therapy workflow"} title={isKa ? "თერაპია წარმოდგენილია როგორც evidence-backed pathway, არა რეკლამა." : "Therapy is presented as an evidence-backed pathway, not an ad."} subtitle={isKa ? "მიზანია პრაქტიკული decision support: რა არის, რატომ შეიძლება იყოს მნიშვნელოვანი, სად არის ხელმისაწვდომი და რა უნდა გადაწყვიტოს ექიმმა." : "The purpose is practical decision support: what it is, why it may matter, where it is available, and what the clinician must decide."} />
+        <div className="mt-6"><EvidencePipeline dark steps={[
+          { label: "Evidence", title: isKa ? "მტკიცებულების დონე" : "Evidence level", body: isKa ? "HIE evidence და confidence ჩანს card-ის ზედა ნაწილში." : "HIE evidence and confidence are visible at the top of every card.", tone: "cyan" },
+          { label: "Access", title: isKa ? "პრაქტიკული დეტალები" : "Practical details", body: isKa ? "ადგილმდებარეობა, ღირებულება და ასაკობრივი ფანჯარა არ იკარგება." : "Location, cost, and age window are not lost.", tone: "violet" },
+          { label: "Status", title: isKa ? "გზის მდგომარეობა" : "Pathway status", body: isKa ? "active/planned/evaluating ფერები სწრაფად აჩვენებს მოძრაობას." : "Active/planned/evaluating colors quickly show motion.", tone: "emerald" },
+          { label: "Safety", title: isKa ? "ექიმის gate" : "Clinician gate", body: isKa ? "არცერთი pathway არ ხდება ავტომატური დანიშნულება." : "No pathway becomes an automatic prescription.", tone: "amber" },
+        ]} /></div>
+      </DarkGlassPanel>
+
+      <section className="grid gap-4 lg:grid-cols-3">
+        <InsightCard dark label={isKa ? "Evidence" : "Evidence"} title={isKa ? "მტკიცებულების დონე მკაფიოდ ჩანს" : "Evidence level is explicit"} body={isKa ? "თითოეული თერაპია გამოყოფს HIE evidence-ს, confidence-ს და AI assessment-ს ისე, რომ ოჯახმა და გუნდმა ერთსა და იმავე ინფორმაციას უყურონ." : "Each therapy exposes HIE evidence, confidence, and AI assessment so family and team can read the same information."} tone="cyan" />
+        <InsightCard dark label={isKa ? "Pathway" : "Pathway"} title={isKa ? "სტატუსი და დრო ერთმანეთთან არის მიბმული" : "Status and timing stay connected"} body={isKa ? "აქტიური, დაგეგმილი, შესაფასებელი და დრო-სენსიტიური გზები ერთ ფერად სისტემაში ჩანს." : "Active, planned, evaluative, and time-sensitive pathways are shown in one color system."} tone="emerald" />
+        <InsightCard dark label={isKa ? "Access" : "Access"} title={isKa ? "პრაქტიკული დეტალები არ იკარგება" : "Practical details are not lost"} body={isKa ? "ადგილმდებარეობა, სავარაუდო ღირებულება, ასაკობრივი ფანჯარა და eligibility სწრაფად ჩანს decision brief-ში." : "Location, approximate cost, age window, and eligibility are visible in the decision brief."} tone="violet" />
+      </section>
+
+      <DarkGlassPanel>
+        <SectionHeader dark eyebrow={isKa ? "Therapy pathways" : "Therapy pathways"} title={isKa ? "ყველა therapy card გადაკეთდა mockup-ის command card სტილში." : "Every therapy card now uses the mockup command-card style."} subtitle={isKa ? "Live Supabase ველები შენარჩუნებულია, მაგრამ ვიზუალი შეესაბამება generated prototype მიმართულებას." : "Live Supabase fields are preserved while the visual language matches the generated prototype direction."} />
+        <div className="mt-6 grid gap-4">
+          {therapies.rows.map((therapy) => {
+            const assessment = extractAssessmentText(therapy.ai_assessment);
+            const evidence = displayField(therapy.evidence_summary, locale);
+            const hasAny = evidence || assessment || therapy.aleksandra_notes;
+            return (
+              <article key={therapy.id} className="overflow-hidden rounded-[1.75rem] border border-white/10 bg-white/[0.055] p-5 shadow-2xl shadow-slate-950/20 backdrop-blur-xl">
+                <div className="grid gap-5 xl:grid-cols-[1fr_auto]">
                   <div>
-                    <dt className="font-mono text-xs uppercase text-stone-500">{t("eligible")}</dt>
-                    <dd className="mt-1 font-semibold">{yesNo(therapy.aleksandra_eligible)}</dd>
+                    <div className="flex flex-wrap items-center gap-2"><StatusPill tone={tone(therapy.aleksandra_status)} compact dark>{therapy.aleksandra_status || t("statusNotConsidered")}</StatusPill><StatusPill tone={tone(therapy.evidence_in_hie)} compact dark>{t("evidenceLabel")} {therapy.evidence_in_hie || t("evidenceUnknown")}</StatusPill><StatusPill tone="slate" compact dark>{therapy.therapy_type || t("typePending")}</StatusPill></div>
+                    <h2 className="mt-4 text-xl font-semibold leading-8 tracking-[-0.02em] text-white">{displayField(therapy.name, locale)}</h2>
+                    {therapy.mechanism_of_action ? <p className="mt-3 max-w-4xl text-sm leading-7 text-slate-300">{therapy.mechanism_of_action}</p> : null}
                   </div>
-                  <div>
-                    <dt className="font-mono text-xs uppercase text-stone-500">{t("ageWindow")}</dt>
-                    <dd className="mt-1 font-semibold">{therapy.optimal_age_window || tShared("na")}</dd>
-                  </div>
-                  <div>
-                    <dt className="font-mono text-xs uppercase text-stone-500">{t("timing")}</dt>
-                    <dd className="mt-1 font-semibold">{therapy.time_sensitivity || tShared("na")}</dd>
-                  </div>
-                </dl>
-              </div>
+                  <dl className="grid gap-3 text-sm sm:grid-cols-3 xl:w-[28rem]"><div className="rounded-2xl border border-white/10 bg-slate-950/35 p-3"><dt className="font-mono text-[0.65rem] uppercase tracking-[0.16em] text-slate-500">{t("eligible")}</dt><dd className="mt-2 font-semibold text-white">{yesNo(therapy.aleksandra_eligible)}</dd></div><div className="rounded-2xl border border-white/10 bg-slate-950/35 p-3"><dt className="font-mono text-[0.65rem] uppercase tracking-[0.16em] text-slate-500">{t("ageWindow")}</dt><dd className="mt-2 font-semibold text-white">{therapy.optimal_age_window || tShared("na")}</dd></div><div className="rounded-2xl border border-white/10 bg-slate-950/35 p-3"><dt className="font-mono text-[0.65rem] uppercase tracking-[0.16em] text-slate-500">{t("timing")}</dt><dd className="mt-2 font-semibold text-white">{therapy.time_sensitivity || tShared("na")}</dd></div></dl>
+                </div>
+                <div className="mt-5 grid gap-4 border-t border-white/10 pt-5 xl:grid-cols-3"><div><p className="font-mono text-[0.68rem] uppercase tracking-[0.16em] text-slate-500">{t("clinicalStatus")}</p><p className="mt-2 text-sm leading-6 text-slate-300">{therapy.clinical_status || tShared("unknown")}</p></div><div><p className="font-mono text-[0.68rem] uppercase tracking-[0.16em] text-slate-500">{t("locations")}</p><p className="mt-2 text-sm leading-6 text-slate-300">{listValue(therapy.available_locations)}</p></div><div><p className="font-mono text-[0.68rem] uppercase tracking-[0.16em] text-slate-500">{t("cost")}</p><p className="mt-2 text-sm leading-6 text-slate-300">{therapy.approximate_cost || t("costUnknown")}</p></div></div>
+                {hasAny ? <div className="mt-5 grid gap-3 rounded-3xl border border-white/10 bg-slate-950/35 p-4">{evidence ? <p className="text-sm leading-7 text-slate-300">{evidence}</p> : null}{assessment ? <p className="text-sm leading-7 text-slate-300">{assessment}</p> : null}{therapy.aleksandra_notes ? <p className="text-sm leading-7 text-slate-300">{therapy.aleksandra_notes}</p> : null}</div> : null}
+              </article>
+            );
+          })}
+          {therapies.rows.length === 0 ? <DemoDataNotice title={isKa ? "თერაპიები ჯერ არ ჩანს" : "No therapies yet"} body={t("emptyList")} /> : null}
+        </div>
+      </DarkGlassPanel>
 
-              <div className="mt-4 grid gap-4 border-t border-stone-100 pt-4 lg:grid-cols-3">
-                <div>
-                  <p className="font-mono text-xs uppercase text-stone-500">{t("clinicalStatus")}</p>
-                  <p className="mt-1 text-sm text-stone-700">{therapy.clinical_status || tShared("unknown")}</p>
-                </div>
-                <div>
-                  <p className="font-mono text-xs uppercase text-stone-500">{t("locations")}</p>
-                  <p className="mt-1 text-sm text-stone-700">{listValue(therapy.available_locations)}</p>
-                </div>
-                <div>
-                  <p className="font-mono text-xs uppercase text-stone-500">{t("cost")}</p>
-                  <p className="mt-1 text-sm text-stone-700">{therapy.approximate_cost || t("costUnknown")}</p>
-                </div>
-              </div>
-
-              {(() => {
-                const assessment = extractAssessmentText(therapy.ai_assessment);
-                // 06-08: evidence_summary is JSONB; resolve to a string before truthiness gate
-                const evidence = displayField(therapy.evidence_summary, locale);
-                const hasAny = evidence || assessment || therapy.aleksandra_notes;
-                if (!hasAny) return null;
-                return (
-                  <div className="mt-4 grid gap-3 border-t border-stone-100 pt-4">
-                    {evidence ? (
-                      <p className="text-sm leading-6 text-stone-700">{evidence}</p>
-                    ) : null}
-                    {assessment ? (
-                      <p className="text-sm leading-6 text-stone-700">{assessment}</p>
-                    ) : null}
-                    {therapy.aleksandra_notes ? (
-                      <p className="text-sm leading-6 text-stone-700">{therapy.aleksandra_notes}</p>
-                    ) : null}
-                  </div>
-                );
-              })()}
-            </article>
-          ))}
-          {therapies.rows.length === 0 ? (
-            <div className="rounded-md border border-stone-200 bg-white p-6 text-sm text-stone-500">
-              {t("emptyList")}
-            </div>
-          ) : null}
-        </section>
-      </div>
-    </main>
+      <SafetyBoundary dark title={isKa ? "თერაპიული გზა ყოველთვის საჭიროებს ექიმის კონტროლს." : "Every therapy pathway requires clinician control."} body={isKa ? "პლატფორმა არ ნიშნავს ბავშვის მკურნალობის ავტომატურ არჩევას. ის აჩვენებს კითხვებს, evidence-ს და პრაქტიკულ რისკებს, რომ ექიმმა და ოჯახმა უკეთესად იმსჯელონ." : "The platform does not automatically choose a child’s treatment. It surfaces questions, evidence, and practical risks so clinician and family can reason better together."} items={isKa ? ["No automatic prescription", "Clinician approval required", "Risk and evidence visible"] : ["No automatic prescription", "Clinician approval required", "Risk and evidence visible"]} />
+    </CommandCenterShell>
   );
 }

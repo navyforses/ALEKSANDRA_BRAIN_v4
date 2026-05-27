@@ -1,86 +1,72 @@
-import React from 'react'
-import { Maximize, SlidersHorizontal, Layers, Play } from 'lucide-react'
-import { setRequestLocale, getTranslations } from 'next-intl/server'
+import { setRequestLocale, getTranslations } from "next-intl/server";
+import {
+  AssistantPanel,
+  CommandCenterShell,
+  DarkGlassPanel,
+  DigitalTwinLab,
+  InsightCard,
+  SafetyBoundary,
+  SectionHeader,
+  StatusPill,
+} from "@/components/prototype/PrototypeKit";
 
-// All MRI data is client-side only (FND-01/FND-02) — no remote fetch
-// from this route or any sibling route under viewer/app.
-
-export default async function BrainViewerPage({
-  params,
-}: {
-  params: Promise<{ locale: 'en' | 'ka' }>
-}) {
-  const { locale } = await params
-  setRequestLocale(locale)
-  const t = await getTranslations('Brain')
+export default async function BrainViewerPage({ params }: { params: Promise<{ locale: "en" | "ka" }> }) {
+  const { locale } = await params;
+  setRequestLocale(locale);
+  const t = await getTranslations("Brain");
+  const isKa = locale === "ka";
 
   return (
-    <div className="flex flex-col h-full space-y-4">
-      <div className="flex flex-col space-y-4 border-b border-slate-200 pb-4 shrink-0">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
-            {t('title')}
-          </h1>
-          <div className="flex space-x-2">
-            <button className="flex items-center justify-center px-3 py-1.5 text-sm font-medium bg-slate-100 text-slate-600 rounded-md hover:bg-slate-200 transition-colors">
-              <SlidersHorizontal className="h-4 w-4 mr-1.5" />
-              {t('controls')}
-            </button>
-            <button className="flex items-center justify-center px-3 py-1.5 text-sm font-medium bg-white border border-slate-200 text-slate-700 rounded-md hover:bg-slate-50 transition-colors shadow-sm">
-              <Maximize className="h-4 w-4 mr-1.5" />
-              {t('fullscreen')}
-            </button>
-          </div>
-        </div>
-
-        <div className="flex space-x-2 overflow-x-auto pb-1">
-          <button className="px-3 py-1.5 text-sm font-medium bg-slate-900 text-white rounded-md shadow-sm whitespace-nowrap">
-            {t('doctorView')}
-          </button>
-          <button className="px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-md transition-colors whitespace-nowrap">
-            {t('parentView')}
-          </button>
-          <button className="px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-md transition-colors whitespace-nowrap flex items-center">
-            {t('researcherView')} <Play className="w-3 h-3 ml-1.5" />
-          </button>
-        </div>
-      </div>
-
-      <div className="flex-1 relative bg-slate-50 border border-slate-200 rounded-lg overflow-hidden shadow-inner flex flex-col min-h-[500px]">
-        <div className="absolute top-4 left-4 z-10 flex flex-col space-y-2">
-          <button
-            className="p-2 bg-white/90 backdrop-blur-sm border border-slate-200 rounded-md shadow-sm text-slate-600 hover:text-medical-purple transition-colors"
-            title={t('toggleLayers')}
-          >
-            <Layers className="w-4 h-4" />
-          </button>
-        </div>
-
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-center max-w-md mx-auto px-6">
-            <div className="text-xs font-medium uppercase tracking-wider text-slate-400 mb-3">
-              {t('viewerLabel')}
+    <CommandCenterShell>
+      <section className="grid gap-5 xl:grid-cols-[1fr_0.55fr]">
+        <DarkGlassPanel className="p-6 sm:p-8">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <StatusPill tone="violet" dark>{isKa ? "Digital twin brain lab" : "Digital twin brain lab"}</StatusPill>
+              <h1 className="mt-5 max-w-5xl text-4xl font-semibold tracking-[-0.055em] text-white sm:text-6xl">{t("title")}</h1>
+              <p className="mt-5 max-w-3xl text-sm leading-7 text-slate-300">
+                {isKa
+                  ? "ეს ეკრანი გადაკეთებულია Concept C-ის მიხედვით: მარცხენა MRI layer controls, ცენტრში glowing brain lab, მარჯვნივ evidence links და ქვემოთ scan timeline scrubber."
+                  : "This screen now follows Concept C: MRI layer controls on the left, a glowing brain lab in the center, evidence links on the right, and a scan timeline scrubber below."}
+              </p>
             </div>
-            <h3 className="text-base font-medium text-slate-900">{t('inDevelopment')}</h3>
-            <p className="text-sm text-slate-500 mt-2 leading-relaxed">
-              {t('dropMriHint')}
-            </p>
-          </div>
-        </div>
-
-        <div className="absolute bottom-4 left-0 right-0 z-10 flex justify-center pointer-events-none">
-          <div className="bg-white/90 backdrop-blur-sm border border-slate-200 rounded-md shadow-sm px-4 py-2 flex space-x-6 text-xs font-medium pointer-events-auto">
-            <div className="flex items-center">
-              <span className="w-2.5 h-2.5 rounded-full bg-medical-red mr-2 border border-medical-red/20"></span>
-              <span className="text-slate-700">{t('legendDamaged')}</span>
-            </div>
-            <div className="flex items-center">
-              <span className="w-2.5 h-2.5 rounded-full bg-medical-green mr-2 border border-medical-green/20"></span>
-              <span className="text-slate-700">{t('legendPreserved')}</span>
+            <div className="flex flex-wrap gap-2">
+              <StatusPill tone="emerald" dark>{t("doctorView")}</StatusPill>
+              <StatusPill tone="cyan" dark>{t("parentView")}</StatusPill>
+              <StatusPill tone="violet" dark>{t("researcherView")}</StatusPill>
             </div>
           </div>
+        </DarkGlassPanel>
+        <AssistantPanel
+          title={isKa ? "ჰიპოთეზის ინსპექტორი" : "Hypothesis inspector"}
+          body={isKa ? "Mockup-ის მარჯვენა inspector პანელი აჩვენებს signal → evidence → safe question კავშირს." : "The mockup right inspector panel shows the signal → evidence → safe question relationship."}
+          items={isKa ? ["Motor learning signal: დაკვირვება", "Sleep/recovery trend: საჭიროებს მეტ მონაცემს", "Clinical gate: ნებისმიერი ინტერპრეტაცია ექიმთან"] : ["Motor learning signal: observed", "Sleep/recovery trend: needs more data", "Clinical gate: clinician interpretation only"]}
+        />
+      </section>
+
+      <DigitalTwinLab locale={locale} />
+
+      <section className="grid gap-4 lg:grid-cols-3">
+        <InsightCard dark label={isKa ? "Layer 01" : "Layer 01"} title={isKa ? "MRI viewer placeholder აღარ არის ცარიელი" : "MRI viewer placeholder is no longer empty"} body={isKa ? "ვიზუალიზაცია ჯერ prototype-ია, მაგრამ უკვე იმეორებს mockup-ის lab structure-ს და აჩვენებს სად განთავსდება რეალური viewer." : "The visualization remains prototype-only, but it now reproduces the mockup lab structure and shows where the real viewer belongs."} tone="cyan" />
+        <InsightCard dark label={isKa ? "Layer 02" : "Layer 02"} title={isKa ? "Clinical signal overlay" : "Clinical signal overlay"} body={isKa ? "ფენები უკავშირდება თერაპიებს, timeline მოვლენებს და ჰიპოთეზებს, რათა brain lab იყოს workflow და არა მხოლოდ სურათი." : "Layers connect therapies, timeline events, and hypotheses so the brain lab is a workflow, not just an image."} tone="emerald" />
+        <InsightCard dark label={isKa ? "Layer 03" : "Layer 03"} title={isKa ? "Family-safe explanation" : "Family-safe explanation"} body={isKa ? "მშობლის ხედვა რთულ ნეიროლოგიურ ინფორმაციას გარდაქმნის უსაფრთხო კითხვებად ექიმისთვის." : "The parent view turns complex neurological information into safe clinician questions."} tone="amber" />
+      </section>
+
+      <DarkGlassPanel>
+        <SectionHeader dark eyebrow={isKa ? "Viewer status" : "Viewer status"} title={t("inDevelopment")} subtitle={t("dropMriHint")} />
+        <div className="mt-6 grid gap-3 sm:grid-cols-4">
+          {[t("controls"), t("toggleLayers"), t("fullscreen"), isKa ? "Evidence overlay" : "Evidence overlay"].map((item) => (
+            <div key={item} className="rounded-2xl border border-white/10 bg-white/[0.055] p-4 text-sm font-medium text-slate-200">{item}</div>
+          ))}
         </div>
-      </div>
-    </div>
-  )
+      </DarkGlassPanel>
+
+      <SafetyBoundary
+        dark
+        title={isKa ? "Brain viewer არ ცვლის ნეიროლოგს ან რადიოლოგს." : "The Brain viewer does not replace a neurologist or radiologist."}
+        body={isKa ? "ეს არის კვლევითი ინტერფეისი. ნებისმიერი ინტერპრეტაცია, დიაგნოზი ან მკურნალობის ცვლილება უნდა გააკეთოს შესაბამისმა სპეციალისტმა." : "This is a research interface. Any interpretation, diagnosis, or treatment change must be made by an appropriate specialist."}
+        items={isKa ? ["Client-side privacy boundary", "Clinician interpretation", "Family-safe explanation"] : ["Client-side privacy boundary", "Clinician interpretation", "Family-safe explanation"]}
+      />
+    </CommandCenterShell>
+  );
 }
