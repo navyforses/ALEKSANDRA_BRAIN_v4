@@ -1,5 +1,8 @@
 import type { ReactNode } from "react";
+import Image from "next/image";
 import Link from "next/link";
+
+const GENERATED_BRAIN_IMAGE = "/assets/generated_digital_twin_brain.webp";
 
 type Tone = "cyan" | "emerald" | "amber" | "rose" | "violet" | "slate" | "stone";
 
@@ -210,7 +213,10 @@ export function NeuralHeroVisual({ title = "Neural evidence map", subtitle = "Cl
           <StatusPill tone="emerald" dark>human gate</StatusPill>
         </div>
         <div className="mx-auto max-w-md text-center">
-          <div className="mx-auto h-44 w-56 rounded-[48%] border border-cyan-200/25 bg-[radial-gradient(circle_at_48%_42%,rgba(125,211,252,0.60),transparent_20%),radial-gradient(circle_at_40%_62%,rgba(244,63,94,0.34),transparent_16%),radial-gradient(circle_at_62%_55%,rgba(52,211,153,0.30),transparent_18%),linear-gradient(135deg,rgba(15,23,42,0.2),rgba(59,130,246,0.18))] shadow-[0_0_70px_rgba(34,211,238,0.22)]" />
+          <div className="relative mx-auto h-48 w-full max-w-md overflow-hidden rounded-[2rem] border border-cyan-200/25 bg-slate-950 shadow-[0_0_70px_rgba(34,211,238,0.24)]">
+            <Image src={GENERATED_BRAIN_IMAGE} alt="" fill sizes="(min-width: 1024px) 28rem, 90vw" className="object-cover object-center opacity-95" />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_48%,transparent_42%,rgba(2,6,23,0.36)_76%),linear-gradient(180deg,rgba(2,6,23,0.05),rgba(2,6,23,0.24))]" />
+          </div>
           <h3 className="mt-6 text-2xl font-semibold tracking-[-0.04em] text-white">{title}</h3>
           <p className="mt-3 text-sm leading-7 text-slate-300">{subtitle}</p>
         </div>
@@ -234,7 +240,10 @@ export function BrainSignalPanel({ title, subtitle, signals }: { title: string; 
         <StatusPill tone="emerald">human reviewed</StatusPill>
       </div>
       <div className="mt-6 grid gap-3 sm:grid-cols-3">{signals.map((signal) => <div key={signal.label} className="rounded-2xl border border-white/10 bg-white/[0.06] p-4"><p className="font-mono text-[0.65rem] uppercase tracking-[0.16em] text-slate-400">{signal.label}</p><p className="mt-2 text-xl font-semibold text-white">{signal.value}</p></div>)}</div>
-      <div className="mt-6 h-40 rounded-3xl border border-cyan-300/20 bg-[radial-gradient(circle_at_center,_rgba(34,211,238,0.35),_transparent_26%),radial-gradient(circle_at_30%_45%,_rgba(167,139,250,0.28),_transparent_18%),radial-gradient(circle_at_70%_40%,_rgba(16,185,129,0.22),_transparent_18%),linear-gradient(135deg,rgba(15,23,42,0.3),rgba(30,41,59,0.8))]" />
+      <div className="relative mt-6 h-48 overflow-hidden rounded-3xl border border-cyan-300/20 bg-slate-950 shadow-[0_0_54px_rgba(34,211,238,0.14)]">
+        <Image src={GENERATED_BRAIN_IMAGE} alt="" fill sizes="(min-width: 1024px) 42rem, 90vw" className="object-cover object-center opacity-95" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_44%,transparent_46%,rgba(2,6,23,0.42)_82%),linear-gradient(90deg,rgba(2,6,23,0.18),transparent_34%,transparent_66%,rgba(2,6,23,0.18))]" />
+      </div>
     </div>
   );
 }
@@ -311,11 +320,11 @@ export function DigitalTwinLab({ locale }: { locale: "en" | "ka" }) {
       </DarkGlassPanel>
 
       <div className="relative min-h-[34rem] overflow-hidden rounded-[2.25rem] border border-cyan-300/20 bg-slate-950 shadow-[0_0_100px_rgba(34,211,238,0.13)]">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_45%,rgba(34,211,238,0.42),transparent_24%),radial-gradient(circle_at_39%_55%,rgba(244,63,94,0.34),transparent_13%),radial-gradient(circle_at_61%_53%,rgba(16,185,129,0.25),transparent_16%),radial-gradient(circle_at_50%_50%,rgba(99,102,241,0.25),transparent_36%)]" />
+        <Image src={GENERATED_BRAIN_IMAGE} alt="Generated translucent digital twin brain visualization" fill priority sizes="(min-width: 1280px) 52vw, 100vw" className="object-cover object-center opacity-95" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_45%,transparent_44%,rgba(2,6,23,0.36)_78%),linear-gradient(180deg,rgba(2,6,23,0.08),rgba(2,6,23,0.18)_52%,rgba(2,6,23,0.38))]" />
         <div className="absolute left-8 right-8 top-8 flex items-center justify-between"><StatusPill tone="slate" dark>digital twin lab</StatusPill><StatusPill tone="amber" dark>prototype only</StatusPill></div>
-        <div className="absolute left-1/2 top-1/2 h-72 w-96 -translate-x-1/2 -translate-y-1/2 rounded-[48%] border border-cyan-200/25 bg-[radial-gradient(circle_at_44%_42%,rgba(125,211,252,0.64),transparent_18%),radial-gradient(circle_at_38%_60%,rgba(244,63,94,0.38),transparent_14%),radial-gradient(circle_at_62%_55%,rgba(52,211,153,0.32),transparent_18%),linear-gradient(135deg,rgba(15,23,42,0.2),rgba(59,130,246,0.16))] shadow-[0_0_100px_rgba(34,211,238,0.24)]" />
-        <div className="absolute left-[27%] top-[35%] rounded-full border border-cyan-200/40 bg-cyan-200/15 px-3 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-cyan-100">T2</div>
-        <div className="absolute right-[25%] top-[45%] rounded-full border border-emerald-200/40 bg-emerald-200/15 px-3 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-emerald-100">motor</div>
+        <div className="absolute left-[30%] top-[36%] rounded-full border border-cyan-200/40 bg-cyan-200/15 px-3 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-cyan-100 backdrop-blur">T2</div>
+        <div className="absolute right-[23%] top-[48%] rounded-full border border-emerald-200/40 bg-emerald-200/15 px-3 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-emerald-100 backdrop-blur">motor</div>
         <div className="absolute bottom-8 left-8 right-8 rounded-3xl border border-white/10 bg-white/[0.055] p-4 backdrop-blur-xl"><div className="flex items-center justify-between text-xs uppercase tracking-[0.16em] text-slate-400"><span>scan 01</span><span>scan 02</span><span>scan 03</span><span>next review</span></div><div className="mt-3 h-2 rounded-full bg-white/10"><div className="h-2 w-[62%] rounded-full bg-cyan-300 shadow-[0_0_20px_rgba(103,232,249,0.7)]" /></div></div>
       </div>
 

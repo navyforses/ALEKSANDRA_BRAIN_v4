@@ -18,3 +18,8 @@ Preview screenshots recorded by the browser:
 The Georgian Dashboard page was opened at `/ka/dashboard`. It renders as the dark Concept A clinical command center: left operations summary, central glowing network/brain card, right assistant panel, KPI tiles, pipeline, hypothesis status, activity rail, and evidence intelligence sections. No visible runtime error appeared. Screenshot: `/home/ubuntu/screenshots/3000-im1fpejvr6f3yt0_2026-05-27_02-37-28_1764.webp`.
 
 The Georgian Brain page was opened at `/ka/brain`. It renders as the Concept C digital twin lab: large dark hero, view-mode pills, layer controls, central glowing brain/lab visual, evidence links, scan scrubber, viewer status, and safety boundary. No visible runtime error appeared. Screenshot: `/home/ubuntu/screenshots/3000-im1fpejvr6f3yt0_2026-05-27_02-37-41_1488.webp`.
+
+
+## Generated brain asset QA
+
+Concept C mockup-იდან ამოჭრილი `viewer/public/assets/generated_digital_twin_brain.webp` არის რეალური generated brain ვიზუალი translucent medical/digital-twin სტილში. საწყისი crop-ში ჩანს brain-ის ძირითადი ნაწილი, pink/green activation overlays და dark scan UI; მიზანია coded radial placeholder-ის ჩანაცვლება სწორედ ამ raster asset-ით. საბოლოო ჩასმისას უნდა დაიმალოს ან ჩარჩოში ჩაიკრას ზედმეტი UI controls/labels, თუ ისინი panel-ში ზედმეტად გამოჩნდება.
