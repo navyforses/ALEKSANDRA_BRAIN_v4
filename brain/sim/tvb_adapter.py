@@ -24,9 +24,13 @@ Hard rules (CLAUDE.md + dispatch):
     vector. Do NOT replace ``synthetic_hie_lesion_mask_for_aleksandra``
     with a real per-patient mask server-side.
   * **No fabricated facts.** The 998-region connectivity inside the TVB
-    image is the Hagmann 998-region connectome (Hagmann et al. PLoS Biol
-    2008 -- citation in spec §8.2; no PMID grounded in this repo yet,
-    flagged with a TODO marker rather than guessed).
+    image is the Hagmann 998-region connectome (Hagmann et al., PLoS
+    Biology 2008, PMID 18597554, https://pubmed.ncbi.nlm.nih.gov/18597554/).
+    The TVB simulator itself is Sanz Leon et al., Front Neuroinform
+    2013, PMID 23781198, https://pubmed.ncbi.nlm.nih.gov/23781198/.
+    Both PMIDs were verified via PubMed lookup post-Phase-7.3-Layer-B
+    (the spec's hedged ``23781175`` referred to an unrelated zebrafish
+    paper).
   * **Sync only**, no asyncio; one short-lived ``docker run --rm``
     container per simulation; auto-cleanup via ``--rm`` and
     ``tempfile.TemporaryDirectory``.
@@ -282,15 +286,17 @@ def load_default_connectome_metadata() -> dict[str, Any]:
     """Return metadata about the connectome the adapter selects by
     default. Spec-mandated default is the Hagmann 998-region connectome.
 
-    Citation: Hagmann P. et al., PLoS Biology 2008. PMID not yet grounded
-    in this repo -- TODO marker rather than guess (per dispatch rules)."""
+    Citation: Hagmann P. et al., "Mapping the structural core of human
+    cerebral cortex", PLoS Biology 2008, PMID 18597554. Verified via
+    PubMed lookup post-Phase-7.3-Layer-B (the spec's hedged 23781175
+    referred to an unrelated zebrafish paper)."""
     return {
         "region_count": TVB_DEFAULT_REGION_COUNT,
         "filename": f"connectivity_{TVB_DEFAULT_REGION_COUNT}.zip",
         "source": (
-            "Hagmann et al. PLoS Biology 2008 "
-            "(998-region whole-brain connectome). "
-            "TODO(citation): PMID not yet grounded in repo."
+            "Hagmann et al., 'Mapping the structural core of human "
+            "cerebral cortex', PLoS Biology 2008, PMID 18597554, "
+            "https://pubmed.ncbi.nlm.nih.gov/18597554/"
         ),
         "deviation_note": (
             "TVB image's connectivity_998.zip emits readers WARNINGs about "
