@@ -29,3 +29,12 @@ Route checked: `http://localhost:3000/ka/resources`
 Screenshot: `/home/ubuntu/screenshots/localhost_2026-05-28_19-48-54_2825.webp`
 
 The resources page correctly uses the unified redesigned structure. It presents the doctor-facing brief as a safe communication artifact rather than as medical instruction, with Georgian content organized around evidence, uncertainty/risk, and doctor questions.
+
+
+## Production smoke check after push
+
+Production deployment checked: `https://viewer-djwobqx64-shakos-projects-82dad3f2.vercel.app/ka`.
+
+The Georgian-first redesigned shell loads successfully in production. The central Evidence → Risk → Doctor Question framing, the research-only disclaimer, the left navigation, the assistant panel, and the doctor-brief CTA are all visible and coherent.
+
+A production DOM overflow diagnostic returned an empty list of overflowing elements (`[]`). This confirms the page itself does not create actual horizontal overflow; the bottom bar visible in the browser screenshot is attributable to the viewport/browser frame rather than to a content element exceeding page width.
