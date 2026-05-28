@@ -46,10 +46,10 @@ const secondaryLinks: NavItem[] = [
 ];
 
 const assistantActions: AssistantAction[] = [
-  { titleKa: "შემაჯამე", titleEn: "Summarize", textKa: "თემის მოკლე პასუხი", textEn: "Short answer for this topic", icon: MessageSquareText },
-  { titleKa: "რისკები", titleEn: "Risks", textKa: "შეზღუდვები და გაურკვევლობა", textEn: "Limits and uncertainty", icon: Scale },
-  { titleKa: "ექიმთან კითხვა", titleEn: "Doctor question", textKa: "უსაფრთხო კითხვა ვიზიტისთვის", textEn: "Safe visit question", icon: Stethoscope },
-  { titleKa: "შედარება", titleEn: "Compare", textKa: "ორი იდეის მტკიცებულება", textEn: "Evidence between two ideas", icon: Layers3 },
+  { titleKa: "შეჯამება", titleEn: "Summary", textKa: "მხოლოდ რეალური მონაცემით", textEn: "Only with real data", icon: MessageSquareText },
+  { titleKa: "რისკები", titleEn: "Risks", textKa: "წყაროს არსებობისას", textEn: "Only if sources exist", icon: Scale },
+  { titleKa: "ექიმთან კითხვა", titleEn: "Doctor question", textKa: "მონაცემიდან შედგენილი", textEn: "Built from available data", icon: Stethoscope },
+  { titleKa: "შედარება", titleEn: "Compare", textKa: "მონაცემი არ არის", textEn: "No data available", icon: Layers3 },
 ];
 
 function normalizePath(pathname: string, locale: Locale) {
@@ -159,7 +159,7 @@ export default function PortalFrame({ children, locale }: { children: ReactNode;
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h2 className="text-sm font-semibold text-white">{isKa ? "კვლევის ასისტენტი" : "Research assistant"}</h2>
-                <p className="mt-1 text-[0.72rem] leading-5 text-slate-400">{isKa ? "აირჩიე მოქმედება, შემდეგ წაიკითხე მოკლე პასუხი." : "Choose an action, then read a concise answer."}</p>
+                <p className="mt-1 text-[0.72rem] leading-5 text-slate-400">{isKa ? "პასუხი გამოჩნდება მხოლოდ მაშინ, როცა რეალური მონაცემი არსებობს." : "Answers appear only when real data exists."}</p>
               </div>
               <span className="grid h-9 w-9 place-items-center rounded-xl border border-sky-300/20 bg-sky-300/[0.07] text-sky-100">
                 <MessageSquareText className="h-4 w-4" />
@@ -190,7 +190,7 @@ export default function PortalFrame({ children, locale }: { children: ReactNode;
                 {isKa ? "უსაფრთხო პასუხის წესი" : "Safe answer rule"}
               </div>
               <p className="mt-2 text-[0.72rem] leading-5 text-slate-400">
-                {isKa ? "ყოველი პასუხი უნდა შეიცავდეს მტკიცებულებას, გაურკვევლობას და ექიმთან დასასმელ კითხვას." : "Each answer should include evidence, uncertainty, and a question for the clinician."}
+                {isKa ? "თუ წყაროთი დადასტურებული მონაცემი არ არსებობს, ინტერფეისი წერს: „მონაცემი არ არის“." : "If source-backed data does not exist, the interface says: “No data available.”"}
               </p>
             </div>
           </section>
