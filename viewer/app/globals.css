@@ -59,9 +59,34 @@
   --radius-sm: calc(var(--radius) - 4px);
 }
 
+html {
+  background: #08111f;
+  scroll-behavior: smooth;
+  overflow-x: hidden;
+}
+
 body {
-  background: hsl(var(--background));
+  min-height: 100vh;
+  overflow-x: hidden;
+  background: #08111f;
   color: hsl(var(--foreground));
+  font-feature-settings: "case" 1;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+:lang(ka) body,
+:lang(ka) button,
+:lang(ka) input,
+:lang(ka) textarea,
+:lang(ka) select {
+  letter-spacing: -0.006em;
+}
+
+::selection {
+  background: rgba(125, 211, 252, 0.25);
+  color: #f8fafc;
 }
 
 /* Custom Micro-Animations */
