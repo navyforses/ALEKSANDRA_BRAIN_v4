@@ -27,11 +27,44 @@ function closeLabel(locale: Locale) {
   return locale === "ka" ? "დახურვა" : "Close";
 }
 
+function cleanInlineMarkdown(value: string) {
+  return value
+    .replace(/^#{1,6}\s+/gm, "")
+    .replace(/^[-*•]\s+/gm, "")
+    .replace(/\*\*(.*?)\*\*/g, "$1")
+    .replace(/__(.*?)__/g, "$1")
+    .replace(/\[(.*?)\]\([^)]*\)/g, "$1")
+    .replace(/[`*_~]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function shortTitle(value: string, fallback: string) {
+  const raw = value.trim();
+  if (!raw) return fallback;
+
+  const heading = raw.match(/^\s*#{1,6}\s+(.+)$/m)?.[1];
+  const firstLine = raw.split(/\r?\n/).map((line) => line.trim()).find(Boolean);
+  const seed = cleanInlineMarkdown(heading || firstLine || raw);
+  const sentence = seed.split(/\s+[—–-]\s+|(?<=[.!?…])\s+/u)[0]?.trim() || seed;
+  const capped = sentence.length > 92 ? `${sentence.slice(0, 89).trim()}…` : sentence;
+  return capped || fallback;
+}
+
+function documentView(item: ReaderItem, locale: Locale) {
+  const fallback = item.source || noData(locale);
+  const title = shortTitle(item.title, fallback);
+  const rawBody = item.body?.trim();
+  const cleanedTitle = cleanInlineMarkdown(item.title);
+  const body = rawBody || (cleanedTitle && cleanedTitle !== title ? cleanedTitle : undefined);
+  return { ...item, title, body };
+}
+
 function splitBody(body?: string) {
   if (!body?.trim()) return [];
   return body
     .split(/\s+—\s+|\n{2,}/g)
-    .map((part) => part.trim())
+    .map((part) => cleanInlineMarkdown(part))
     .filter(Boolean);
 }
 
@@ -60,20 +93,23 @@ export function PortalDocumentList({ items, locale }: { items: ReaderItem[]; loc
   return (
     <>
       <div className="grid gap-3 lg:grid-cols-2">
-        {items.map((item, index) => (
-          <button
-            key={`${item.source}-${item.title}-${index}`}
-            type="button"
-            onClick={() => setSelected(item)}
-            aria-label={`${openLabel(locale)}: ${item.title}`}
-            className="group flex min-h-24 w-full items-center justify-between gap-4 rounded-3xl border border-white/10 bg-white/[0.045] p-5 text-left shadow-2xl shadow-slate-950/20 transition duration-200 hover:-translate-y-0.5 hover:border-sky-200/40 hover:bg-white/[0.075] focus:outline-none focus:ring-2 focus:ring-sky-300/70"
-          >
-            <h3 className="text-lg font-black leading-snug text-white md:text-xl">{item.title}</h3>
-            <span aria-hidden="true" className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-white/10 bg-sky-300/10 text-xl font-black text-sky-100 transition group-hover:bg-sky-300 group-hover:text-slate-950">
-              →
-            </span>
-          </button>
-        ))}
+        {items.map((item, index) => {
+          const doc = documentView(item, locale);
+          return (
+            <button
+              key={`${item.source}-${item.title}-${index}`}
+              type="button"
+              onClick={() => setSelected(doc)}
+              aria-label={`${openLabel(locale)}: ${doc.title}`}
+              className="group flex min-h-24 w-full items-center justify-between gap-4 rounded-3xl border border-white/10 bg-white/[0.045] p-5 text-left shadow-2xl shadow-slate-950/20 transition duration-200 hover:-translate-y-0.5 hover:border-sky-200/40 hover:bg-white/[0.075] focus:outline-none focus:ring-2 focus:ring-sky-300/70"
+            >
+              <h3 className="portal-card-title min-w-0 text-lg font-black leading-snug text-white md:text-xl">{doc.title}</h3>
+              <span aria-hidden="true" className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-white/10 bg-sky-300/10 text-xl font-black text-sky-100 transition group-hover:bg-sky-300 group-hover:text-slate-950">
+                →
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       {selected ? (
