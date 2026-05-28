@@ -6,6 +6,7 @@
 // excluded from the i18n proxy matcher and continue to render their own shells.
 import type { Metadata, Viewport } from "next";
 import { DEFAULT_OG_IMAGE, SITE_URL } from "@/lib/seo";
+import "./globals.css";
 
 export const viewport: Viewport = {
   width: "device-width",

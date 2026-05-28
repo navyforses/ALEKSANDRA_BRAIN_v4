@@ -7,7 +7,6 @@ import { routing } from "@/i18n/routing";
 import TopNav from "@/components/layout/TopNav";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { buildPageMetadata, type Locale } from "@/lib/seo";
-import "../globals.css";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
 

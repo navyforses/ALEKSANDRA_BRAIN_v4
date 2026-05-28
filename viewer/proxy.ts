@@ -7,7 +7,8 @@
 //   - api      → JSON endpoints, no UI
 //   - _next    → Next.js asset paths
 //   - _vercel  → Vercel system paths
-//   - .*\..*   → static files (any path containing a dot in a segment)
+//   - .*\\..*   → static files (any path containing a dot in a segment)
+//   - minimal  → standalone design preview, intentionally outside localized chrome
 //
 // audit + brain were previously excluded as "English-only admin tools" but now
 // live under [locale]/ so the proxy runs and applies the locale prefix.
@@ -17,5 +18,5 @@ import {routing} from './i18n/routing';
 export default createMiddleware(routing);
 
 export const config = {
-  matcher: '/((?!api|_next|_vercel|.*\\..*).*)'
+  matcher: '/((?!api|_next|_vercel|minimal|.*\\..*).*)'
 };
