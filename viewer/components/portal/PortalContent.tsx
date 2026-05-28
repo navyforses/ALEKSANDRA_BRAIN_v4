@@ -97,17 +97,17 @@ type Therapy = {
 
 type Hypothesis = {
   id?: string;
-  title?: string;
-  description?: string;
+  title?: unknown;
+  description?: unknown;
   hypothesis_type?: string;
   confidence_level?: string;
   novelty_score?: number;
   feasibility_score?: number;
   urgency?: string;
-  ai_reasoning?: string;
-  recommended_action?: string;
+  ai_reasoning?: unknown;
+  recommended_action?: unknown;
   status?: string;
-  outcome?: string;
+  outcome?: unknown;
   reviewed_at?: string;
   updated_at?: string;
   created_at?: string;
@@ -325,17 +325,28 @@ const shells: Record<Locale, Record<PageKey, Omit<Topic, "data">>> = {
   },
 };
 
-function text(value: unknown): string {
+function text(value: unknown, locale: Locale = "ka"): string {
   if (value === null || value === undefined) return "";
   if (typeof value === "string") return value.trim();
   if (typeof value === "number" || typeof value === "boolean") return String(value);
-  if (Array.isArray(value)) return value.map(text).filter(Boolean).join("; ");
-  if (typeof value === "object") return Object.entries(value as Record<string, unknown>).map(([k, v]) => `${k}: ${text(v)}`).filter((v) => !v.endsWith(": ")).join("; ");
+  if (Array.isArray(value)) return value.map((entry) => text(entry, locale)).filter(Boolean).join("; ");
+  if (typeof value === "object") {
+    const obj = value as Record<string, unknown>;
+    const direct = text(obj[locale] ?? obj[locale === "ka" ? "en" : "ka"], locale);
+    if (direct) return direct;
+    return Object.entries(obj)
+      .map(([k, v]) => {
+        const rendered = text(v, locale);
+        return rendered ? `${k}: ${rendered}` : "";
+      })
+      .filter(Boolean)
+      .join("; ");
+  }
   return "";
 }
 
-function join(parts: Array<string | number | null | undefined>, sep = " · ") {
-  return parts.map((p) => (p === null || p === undefined ? "" : String(p).trim())).filter(Boolean).join(sep);
+function join(parts: Array<unknown>, sep = " · ", locale: Locale = "ka") {
+  return parts.map((p) => text(p, locale)).filter(Boolean).join(sep);
 }
 
 function date(value?: string, locale: Locale = "ka") {
@@ -355,9 +366,11 @@ function rowSource(table: string, id?: string) {
   return id ? `Supabase:${table}:${id.slice(0, 8)}` : `Supabase:${table}`;
 }
 
-function item(title?: string, body?: string, source = "Supabase", meta?: string, url?: string): Item | null {
-  if (!text(title) && !text(body)) return null;
-  return { title: text(title) || source, body: text(body) || undefined, source, meta: text(meta) || undefined, url };
+function item(title?: unknown, body?: unknown, source = "Supabase", meta?: unknown, url?: string, locale: Locale = "ka"): Item | null {
+  const renderedTitle = text(title, locale);
+  const renderedBody = text(body, locale);
+  if (!renderedTitle && !renderedBody) return null;
+  return { title: renderedTitle || source, body: renderedBody || undefined, source, meta: text(meta, locale) || undefined, url };
 }
 
 function latest(locale: Locale, values: Array<string | undefined>) {
@@ -384,12 +397,14 @@ function therapyItem(row: Therapy): Item | null {
   );
 }
 
-function hypothesisItem(row: Hypothesis): Item | null {
+function hypothesisItem(row: Hypothesis, locale: Locale): Item | null {
   return item(
     row.title,
-    join([row.description, row.ai_reasoning], " — "),
+    join([row.description, row.ai_reasoning], " — ", locale),
     rowSource("hypotheses", row.id),
-    join([row.hypothesis_type, row.status, row.confidence_level, row.urgency]),
+    join([row.hypothesis_type, row.status, row.confidence_level, row.urgency], " · ", locale),
+    undefined,
+    locale,
   );
 }
 
@@ -491,9 +506,9 @@ async function overview(locale: Locale): Promise<TopicData> {
   return {
     metrics: metrics.filter(Boolean) as Metric[],
     evidence: [...timeline.rows.map((r) => timelineItem(r, locale)), ...papers.rows.map(paperItem)].filter(Boolean) as Item[],
-    uncertainty: hypotheses.rows.map(hypothesisItem).filter(Boolean) as Item[],
+    uncertainty: hypotheses.rows.map((r) => hypothesisItem(r, locale)).filter(Boolean) as Item[],
     risks: therapies.rows.map(therapyItem).filter(Boolean) as Item[],
-    questions: [...hypotheses.rows.map((r) => item(r.title, r.recommended_action, rowSource("hypotheses", r.id), r.status)), ...therapies.rows.map((r) => item(r.name, r.aleksandra_notes || r.ai_assessment, rowSource("therapies", r.id), r.aleksandra_status))].filter(Boolean) as Item[],
+    questions: [...hypotheses.rows.map((r) => item(r.title, r.recommended_action, rowSource("hypotheses", r.id), r.status, undefined, locale)), ...therapies.rows.map((r) => item(r.name, r.aleksandra_notes || r.ai_assessment, rowSource("therapies", r.id), r.aleksandra_status))].filter(Boolean) as Item[],
     briefItems: b,
     updated: latest(locale, [...papers.rows.map((r) => r.updated_at || r.ingested_at || r.created_at), ...hypotheses.rows.map((r) => r.updated_at || r.created_at), ...therapies.rows.map((r) => r.updated_at || r.created_at), ...timeline.rows.map((r) => r.event_date || r.created_at), ...briefs.rows.map((r) => r.generated_at)]),
   };
@@ -507,7 +522,7 @@ async function load(pageKey: PageKey, locale: Locale): Promise<TopicData> {
   }
   if (pageKey === "hypotheses") {
     const rows = await getRows<Hypothesis>("hypotheses", { select: "id,title,description,hypothesis_type,confidence_level,novelty_score,feasibility_score,urgency,ai_reasoning,recommended_action,status,outcome,reviewed_at,updated_at,created_at", order: "created_at.desc", limit: 12 });
-    return { ...emptyData, evidence: rows.rows.map(hypothesisItem).filter(Boolean) as Item[], questions: rows.rows.map((r) => item(r.title, r.recommended_action, rowSource("hypotheses", r.id), r.status)).filter(Boolean) as Item[], risks: rows.rows.map((r) => item(r.title, r.outcome, rowSource("hypotheses", r.id), r.status)).filter(Boolean) as Item[], updated: latest(locale, rows.rows.map((r) => r.updated_at || r.reviewed_at || r.created_at)) };
+    return { ...emptyData, evidence: rows.rows.map((r) => hypothesisItem(r, locale)).filter(Boolean) as Item[], questions: rows.rows.map((r) => item(r.title, r.recommended_action, rowSource("hypotheses", r.id), r.status, undefined, locale)).filter(Boolean) as Item[], risks: rows.rows.map((r) => item(r.title, r.outcome, rowSource("hypotheses", r.id), r.status, undefined, locale)).filter(Boolean) as Item[], updated: latest(locale, rows.rows.map((r) => r.updated_at || r.reviewed_at || r.created_at)) };
   }
   if (pageKey === "therapies") {
     const rows = await getRows<Therapy>("therapies", { select: "id,name,therapy_type,mechanism_of_action,evidence_in_hie,evidence_summary,clinical_status,aleksandra_eligible,aleksandra_status,aleksandra_notes,ai_assessment,confidence_level,updated_at,created_at", order: "updated_at.desc", limit: 12 });
@@ -541,7 +556,7 @@ async function load(pageKey: PageKey, locale: Locale): Promise<TopicData> {
       getRows<Therapy>("therapies", { select: "id,name,evidence_summary,aleksandra_status,ai_assessment,updated_at,created_at", order: "updated_at.desc", limit: 5 }),
     ]);
     const b = briefItems(briefs.rows[0], locale);
-    return { ...emptyData, evidence: [...b, ...papers.rows.map(paperItem), ...hypotheses.rows.map(hypothesisItem), ...therapies.rows.map(therapyItem)].filter(Boolean) as Item[], questions: b.filter((x) => x.source.includes("questions")), briefItems: b, updated: latest(locale, [...briefs.rows.map((r) => r.generated_at), ...papers.rows.map((r) => r.updated_at || r.created_at), ...hypotheses.rows.map((r) => r.updated_at || r.created_at), ...therapies.rows.map((r) => r.updated_at || r.created_at)]) };
+    return { ...emptyData, evidence: [...b, ...papers.rows.map(paperItem), ...hypotheses.rows.map((r) => hypothesisItem(r, locale)), ...therapies.rows.map(therapyItem)].filter(Boolean) as Item[], questions: b.filter((x) => x.source.includes("questions")), briefItems: b, updated: latest(locale, [...briefs.rows.map((r) => r.generated_at), ...papers.rows.map((r) => r.updated_at || r.created_at), ...hypotheses.rows.map((r) => r.updated_at || r.created_at), ...therapies.rows.map((r) => r.updated_at || r.created_at)]) };
   }
   if (pageKey === "knowledge" || pageKey === "how-it-works") {
     const [reports, ingestion] = await Promise.all([
