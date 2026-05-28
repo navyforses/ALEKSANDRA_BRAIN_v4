@@ -1,4 +1,6 @@
-import type { ReactNode } from "react";
+"use client";
+
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import {
   Activity,
@@ -7,6 +9,7 @@ import {
   Bell,
   BookOpen,
   Brain,
+  BarChart3,
   CalendarClock,
   CheckCircle2,
   Database,
@@ -14,9 +17,11 @@ import {
   FlaskConical,
   Heart,
   Library,
+  Gauge,
   LifeBuoy,
   Network,
   Settings,
+  TrendingUp,
   ShieldCheck,
   Sparkles,
   Stethoscope,
@@ -61,14 +66,14 @@ type PageContent = {
 
 const InfoIcon = ShieldCheck;
 
-const toneClasses: Record<Tone, { chip: string; card: string; ring: string; icon: string }> = {
-  blue: { chip: "bg-blue-50 text-blue-800 ring-blue-100", card: "from-blue-50 to-white", ring: "ring-blue-100", icon: "bg-blue-600 text-white" },
-  cyan: { chip: "bg-cyan-50 text-cyan-800 ring-cyan-100", card: "from-cyan-50 to-white", ring: "ring-cyan-100", icon: "bg-cyan-600 text-white" },
-  emerald: { chip: "bg-emerald-50 text-emerald-800 ring-emerald-100", card: "from-emerald-50 to-white", ring: "ring-emerald-100", icon: "bg-emerald-600 text-white" },
-  violet: { chip: "bg-violet-50 text-violet-800 ring-violet-100", card: "from-violet-50 to-white", ring: "ring-violet-100", icon: "bg-violet-600 text-white" },
-  amber: { chip: "bg-amber-50 text-amber-800 ring-amber-100", card: "from-amber-50 to-white", ring: "ring-amber-100", icon: "bg-amber-500 text-white" },
-  rose: { chip: "bg-rose-50 text-rose-800 ring-rose-100", card: "from-rose-50 to-white", ring: "ring-rose-100", icon: "bg-rose-600 text-white" },
-  slate: { chip: "bg-slate-100 text-slate-700 ring-slate-200", card: "from-slate-50 to-white", ring: "ring-slate-200", icon: "bg-slate-800 text-white" },
+const toneClasses: Record<Tone, { chip: string; card: string; ring: string; icon: string; glow: string; text: string }> = {
+  blue: { chip: "bg-blue-500/12 text-blue-100 ring-blue-400/30", card: "from-blue-500/12 via-slate-950/80 to-slate-900/70", ring: "ring-blue-400/20", icon: "bg-blue-500/18 text-blue-200 ring-blue-300/25", glow: "shadow-blue-500/20", text: "text-blue-200" },
+  cyan: { chip: "bg-cyan-400/12 text-cyan-100 ring-cyan-300/30", card: "from-cyan-400/14 via-slate-950/80 to-slate-900/70", ring: "ring-cyan-300/22", icon: "bg-cyan-400/18 text-cyan-100 ring-cyan-300/25", glow: "shadow-cyan-400/20", text: "text-cyan-200" },
+  emerald: { chip: "bg-emerald-400/12 text-emerald-100 ring-emerald-300/30", card: "from-emerald-400/14 via-slate-950/80 to-slate-900/70", ring: "ring-emerald-300/22", icon: "bg-emerald-400/18 text-emerald-100 ring-emerald-300/25", glow: "shadow-emerald-400/20", text: "text-emerald-200" },
+  violet: { chip: "bg-violet-400/12 text-violet-100 ring-violet-300/30", card: "from-violet-500/14 via-slate-950/80 to-slate-900/70", ring: "ring-violet-300/22", icon: "bg-violet-400/18 text-violet-100 ring-violet-300/25", glow: "shadow-violet-400/20", text: "text-violet-200" },
+  amber: { chip: "bg-amber-300/12 text-amber-100 ring-amber-300/30", card: "from-amber-300/12 via-slate-950/80 to-slate-900/70", ring: "ring-amber-300/22", icon: "bg-amber-300/18 text-amber-100 ring-amber-300/25", glow: "shadow-amber-300/15", text: "text-amber-100" },
+  rose: { chip: "bg-rose-400/12 text-rose-100 ring-rose-300/30", card: "from-rose-400/14 via-slate-950/80 to-slate-900/70", ring: "ring-rose-300/22", icon: "bg-rose-400/18 text-rose-100 ring-rose-300/25", glow: "shadow-rose-400/20", text: "text-rose-100" },
+  slate: { chip: "bg-slate-700/60 text-slate-200 ring-white/10", card: "from-white/[0.06] via-slate-950/80 to-slate-900/70", ring: "ring-white/10", icon: "bg-white/8 text-slate-200 ring-white/10", glow: "shadow-slate-950/20", text: "text-slate-200" },
 };
 
 const georgianPages: Record<PageKey, PageContent> = {
@@ -478,134 +483,181 @@ function contentFor(locale: Locale, key: PageKey): PageContent {
 }
 
 export function StatusChip({ children, tone = "blue" }: { children: ReactNode; tone?: Tone }) {
-  return <span className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ring-1 ${toneClasses[tone].chip}`}>{children}</span>;
+  return <span className={`inline-flex rounded-full px-3 py-1 text-[0.68rem] font-bold uppercase tracking-[0.18em] ring-1 ${toneClasses[tone].chip}`}>{children}</span>;
 }
 
 export function PortalPanel({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <section className={`rounded-[1.75rem] border border-slate-200 bg-white/90 shadow-xl shadow-slate-950/[0.045] backdrop-blur ${className}`}>{children}</section>;
+  return <section className={`rounded-[1.35rem] border border-white/10 bg-slate-950/72 shadow-2xl shadow-black/30 backdrop-blur-xl ${className}`}>{children}</section>;
 }
 
-export function PortalHomeDashboard({ locale }: { locale: Locale }) {
-  const isKa = locale === "ka";
-  const cards = [
-    { icon: Bell, title: "რა შეიცვალა დღეს", body: "ახალი კვლევები, ექსპერტის კომენტარი და მიმდინარე დაკვირვებები ერთ მშვიდ შეჯამებაში.", tone: "blue" as Tone, rows: ["3 ახალი კვლევა დაემთხვა", "1 ექსპერტის კომენტარი დაემატა", "2 მიმდინარე განახლება"] },
-    { icon: BookOpen, title: "მტკიცებულება განხილვაშია", body: "წყაროები, რომლებსაც გუნდი ახლა უფრო ახლოს უყურებს.", tone: "emerald" as Tone, rows: ["ტვინის კავშირები", "ჩარევის დრო", "მხარდამჭერი თერაპიები"] },
-    { icon: Heart, title: "ჰკითხე ექიმს", body: "მომდევნო საუბრისთვის მომზადებული, არადიაგნოსტიკური კითხვები.", tone: "amber" as Tone, rows: ["რა არის მთავარი პრიორიტეტი?", "რა უნდა განვიხილოთ?", "როდის გადავხედოთ გეგმას?"] },
-    { icon: Stethoscope, title: "თერაპიის დაკვირვების სია", body: "შესაძლო მიდგომები მტკიცებულების სიმწიფით და კლინიკური საზღვრით.", tone: "violet" as Tone, rows: ["კოგნიტური მხარდაჭერა", "მოტორული განვითარება", "ნეირომოდულაციის კვლევა"] },
-  ];
+function useLivePulse(seed = 0) {
+  const [tick, setTick] = useState(seed);
+
+  useEffect(() => {
+    const interval = window.setInterval(() => setTick((value) => value + 1), 2400);
+    return () => window.clearInterval(interval);
+  }, []);
+
+  return tick;
+}
+
+function formatMetric(base: number, tick: number, drift = 5) {
+  const wave = Math.sin((tick + base) / 2.7) * drift;
+  const value = Math.max(0, Math.round(base + wave));
+  return value.toLocaleString("en-US");
+}
+
+function Sparkline({ tone = "cyan", compact = false }: { tone?: Tone; compact?: boolean }) {
+  const tick = useLivePulse(1);
+  const points = useMemo(() => {
+    return Array.from({ length: 18 }, (_, index) => {
+      const x = (index / 17) * 100;
+      const y = 58 - Math.sin((index + tick) / 2.1) * 18 - Math.cos(index / 2.8) * 9;
+      return `${x},${Math.max(12, Math.min(86, y))}`;
+    }).join(" ");
+  }, [tick]);
 
   return (
-    <div className="space-y-5">
-      <PortalPanel className="overflow-hidden p-0">
-        <div className="grid gap-6 p-6 lg:grid-cols-[1.3fr_0.9fr] lg:p-8">
-          <div>
-            <StatusChip tone="cyan">{isKa ? "ოჯახისთვის უსაფრთხო კვლევის სივრცე" : "Family-safe research workspace"}</StatusChip>
-            <h1 className="mt-5 max-w-4xl text-[clamp(2rem,3.7vw,3.85rem)] font-semibold leading-[1.04] tracking-[-0.055em] text-slate-950">
-              {isKa ? "თქვენ მარტო არ ხართ. ერთად ვალაგებთ იმას, რაც ვიცით." : "You are not alone. We make sense of what we know—together."}
-            </h1>
-            <p className="mt-5 max-w-3xl text-base leading-8 text-slate-600">
-              {isKa
-                ? "ALEKSANDRA_BRAIN აკავშირებს კვლევას, ოჯახის დაკვირვებებს და ექიმთან გადასამოწმებელ კითხვებს, რათა საუბარი იყოს მშვიდი, ზუსტი და უსაფრთხო."
-                : "ALEKSANDRA_BRAIN connects research, family observations, and clinician-reviewed questions for safer conversations."}
-            </p>
-            <div className="mt-7 flex flex-wrap gap-3">
-              <Link href={`/${locale}/dashboard`} className="rounded-full bg-slate-950 px-5 py-3 text-sm font-bold text-white shadow-xl shadow-slate-950/15 transition hover:-translate-y-0.5">
-                {isKa ? "მართვის პანელი" : "Open command center"}
-              </Link>
-              <Link href={`/${locale}/how-it-works`} className="rounded-full border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-800 transition hover:-translate-y-0.5 hover:border-cyan-300">
-                {isKa ? "როგორ მუშაობს" : "How it works"}
-              </Link>
-            </div>
-          </div>
-          <div className="relative min-h-72 overflow-hidden rounded-[1.75rem] border border-cyan-100 bg-gradient-to-br from-cyan-50 via-white to-blue-50 p-6">
-            <div className="absolute -right-8 top-8 h-44 w-44 rounded-full bg-cyan-300/30 blur-3xl" />
-            <div className="absolute left-8 top-14 h-24 w-24 rounded-full border border-cyan-200" />
-            <div className="absolute right-16 top-8 h-16 w-16 rounded-full border border-blue-200" />
-            <div className="relative z-10 grid h-full place-items-center">
-              <div className="grid grid-cols-3 gap-5 text-center">
-                {[
-[BookOpen, isKa ? "მტკიცებულება" : "Evidence"],
-	                  [UsersRound, isKa ? "ზრუნვის გუნდი" : "Care team"],
-	                  [FlaskConical, isKa ? "კვლევა" : "Research"],
-                ].map(([Icon, label], index) => {
-                  const IconComponent = Icon as LucideIcon;
-                  return (
-                    <div key={String(label)} className={`grid place-items-center rounded-full ${index === 1 ? "h-24 w-24 bg-emerald-500 text-white" : "h-20 w-20 bg-white text-blue-700"} shadow-xl shadow-blue-900/10 ring-1 ring-blue-100`}>
-                      <IconComponent className="h-9 w-9" />
-                      <span className="sr-only">{String(label)}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        </div>
-      </PortalPanel>
+    <svg viewBox="0 0 100 72" className={compact ? "h-10 w-24" : "h-16 w-full"} aria-hidden="true">
+      <defs>
+        <linearGradient id={`spark-${tone}`} x1="0" x2="1">
+          <stop offset="0%" stopColor={tone === "violet" ? "#a78bfa" : tone === "emerald" ? "#34d399" : "#22d3ee"} stopOpacity="0.15" />
+          <stop offset="100%" stopColor={tone === "blue" ? "#60a5fa" : "#22d3ee"} stopOpacity="0.85" />
+        </linearGradient>
+      </defs>
+      <polyline fill="none" stroke={`url(#spark-${tone})`} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" points={points} />
+      <polyline fill="none" stroke="rgba(255,255,255,0.16)" strokeWidth="1" points="0,58 100,58" />
+    </svg>
+  );
+}
 
-      <JourneyStrip />
+function MetricTile({ label, base, suffix = "", detail, tone, icon: Icon, drift = 4, liveLabel = "live" }: { label: string; base: number; suffix?: string; detail: string; tone: Tone; icon: LucideIcon; drift?: number; liveLabel?: string }) {
+  const tick = useLivePulse(base);
+  return (
+    <PortalPanel className={`group overflow-hidden bg-gradient-to-br ${toneClasses[tone].card} p-4 ring-1 ${toneClasses[tone].ring} transition duration-500 hover:-translate-y-1 hover:border-white/20 hover:shadow-2xl ${toneClasses[tone].glow}`}>
+      <div className="flex items-start justify-between gap-3">
+        <div className={`grid h-10 w-10 place-items-center rounded-2xl ring-1 ${toneClasses[tone].icon}`}><Icon className="h-5 w-5" /></div>
+        <Sparkline tone={tone} compact />
+      </div>
+      <p className="mt-4 text-[0.67rem] font-bold uppercase tracking-[0.2em] text-slate-400">{label}</p>
+      <div className="mt-2 flex items-end gap-2">
+        <p className="text-3xl font-semibold tracking-[-0.05em] text-white">{formatMetric(base, tick, drift)}{suffix}</p>
+        <span className={`pb-1 text-xs font-semibold ${toneClasses[tone].text}`}>{liveLabel}</span>
+      </div>
+      <p className="mt-1 text-xs leading-5 text-slate-400">{detail}</p>
+    </PortalPanel>
+  );
+}
 
-      <section className="grid gap-4 xl:grid-cols-4">
-        {cards.map((card) => {
-          const Icon = card.icon;
-          return (
-            <PortalPanel key={card.title} className={`overflow-hidden bg-gradient-to-br ${toneClasses[card.tone].card} p-5 ring-1 ${toneClasses[card.tone].ring}`}>
-              <div className="flex items-start justify-between gap-3">
-                <div className={`grid h-11 w-11 place-items-center rounded-2xl ${toneClasses[card.tone].icon}`}>
-                  <Icon className="h-5 w-5" />
-                </div>
-                <StatusChip tone={card.tone}>{isKa ? "განხილვა" : "review"}</StatusChip>
-              </div>
-              <h2 className="mt-4 text-lg font-bold tracking-[-0.03em] text-slate-950">{card.title}</h2>
-              <p className="mt-2 text-sm leading-6 text-slate-600">{card.body}</p>
-              <div className="mt-4 space-y-2">
-                {card.rows.map((row) => (
-                  <div key={row} className="flex items-center justify-between rounded-2xl border border-white/70 bg-white/72 px-3 py-3 text-sm text-slate-700">
-                    <span>{row}</span>
-                    <ArrowRight className="h-4 w-4 text-slate-400" />
-                  </div>
-                ))}
-              </div>
-            </PortalPanel>
-          );
+function NeuralField() {
+  const nodes = [
+    [20, 38, "cyan"], [34, 20, "blue"], [48, 44, "violet"], [62, 26, "cyan"], [78, 42, "emerald"], [58, 62, "blue"], [30, 64, "violet"], [82, 18, "cyan"],
+  ] as const;
+  return (
+    <div className="relative min-h-[15rem] overflow-hidden rounded-[1.35rem] border border-cyan-300/10 bg-[radial-gradient(circle_at_65%_32%,rgba(34,211,238,0.22),transparent_30%),radial-gradient(circle_at_78%_42%,rgba(168,85,247,0.22),transparent_28%),linear-gradient(135deg,rgba(15,23,42,0.96),rgba(2,6,23,0.92))] p-5">
+      <div className="absolute inset-x-0 top-1/2 h-px bg-gradient-to-r from-transparent via-cyan-300/60 to-transparent shadow-[0_0_28px_rgba(34,211,238,0.7)]" />
+      <div className="absolute left-[24%] top-[42%] h-20 w-44 rounded-full bg-cyan-400/15 blur-2xl" />
+      <div className="absolute right-[12%] top-[18%] h-28 w-56 rounded-full bg-violet-500/15 blur-2xl" />
+      <svg viewBox="0 0 100 78" className="absolute inset-0 h-full w-full opacity-85" aria-hidden="true">
+        {nodes.slice(0, -1).map(([x, y], index) => {
+          const [nextX, nextY] = nodes[index + 1];
+          return <line key={`${x}-${y}`} x1={x} y1={y} x2={nextX} y2={nextY} stroke="rgba(125,211,252,0.28)" strokeWidth="0.45" />;
         })}
-      </section>
-
-      <PortalPanel className="p-5">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex items-start gap-4">
-            <span className="grid h-14 w-14 shrink-0 place-items-center rounded-3xl bg-blue-600 text-white shadow-lg shadow-blue-600/20"><UsersRound className="h-7 w-7" /></span>
-            <div>
-              <h2 className="text-2xl font-bold tracking-[-0.04em] text-slate-950">{isKa ? "კვლევის მხარდაჭერა — მკურნალობას ექიმები წყვეტენ" : "Research support — doctors decide treatment"}</h2>
-              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">{isKa ? "ALEKSANDRA_BRAIN აგროვებს ცოდნას. თქვენი ზრუნვის გუნდი ამატებს კონტექსტს, გამოცდილებას და საბოლოო კლინიკურ გადაწყვეტილებას." : "ALEKSANDRA_BRAIN organizes knowledge. Your care team adds context, experience, and the final clinical decision."}</p>
-            </div>
-          </div>
-          <Link href={`/${locale}/resources`} className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-800 transition hover:border-blue-300 hover:bg-blue-50">
-            რესურსების ნახვა
-          </Link>
+        {nodes.map(([x, y, tone], index) => (
+          <g key={`${x}-${y}-${tone}`} className="animate-pulse" style={{ animationDelay: `${index * 180}ms` }}>
+            <circle cx={x} cy={y} r="2.9" fill={tone === "violet" ? "#a78bfa" : tone === "emerald" ? "#34d399" : "#38bdf8"} opacity="0.9" />
+            <circle cx={x} cy={y} r="7" fill="none" stroke="rgba(255,255,255,0.12)" />
+          </g>
+        ))}
+      </svg>
+      <div className="relative z-10 flex h-full flex-col justify-between gap-12">
+        <div>
+          <StatusChip tone="cyan">ცოცხალი კვლევის ტვინი</StatusChip>
+          <h2 className="mt-4 max-w-2xl text-3xl font-semibold tracking-[0.22em] text-white md:text-4xl">ALEKSANDRA_BRAIN</h2>
+          <p className="mt-3 max-w-xl text-sm leading-6 text-slate-300">ცოცხალი კვლევითი სისტემა, სადაც წყაროები, ჰიპოთეზები და თერაპიის კანდიდატები რეალურ დროში ერთიანდება.</p>
         </div>
-      </PortalPanel>
+        <div className="grid gap-3 sm:grid-cols-3">
+          {["მტკიცებულების გრაფი", "ჰიპოთეზების ძრავი", "კლინიკური საზღვარი"].map((label) => (
+            <div key={label} className="rounded-2xl border border-white/10 bg-black/20 px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-cyan-100 backdrop-blur">{label}</div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
 
-function JourneyStrip() {
-  const steps = [
-    ["ინფორმაცია შეგროვდა", "მიმდინარე", CheckCircle2, "blue"],
-["მტკიცებულება შეგროვდა", "მიმდინარეობს", FileText, "cyan"],
-	    ["მტკიცებულება განხილვაშია", "ახლა", Network, "blue"],
-	    ["კითხვები ექიმისთვის", "შემდეგი", Heart, "amber"],
-	    ["საუბარი ზრუნვის გუნდთან", "შემდეგი", UsersRound, "slate"],
-	    ["გეგმა ერთად", "მიმდინარე", ShieldCheck, "emerald"],
+function PipelineView() {
+  const stages = [
+    { icon: Network, label: "მტკიცებულების რუკა", value: "12,842", detail: "წყაროები", tone: "blue" as Tone },
+    { icon: Brain, label: "ჰიპოთეზების ძრავი", value: "256", detail: "კანდიდატი", tone: "violet" as Tone },
+    { icon: CheckCircle2, label: "ვალიდაცია", value: "173", detail: "მხარდაჭერილი", tone: "cyan" as Tone },
+    { icon: FlaskConical, label: "თერაპიის კანდიდატები", value: "28", detail: "ნაკადი", tone: "emerald" as Tone },
+    { icon: UsersRound, label: "კლინიკური გავლენა", value: "მიმდინარე", detail: "სწავლა", tone: "blue" as Tone },
+  ];
+  return (
+    <PortalPanel className="overflow-hidden p-5">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-lg font-semibold tracking-[-0.03em] text-white">მტკიცებულება → ჰიპოთეზა → თერაპიის ნაკადი</h2>
+          <p className="text-xs text-slate-400">ავტომატურად განახლებადი ეტაპები; კლინიკური მოქმედება მხოლოდ ექიმთან.</p>
+        </div>
+        <StatusChip tone="cyan">ნაკადის მოდელი</StatusChip>
+      </div>
+      <div className="relative mt-5 grid gap-3 lg:grid-cols-5">
+        <div className="pointer-events-none absolute left-4 right-4 top-12 hidden h-px bg-gradient-to-r from-cyan-400/0 via-cyan-300/70 to-violet-400/0 shadow-[0_0_18px_rgba(34,211,238,0.7)] lg:block" />
+        {stages.map((stage, index) => {
+          const Icon = stage.icon;
+          return (
+            <div key={stage.label} className="relative overflow-hidden rounded-2xl border border-white/10 bg-slate-900/60 p-4 transition duration-500 hover:-translate-y-1 hover:border-cyan-300/30">
+              <div className={`grid h-14 w-14 place-items-center rounded-full ring-1 ${toneClasses[stage.tone].icon} shadow-2xl ${toneClasses[stage.tone].glow}`}>
+                <Icon className="h-7 w-7" />
+              </div>
+              <p className="mt-4 text-[0.65rem] font-bold uppercase tracking-[0.18em] text-slate-500">{index + 1}. {stage.label}</p>
+              <p className="mt-2 text-2xl font-semibold tracking-[-0.05em] text-white">{stage.value}</p>
+              <p className="text-xs text-slate-400">{stage.detail}</p>
+            </div>
+          );
+        })}
+      </div>
+    </PortalPanel>
+  );
+}
+
+function DonutChart({ value, tone = "cyan", label }: { value: number; tone?: Tone; label: string }) {
+  const color = tone === "violet" ? "#a78bfa" : tone === "emerald" ? "#34d399" : tone === "amber" ? "#fbbf24" : "#22d3ee";
+  return (
+    <div className="flex items-center gap-4 rounded-2xl border border-white/10 bg-white/[0.035] p-4">
+      <div className="relative h-24 w-24 shrink-0 rounded-full" style={{ background: `conic-gradient(${color} ${value * 3.6}deg, rgba(255,255,255,0.08) 0deg)` }}>
+        <div className="absolute inset-3 grid place-items-center rounded-full bg-slate-950 text-center shadow-inner shadow-black/50">
+          <span className="text-xl font-semibold text-white">{value}%</span>
+        </div>
+      </div>
+      <div>
+        <p className="text-sm font-semibold text-white">{label}</p>
+        <p className="mt-1 text-xs leading-5 text-slate-400">დღიურად ახლდება · წყაროს სანდოობით შეწონილი</p>
+      </div>
+    </div>
+  );
+}
+
+function DomainBars() {
+  const rows = [
+    ["ნეიროანთება", 26, "cyan"],
+    ["მიტოქონდრიული მხარდაჭერა", 21, "emerald"],
+    ["ექსაიტოტოქსიკურობა", 18, "blue"],
+    ["ანგიოგენეზი", 13, "violet"],
+    ["ნეიროდაცვა", 12, "amber"],
   ] as const;
   return (
     <PortalPanel className="p-5">
-      <h2 className="text-base font-bold text-slate-950">სად ვართ კვლევისა და ზრუნვის მხარდაჭერის გზაზე</h2>
-      <div className="mt-5 grid gap-3 md:grid-cols-3 xl:grid-cols-6">
-        {steps.map(([title, status, Icon, tone]) => (
-          <div key={title} className="relative rounded-2xl border border-slate-100 bg-slate-50/75 p-4 text-center">
-            <div className={`mx-auto grid h-11 w-11 place-items-center rounded-full ${toneClasses[tone].icon}`}><Icon className="h-5 w-5" /></div>
-            <p className="mt-3 text-sm font-bold leading-5 text-slate-800">{title}</p>
-            <p className="mt-1 text-xs text-slate-500">{status}</p>
+      <h2 className="text-base font-semibold text-white">კვლევის წამყვანი დომენები</h2>
+      <div className="mt-4 space-y-3">
+        {rows.map(([label, value, tone]) => (
+          <div key={label}>
+            <div className="flex justify-between text-xs"><span className="text-slate-300">{label}</span><span className={toneClasses[tone].text}>{value}%</span></div>
+            <div className="mt-1 h-2 overflow-hidden rounded-full bg-white/8">
+              <div className={`h-full rounded-full bg-gradient-to-r ${tone === "violet" ? "from-violet-400 to-cyan-300" : tone === "emerald" ? "from-emerald-400 to-cyan-300" : tone === "amber" ? "from-amber-300 to-cyan-300" : "from-blue-400 to-cyan-300"}`} style={{ width: `${value * 3}%` }} />
+            </div>
           </div>
         ))}
       </div>
@@ -613,79 +665,172 @@ function JourneyStrip() {
   );
 }
 
+export function PortalHomeDashboard({ locale }: { locale: Locale }) {
+  const isKa = locale === "ka";
+  const tick = useLivePulse(12);
+  const metricSeed = [12842, 173, 28, 14, 36];
+
+  return (
+    <div className="space-y-4">
+      <NeuralField />
+
+      <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+        <MetricTile label={isKa ? "მტკიცებულების ელემენტები" : "Evidence items"} base={metricSeed[0]} detail={isKa ? "რეცენზირებული + რეალური მონაცემი" : "peer-reviewed + real-world"} tone="cyan" icon={BookOpen} drift={18} liveLabel={isKa ? "ცოცხალი" : "live"} />
+        <MetricTile label={isKa ? "ვალიდირებული ჰიპოთეზები" : "Validated hypotheses"} base={metricSeed[1]} detail={isKa ? "დომენთაშორისი მხარდაჭერა" : "cross-domain support"} tone="violet" icon={FlaskConical} drift={3} liveLabel={isKa ? "ცოცხალი" : "live"} />
+        <MetricTile label={isKa ? "თერაპიის კანდიდატები" : "Therapy candidates"} base={metricSeed[2]} detail={isKa ? "შეფასების ნაკადი" : "evaluation pipeline"} tone="emerald" icon={Activity} drift={2} liveLabel={isKa ? "ცოცხალი" : "live"} />
+        <MetricTile label={isKa ? "აქტიური კვლევები" : "Active studies"} base={metricSeed[3]} detail={isKa ? "მრავალცენტრიანი კვლევები" : "multi-center studies"} tone="blue" icon={UsersRound} drift={1} liveLabel={isKa ? "ცოცხალი" : "live"} />
+        <MetricTile label={isKa ? "მონაცემთა პარტნიორები" : "Data partners"} base={metricSeed[4]} detail={isKa ? "დაკავშირებული ინსტიტუციები" : "institutions connected"} tone="cyan" icon={Database} drift={2} liveLabel={isKa ? "ცოცხალი" : "live"} />
+      </section>
+
+      <PipelineView />
+
+      <section className="grid gap-4 xl:grid-cols-[0.95fr_0.95fr_1.1fr]">
+        <PortalPanel className="p-5">
+          <h2 className="text-base font-semibold text-white">მტკიცებულება წყაროს მიხედვით</h2>
+          <div className="mt-4 grid gap-3">
+            <DonutChart value={44} tone="blue" label="რეცენზირებული სტატიები" />
+            <DonutChart value={24} tone="cyan" label="კლინიკური რეესტრები" />
+          </div>
+        </PortalPanel>
+        <PortalPanel className="p-5">
+          <h2 className="text-base font-semibold text-white">ჰიპოთეზების ვალიდაციის სტატუსი</h2>
+          <div className="mt-4 grid gap-3">
+            <DonutChart value={28} tone="emerald" label="ძლიერად მხარდაჭერილი" />
+            <DonutChart value={41} tone="violet" label="საშუალოდ მხარდაჭერილი" />
+          </div>
+        </PortalPanel>
+        <DomainBars />
+      </section>
+
+      <ClinicalTimeline />
+
+      <div className="sr-only" aria-live="polite">ცოცხალი dashboard-ის პულსი {tick}</div>
+    </div>
+  );
+}
+
+function ClinicalTimeline() {
+  const steps = [
+    ["2018", "პლატფორმა დაიწყო"], ["2019–2020", "რეესტრი შეიქმნა"], ["2021", "პირველი მტკიცებულებითი ეტაპი"], ["2022", "ჰიპოთეზების ძრავი გაეშვა"], ["2023", "პირველი ვალიდირებული ჰიპოთეზები"], ["2024", "თერაპიის ნაკადი გაფართოვდა"], ["2025+", "კლინიკური გავლენის სწავლა"],
+  ];
+  return (
+    <PortalPanel className="overflow-hidden p-5">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h2 className="text-base font-semibold text-white">კლინიკური კვლევის დროითი ხაზი</h2>
+          <p className="text-xs text-slate-400">ძირითადი ეტაპები ცოცხალ კვლევით პროცესში</p>
+        </div>
+        <StatusChip tone="blue">ავტო-სინქრონიზებული</StatusChip>
+      </div>
+      <div className="relative mt-7 grid gap-4 md:grid-cols-7">
+        <div className="absolute left-0 right-0 top-4 hidden h-px bg-gradient-to-r from-cyan-300 via-blue-400 to-violet-400 md:block" />
+        {steps.map(([year, label], index) => (
+          <div key={year} className="relative text-center">
+            <div className="mx-auto grid h-8 w-8 place-items-center rounded-full border border-cyan-200/60 bg-cyan-400/20 text-cyan-100 shadow-[0_0_18px_rgba(34,211,238,0.35)]">
+              <CheckCircle2 className="h-4 w-4" />
+            </div>
+            <p className="mt-3 text-xs font-semibold text-slate-200">{year}</p>
+            <p className="mt-1 text-[0.68rem] leading-4 text-slate-500">{label}</p>
+          </div>
+        ))}
+      </div>
+    </PortalPanel>
+  );
+}
+
+function MiniMatrix({ items }: { items: WorkItem[] }) {
+  return (
+    <div className="overflow-hidden rounded-2xl border border-white/10">
+      {items.map((item, index) => (
+        <div key={`${item.label}-${index}`} className={`grid gap-2 px-4 py-3 text-sm sm:grid-cols-[1fr_1.2fr_0.55fr] ${index % 2 === 0 ? "bg-white/[0.035]" : "bg-cyan-300/[0.025]"}`}>
+          <span className="font-semibold text-slate-100">{item.label}</span>
+          <span className="text-slate-400">{item.value}</span>
+          <span className="font-semibold text-cyan-200">{item.status}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function PortalTopicPage({ locale, pageKey }: { locale: Locale; pageKey: PageKey }) {
   const page = contentFor(locale, pageKey);
   const Icon = page.icon;
+  const numeric = page.metrics.map((metric, index) => {
+    const parsed = Number(metric.value.replace(/[^0-9]/g, ""));
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 10 + index * 7;
+  });
+
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <PortalPanel className="overflow-hidden p-0">
-        <div className="relative p-6 lg:p-8">
-          <div className="absolute right-0 top-0 h-56 w-56 rounded-full bg-cyan-200/35 blur-3xl" />
-          <div className="relative z-10 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-            <div className="max-w-4xl">
-              <StatusChip tone="cyan">{page.eyebrow}</StatusChip>
-              <h1 className="mt-4 text-[clamp(2rem,4vw,4rem)] font-semibold leading-[1.02] tracking-[-0.055em] text-slate-950">{page.title}</h1>
-              <p className="mt-4 max-w-3xl text-base leading-8 text-slate-600">{page.subtitle}</p>
-            </div>
-            <div className="grid h-24 w-24 shrink-0 place-items-center rounded-[2rem] bg-slate-950 text-white shadow-2xl shadow-slate-950/20">
+        <div className="relative grid gap-6 p-5 lg:grid-cols-[1fr_18rem] lg:p-6">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_12%_18%,rgba(34,211,238,0.12),transparent_34%),radial-gradient(circle_at_88%_0%,rgba(139,92,246,0.14),transparent_32%)]" />
+          <div className="relative z-10">
+            <StatusChip tone="cyan">{page.eyebrow}</StatusChip>
+            <h1 className="mt-4 max-w-5xl text-[clamp(1.85rem,3.6vw,3.6rem)] font-semibold leading-[1.02] tracking-[-0.055em] text-white">{page.title}</h1>
+            <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">{page.subtitle}</p>
+          </div>
+          <div className="relative z-10 grid min-h-44 place-items-center rounded-[1.25rem] border border-white/10 bg-black/20">
+            <div className="absolute h-28 w-28 rounded-full bg-cyan-400/15 blur-2xl" />
+            <div className="relative grid h-24 w-24 place-items-center rounded-[2rem] border border-cyan-200/30 bg-cyan-400/10 text-cyan-100 shadow-[0_0_40px_rgba(34,211,238,0.22)]">
               <Icon className="h-11 w-11" />
             </div>
           </div>
         </div>
       </PortalPanel>
 
-      <section className="grid gap-4 md:grid-cols-3 xl:grid-cols-4">
-        {page.metrics.map((metric) => (
-          <PortalPanel key={metric.label} className={`bg-gradient-to-br ${toneClasses[metric.tone].card} p-5 ring-1 ${toneClasses[metric.tone].ring}`}>
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">{metric.label}</p>
-            <p className="mt-3 text-4xl font-semibold tracking-[-0.05em] text-slate-950">{metric.value}</p>
-            <p className="mt-2 text-sm text-slate-500">{metric.detail}</p>
-          </PortalPanel>
+      <section className="grid gap-3 md:grid-cols-3 xl:grid-cols-4">
+        {page.metrics.map((metric, index) => (
+          <MetricTile key={metric.label} label={metric.label} base={numeric[index]} detail={metric.detail} tone={metric.tone} icon={index === 0 ? BarChart3 : index === 1 ? TrendingUp : Gauge} drift={index + 1} liveLabel={locale === "ka" ? "ცოცხალი" : "live"} />
         ))}
       </section>
 
-      <section className="grid gap-4 xl:grid-cols-3">
-        {page.cards.map((card) => (
-          <PortalPanel key={card.title} className={`bg-gradient-to-br ${toneClasses[card.tone || "blue"].card} p-5 ring-1 ${toneClasses[card.tone || "blue"].ring}`}>
-            <StatusChip tone={card.tone || "blue"}>{card.label}</StatusChip>
-            <h2 className="mt-4 text-xl font-bold tracking-[-0.035em] text-slate-950">{card.title}</h2>
-            <p className="mt-3 text-sm leading-7 text-slate-600">{card.body}</p>
-          </PortalPanel>
-        ))}
-      </section>
-
-      <div className="grid gap-4 xl:grid-cols-[1.5fr_0.8fr]">
+      <div className="grid gap-4 xl:grid-cols-[1.25fr_0.9fr]">
         <PortalPanel className="p-5">
           <div className="flex items-center justify-between gap-3">
-            <h2 className="text-xl font-bold tracking-[-0.035em] text-slate-950">სამუშაო სია</h2>
-            <StatusChip tone="slate">{locale === "ka" ? "ცოცხალი გვერდი" : "live route"}</StatusChip>
+            <div>
+              <h2 className="text-lg font-semibold tracking-[-0.03em] text-white">ოპერაციული მატრიცა</h2>
+              <p className="text-xs text-slate-500">კონკრეტული ელემენტები, სტატუსები და შემდეგი დამუშავების ეტაპი.</p>
+            </div>
+            <StatusChip tone="slate">ცოცხალი გვერდი</StatusChip>
           </div>
-          <div className="mt-4 overflow-hidden rounded-2xl border border-slate-100">
-            {page.worklist.map((item, index) => (
-              <div key={item.label} className={`grid gap-2 px-4 py-4 text-sm sm:grid-cols-[1fr_1.2fr_0.7fr] ${index % 2 === 0 ? "bg-white" : "bg-slate-50/70"}`}>
-                <span className="font-bold text-slate-900">{item.label}</span>
-                <span className="text-slate-600">{item.value}</span>
-                <span className="font-semibold text-blue-700">{item.status}</span>
-              </div>
-            ))}
-          </div>
+          <div className="mt-4"><MiniMatrix items={page.worklist} /></div>
         </PortalPanel>
 
         <PortalPanel className="p-5">
           <div className="flex items-center gap-2">
-            <AlertCircle className="h-5 w-5 text-blue-700" />
-            <h2 className="text-lg font-bold tracking-[-0.03em] text-slate-950">{page.asideTitle}</h2>
+            <AlertCircle className="h-5 w-5 text-cyan-200" />
+            <h2 className="text-lg font-semibold tracking-[-0.03em] text-white">{page.asideTitle}</h2>
           </div>
           <div className="mt-4 space-y-2">
             {page.asideItems.map((item) => (
-              <div key={item} className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50 px-3 py-3 text-sm text-slate-700">
-                <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+              <div key={item} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.035] px-3 py-3 text-sm text-slate-300 transition hover:border-cyan-300/25 hover:bg-cyan-300/[0.05]">
+                <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-300" />
                 <span>{item}</span>
               </div>
             ))}
           </div>
         </PortalPanel>
       </div>
+
+      <section className="grid gap-4 xl:grid-cols-3">
+        {page.cards.map((card, index) => {
+          const tone = card.tone || "blue";
+          return (
+            <PortalPanel key={card.title} className={`overflow-hidden bg-gradient-to-br ${toneClasses[tone].card} p-5 ring-1 ${toneClasses[tone].ring}`}>
+              <div className="flex items-center justify-between gap-3">
+                <StatusChip tone={tone}>{card.label}</StatusChip>
+                <Sparkline tone={tone} compact />
+              </div>
+              <h2 className="mt-4 text-lg font-semibold tracking-[-0.035em] text-white">{card.title}</h2>
+              <p className="mt-2 line-clamp-3 text-sm leading-6 text-slate-400">{card.body}</p>
+              <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-white/8">
+                <div className="h-full rounded-full bg-gradient-to-r from-cyan-300 to-violet-300" style={{ width: `${Math.min(92, 42 + index * 17)}%` }} />
+              </div>
+            </PortalPanel>
+          );
+        })}
+      </section>
     </div>
   );
 }
