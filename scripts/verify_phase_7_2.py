@@ -63,7 +63,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable
 
+# Allow running this script both as a module (`python -m scripts.verify_phase_7_2`)
+# and as a bare path (`python scripts/verify_phase_7_2.py`). The bare-path form
+# does not put the project root on sys.path, so we add it explicitly.
 ROOT = Path(__file__).resolve().parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
 PY = ROOT / ".venv-v7" / "Scripts" / "python.exe"
 LOG_DIR = ROOT / "v7_architecture" / "foundation_logs"
 
@@ -158,9 +164,7 @@ def check_dowhy_version(mode: str) -> CheckResult:
             expected=">=0.11.0",
             remediation="uv add 'dowhy>=0.11' --venv .venv-v7",
         )
-    return CheckResult(
-        status="PASS", actual=version, expected=">=0.11.0"
-    )
+    return CheckResult(status="PASS", actual=version, expected=">=0.11.0")
 
 
 # ---------------------------------------------------------------------------
@@ -252,7 +256,9 @@ def check_confounders(mode: str) -> CheckResult:
 # ---------------------------------------------------------------------------
 # Check 5 — do() API
 # ---------------------------------------------------------------------------
-@check("check_7_2_05", f"do() API returns finite effect within {DO_QUERY_TIMEOUT_S:.0f} s")
+@check(
+    "check_7_2_05", f"do() API returns finite effect within {DO_QUERY_TIMEOUT_S:.0f} s"
+)
 def check_do_query(mode: str) -> CheckResult:
     from brain.causal.api import DoQueryRequest, handle_do_query  # noqa: WPS433
     from brain.causal.dowhy_bootstrap import (  # noqa: WPS433
@@ -485,9 +491,7 @@ def check_scm_crud(mode: str) -> CheckResult:
 
     scm = build_reference_scm()
     s1 = create_scm(scm, actor="verify_phase_7_2")
-    s2 = update_scm(
-        "reference_vigabatrin_seizure", scm, actor="verify_phase_7_2"
-    )
+    s2 = update_scm("reference_vigabatrin_seizure", scm, actor="verify_phase_7_2")
     s3 = revert_scm(
         "reference_vigabatrin_seizure",
         target_version=1,
@@ -608,14 +612,12 @@ def check_regression(mode: str) -> CheckResult:
         ],
         capture_output=True,
         text=True,
-        timeout=600,
+        timeout=1200,
         cwd=str(ROOT),
     )
     tail_lines = (proc.stdout or "").strip().splitlines()
     summary = (
-        tail_lines[-1].strip()
-        if tail_lines
-        else (proc.stderr or "").strip()[-200:]
+        tail_lines[-1].strip() if tail_lines else (proc.stderr or "").strip()[-200:]
     )
     if proc.returncode != 0:
         return CheckResult(

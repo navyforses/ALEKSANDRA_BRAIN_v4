@@ -48,7 +48,13 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
 
+# Allow running this script both as a module (`python -m scripts.verify_phase_7_0`)
+# and as a bare path (`python scripts/verify_phase_7_0.py`). The bare-path form
+# does not put the project root on sys.path, so we add it explicitly.
 ROOT = Path(__file__).resolve().parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
 PY = ROOT / ".venv-v7" / "Scripts" / "python.exe"
 SNAPSHOT_DIR = ROOT / "brain" / "belief" / "snapshots"
 

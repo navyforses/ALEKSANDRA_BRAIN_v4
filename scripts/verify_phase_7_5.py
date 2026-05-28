@@ -5,7 +5,8 @@
 meta override-flow check.
 
   check_7_5_01  Rule #1 MRI client-only  (CSP + DICOM rejector in
-                viewer/middleware.ts)
+                viewer/proxy.ts after the Next.js 16 middleware/proxy
+                merge in commit 1073cec)
   check_7_5_02  Rule #2 Voice review     (DB trigger in migration 021)
   check_7_5_03  Rule #3 Citation required (Pydantic strict schema)
   check_7_5_04  Rule #4 CI required       (output formatter)
@@ -116,18 +117,22 @@ def _supabase_url_set() -> bool:
 # ---------------------------------------------------------------------------
 @check(
     "check_7_5_01",
-    "Rule #1 - viewer/middleware.ts ships CSP + DICOM POST rejector",
+    "Rule #1 - viewer/proxy.ts ships CSP + DICOM POST rejector",
 )
 def check_rule_1_mri_client_only(mode: str) -> CheckResult:
-    mw = ROOT / "viewer" / "middleware.ts"
-    if not mw.exists():
+    # Next.js 16 + next-intl 4.x mandates exactly one of {middleware.ts,
+    # proxy.ts}. Phase 7.5 originally shipped viewer/middleware.ts; the build
+    # then refused both files (commit 1073cec merged the CSP + DICOM rejector
+    # logic into viewer/proxy.ts and deleted middleware.ts).
+    proxy = ROOT / "viewer" / "proxy.ts"
+    if not proxy.exists():
         return CheckResult(
             status="FAIL",
-            actual="viewer/middleware.ts missing",
+            actual="viewer/proxy.ts missing",
             expected="present with CSP + DICOM-reject logic",
-            remediation="re-run Phase 7.5 Day 1 - create viewer/middleware.ts",
+            remediation="re-run Phase 7.5 Day 1 inside viewer/proxy.ts",
         )
-    src = mw.read_text(encoding="utf-8")
+    src = proxy.read_text(encoding="utf-8")
     missing = []
     if "Content-Security-Policy" not in src:
         missing.append("Content-Security-Policy header")
@@ -138,12 +143,12 @@ def check_rule_1_mri_client_only(mode: str) -> CheckResult:
     if missing:
         return CheckResult(
             status="FAIL",
-            actual=f"middleware.ts missing: {missing}",
+            actual=f"proxy.ts missing: {missing}",
             expected="CSP + DICOM-reject + 415 status present",
         )
     return CheckResult(
         status="PASS",
-        actual=f"middleware.ts {len(src)} bytes - CSP, DICOM rejector, 415 all present",
+        actual=f"proxy.ts {len(src)} bytes - CSP, DICOM rejector, 415 all present",
     )
 
 
@@ -183,7 +188,7 @@ def check_rule_2_voice_review(mode: str) -> CheckResult:
             row = cur.fetchone()
             cur.execute(
                 "DELETE FROM intake_drops "
-                "WHERE payload @> '{\"transcript\":\"verifier_smoke\"}'::jsonb"
+                'WHERE payload @> \'{"transcript":"verifier_smoke"}\'::jsonb'
             )
         conn.commit()
     finally:
@@ -203,7 +208,9 @@ def check_rule_2_voice_review(mode: str) -> CheckResult:
 # ---------------------------------------------------------------------------
 # Check 3 - Rule #3 Citation mandatory
 # ---------------------------------------------------------------------------
-@check("check_7_5_03", "Rule #3 - Recommendation without citation raises ValidationError")
+@check(
+    "check_7_5_03", "Rule #3 - Recommendation without citation raises ValidationError"
+)
 def check_rule_3_citation(mode: str) -> CheckResult:
     from pydantic import ValidationError
 
@@ -241,7 +248,10 @@ def check_rule_3_citation(mode: str) -> CheckResult:
 # ---------------------------------------------------------------------------
 # Check 4 - Rule #4 CI required
 # ---------------------------------------------------------------------------
-@check("check_7_5_04", "Rule #4 - payload with expected_value but no ci_low/ci_high rejected")
+@check(
+    "check_7_5_04",
+    "Rule #4 - payload with expected_value but no ci_low/ci_high rejected",
+)
 def check_rule_4_ci(mode: str) -> CheckResult:
     from brain.common.guards import MissingCIError, reject_output_without_ci
 
@@ -249,9 +259,7 @@ def check_rule_4_ci(mode: str) -> CheckResult:
         reject_output_without_ci({"expected_value": 0.7})
     except MissingCIError:
         # Full payload must pass.
-        reject_output_without_ci(
-            {"expected_value": 0.7, "ci_low": 0.5, "ci_high": 0.9}
-        )
+        reject_output_without_ci({"expected_value": 0.7, "ci_low": 0.5, "ci_high": 0.9})
         return CheckResult(
             status="PASS",
             actual="naked expected_value rejected; full payload accepted",
@@ -350,7 +358,9 @@ def check_rule_7_budget(mode: str) -> CheckResult:
 # ---------------------------------------------------------------------------
 # Check 8 - Rule #8 Belief requires evidence
 # ---------------------------------------------------------------------------
-@check("check_7_5_08", "Rule #8 - update(evidence=None) raises BeliefWithoutEvidenceError")
+@check(
+    "check_7_5_08", "Rule #8 - update(evidence=None) raises BeliefWithoutEvidenceError"
+)
 def check_rule_8_belief_evidence(mode: str) -> CheckResult:
     from brain.belief.update import update
     from brain.common.guards import BeliefWithoutEvidenceError
@@ -452,9 +462,7 @@ def check_rule_10_sim_uncertainty(mode: str) -> CheckResult:
         outcomes=[real_dims[0].name],
     )
     try:
-        check_simulation_uncertainty_constitutional(
-            scenario, dims=synthetic_dims
-        )
+        check_simulation_uncertainty_constitutional(scenario, dims=synthetic_dims)
     except BudgetGuardError:
         return CheckResult(
             status="PASS",
@@ -497,9 +505,7 @@ def check_rule_11_rate_cap(mode: str) -> CheckResult:
                     "UPDATE active_rate_log SET questions_sent = 4 "
                     "WHERE week_iso = 'verifier_W99'"
                 )
-                cur.execute(
-                    "DELETE FROM active_rate_log WHERE week_iso='verifier_W99'"
-                )
+                cur.execute("DELETE FROM active_rate_log WHERE week_iso='verifier_W99'")
                 conn.commit()
                 return CheckResult(
                     status="FAIL",
@@ -508,9 +514,7 @@ def check_rule_11_rate_cap(mode: str) -> CheckResult:
                 )
             except (psycopg2.errors.CheckViolation, psycopg2.errors.RaiseException):
                 conn.rollback()
-                cur.execute(
-                    "DELETE FROM active_rate_log WHERE week_iso='verifier_W99'"
-                )
+                cur.execute("DELETE FROM active_rate_log WHERE week_iso='verifier_W99'")
                 conn.commit()
                 return CheckResult(
                     status="PASS",
@@ -533,14 +537,17 @@ def check_rule_12_pdf(mode: str) -> CheckResult:
         assert_min_primary_sources,
     )
 
-    bad_cites = ["note A", "note B", "note C", "note D",
-                 "https://pubmed.ncbi.nlm.nih.gov/7686614/"]
+    bad_cites = [
+        "note A",
+        "note B",
+        "note C",
+        "note D",
+        "https://pubmed.ncbi.nlm.nih.gov/7686614/",
+    ]
     try:
         assert_min_primary_sources(bad_cites)
     except InsufficientSourcesError:
-        good_cites = [
-            f"https://pubmed.ncbi.nlm.nih.gov/{i}/" for i in range(1, 6)
-        ]
+        good_cites = [f"https://pubmed.ncbi.nlm.nih.gov/{i}/" for i in range(1, 6)]
         assert_min_primary_sources(good_cites)
         return CheckResult(
             status="PASS",
@@ -652,7 +659,8 @@ def check_rule_meta_override(mode: str) -> CheckResult:
     return CheckResult(
         status="PASS",
         actual=(
-            f"sentinel={sentinel} (DRY_RUN)" if mode == "code-complete"
+            f"sentinel={sentinel} (DRY_RUN)"
+            if mode == "code-complete"
             else f"row={sentinel}; reason-length enforced"
         ),
     )

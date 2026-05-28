@@ -29,7 +29,6 @@ from brain.sim.tvb_adapter import (
     TVB_CONTAINER_PREFIX,
     TVB_DEFAULT_REGION_COUNT,
     TVB_IMAGE,
-    TVBSimulationError,
     TVBSimulationRequest,
     TVBSimulationResult,
     TVBUnavailableError,
@@ -45,12 +44,8 @@ from brain.sim.tvb_adapter import (
     synthetic_hie_lesion_mask_for_aleksandra,
 )
 
-_DOCKER_OR_IMAGE_AVAILABLE = (
-    check_docker_available() and check_tvb_image_available()
-)
-_SKIP_REASON_LIVE = (
-    "Docker daemon or TVB image not available; live TVB test skipped"
-)
+_DOCKER_OR_IMAGE_AVAILABLE = check_docker_available() and check_tvb_image_available()
+_SKIP_REASON_LIVE = "Docker daemon or TVB image not available; live TVB test skipped"
 
 
 # ---------------------------------------------------------------------------
@@ -105,9 +100,7 @@ def test_compute_seizure_onset_rate_handles_empty() -> None:
 # apply_hie_lesion_mask
 # ---------------------------------------------------------------------------
 def test_apply_hie_lesion_mask_shape() -> None:
-    mask = apply_hie_lesion_mask(
-        100, cyst_indices=[0, 5, 50, 99], strength=0.7
-    )
+    mask = apply_hie_lesion_mask(100, cyst_indices=[0, 5, 50, 99], strength=0.7)
     assert mask.shape == (100,)
     assert mask[0] == pytest.approx(0.7)
     assert mask[5] == pytest.approx(0.7)
@@ -120,9 +113,7 @@ def test_apply_hie_lesion_mask_shape() -> None:
 
 def test_apply_hie_lesion_mask_out_of_range_clamped(capsys) -> None:
     """Out-of-range indices are skipped + warned, not raised."""
-    mask = apply_hie_lesion_mask(
-        10, cyst_indices=[3, 10, -1, 99], strength=0.4
-    )
+    mask = apply_hie_lesion_mask(10, cyst_indices=[3, 10, -1, 99], strength=0.4)
     # Only index 3 is in [0, 10).
     assert mask[3] == pytest.approx(0.4)
     assert int((mask > 0).sum()) == 1
@@ -186,9 +177,7 @@ def test_tvb_simulation_request_rejects_oversize_duration() -> None:
 
 def test_tvb_simulation_request_rejects_negative_index() -> None:
     with pytest.raises(Exception):
-        TVBSimulationRequest(
-            duration_ms=1_000, inhibited_region_indices=[5, -1, 7]
-        )
+        TVBSimulationRequest(duration_ms=1_000, inhibited_region_indices=[5, -1, 7])
 
 
 # ---------------------------------------------------------------------------
@@ -221,9 +210,7 @@ def test_tvb_unavailable_error_when_image_missing() -> None:
     req = TVBSimulationRequest(duration_ms=1_000)
     with patch(
         "brain.sim.tvb_adapter.check_docker_available", return_value=True
-    ), patch(
-        "brain.sim.tvb_adapter.check_tvb_image_available", return_value=False
-    ):
+    ), patch("brain.sim.tvb_adapter.check_tvb_image_available", return_value=False):
         with pytest.raises(TVBUnavailableError):
             run_tvb_simulation(req, dry_run=False)
 
@@ -231,9 +218,7 @@ def test_tvb_unavailable_error_when_image_missing() -> None:
 def test_run_tvb_simulation_falls_back_to_dry_run_when_docker_missing() -> None:
     """Docker daemon unreachable -> synthetic result (no exception)."""
     req = TVBSimulationRequest(duration_ms=1_000)
-    with patch(
-        "brain.sim.tvb_adapter.check_docker_available", return_value=False
-    ):
+    with patch("brain.sim.tvb_adapter.check_docker_available", return_value=False):
         result = run_tvb_simulation(req, dry_run=False)
     assert result.container_id == "DRY_RUN"
 
@@ -290,9 +275,7 @@ def test_record_tvb_simulation_as_evidence_rejects_bad_floor() -> None:
     req = TVBSimulationRequest(duration_ms=1_000)
     result = run_tvb_simulation(req, dry_run=True)
     with pytest.raises(ValueError):
-        record_tvb_simulation_as_evidence(
-            result=result, confidence_floor=2.0
-        )
+        record_tvb_simulation_as_evidence(result=result, confidence_floor=2.0)
 
 
 # ---------------------------------------------------------------------------
@@ -312,7 +295,7 @@ def test_load_default_connectome_metadata_shape() -> None:
     assert meta["region_count"] == TVB_DEFAULT_REGION_COUNT
     assert meta["filename"] == f"connectivity_{TVB_DEFAULT_REGION_COUNT}.zip"
     assert "Hagmann" in meta["source"]
-    assert "TODO" in meta["source"]
+    assert "PMID 18597554" in meta["source"]
 
 
 def test_constants_match_dispatch_contract() -> None:
@@ -324,9 +307,7 @@ def test_constants_match_dispatch_contract() -> None:
 # ---------------------------------------------------------------------------
 # Live TVB Docker tests (skip when Docker / image absent)
 # ---------------------------------------------------------------------------
-@pytest.mark.skipif(
-    not _DOCKER_OR_IMAGE_AVAILABLE, reason=_SKIP_REASON_LIVE
-)
+@pytest.mark.skipif(not _DOCKER_OR_IMAGE_AVAILABLE, reason=_SKIP_REASON_LIVE)
 def test_live_tvb_simulation_1_second_completes() -> None:
     """Real Docker round-trip: 1-second TVB sim on 76 regions completes
     fast (smoke baseline ~14 s including container startup)."""

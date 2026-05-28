@@ -49,7 +49,13 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable
 
+# Allow running this script both as a module (`python -m scripts.verify_phase_7_1`)
+# and as a bare path (`python scripts/verify_phase_7_1.py`). The bare-path form
+# does not put the project root on sys.path, so we add it explicitly.
 ROOT = Path(__file__).resolve().parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
 PY = ROOT / ".venv-v7" / "Scripts" / "python.exe"
 MAIN_VENV_PY = ROOT / ".venv" / "Scripts" / "python.exe"
 
@@ -95,9 +101,7 @@ ALLOWED_EDGE_TYPES = {
     "HAS_FACT",
     "MENTIONED_IN",
 }
-CITATION_REGEX_CYPHER = (
-    r"^(PMID:\\d+|DOI:.+|https?://.+|TBD-Day-7-backfill)$"
-)
+CITATION_REGEX_CYPHER = r"^(PMID:\\d+|DOI:.+|https?://.+|TBD-Day-7-backfill)$"
 
 
 # ---------------------------------------------------------------------------
@@ -171,9 +175,7 @@ def _neo4j_session() -> Any:
     uri = os.environ.get("NEO4J_URI")
     password = os.environ.get("NEO4J_PASSWORD")
     if not uri or not password:
-        raise RuntimeError(
-            "NEO4J_URI + NEO4J_PASSWORD required for --mode production"
-        )
+        raise RuntimeError("NEO4J_URI + NEO4J_PASSWORD required for --mode production")
     try:
         from neo4j import GraphDatabase  # type: ignore[import-not-found]
     except ImportError as e:  # pragma: no cover — driver install is prerequisite
@@ -384,7 +386,9 @@ def check_edge_distribution(mode: str) -> CheckResult:
                 "inspect .planning/phase_7_1/bulk_summary_*.json"
             ),
         )
-    return CheckResult(status="PASS", actual=summary, expected=f"sum >= {MIN_EDGE_TOTAL}")
+    return CheckResult(
+        status="PASS", actual=summary, expected=f"sum >= {MIN_EDGE_TOTAL}"
+    )
 
 
 @check(
@@ -654,9 +658,7 @@ def check_idempotency(mode: str) -> CheckResult:
        summary JSON reports 0 edges to process.
     """
     # Layer 1 — unit test
-    rc, tail = _run_pytest(
-        ["brain/memory/tests/test_classify_edges.py"], timeout=180
-    )
+    rc, tail = _run_pytest(["brain/memory/tests/test_classify_edges.py"], timeout=180)
     if rc != 0:
         return CheckResult(
             status="FAIL",
