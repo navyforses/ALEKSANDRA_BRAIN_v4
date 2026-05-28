@@ -176,6 +176,7 @@
     }
   },
   "Navigation": {
+    "primaryLabel": "Primary navigation",
     "audit": "Audit",
     "brain": "Brain",
     "dashboard": "Dashboard",

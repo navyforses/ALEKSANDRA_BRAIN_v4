@@ -62,7 +62,7 @@ export function FamilyPortalShell({ children }: { children: ReactNode }) {
 
 export function GlassPanel({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
-    <section className={`rounded-[2rem] border border-white/70 bg-white/78 p-5 shadow-xl shadow-slate-950/[0.06] backdrop-blur ${className}`}>
+    <section className={`min-w-0 overflow-hidden rounded-[2rem] border border-white/70 bg-white/78 p-5 shadow-xl shadow-slate-950/[0.06] backdrop-blur ${className}`}>
       {children}
     </section>
   );
@@ -70,7 +70,7 @@ export function GlassPanel({ children, className = "" }: { children: ReactNode; 
 
 export function DarkGlassPanel({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
-    <section className={`rounded-[2rem] border border-white/10 bg-white/[0.055] p-5 shadow-2xl shadow-slate-950/25 backdrop-blur-xl ${className}`}>
+    <section className={`min-w-0 overflow-hidden rounded-[2rem] border border-white/10 bg-white/[0.055] p-5 shadow-2xl shadow-slate-950/25 backdrop-blur-xl ${className}`}>
       {children}
     </section>
   );
@@ -263,7 +263,7 @@ export function TimelineRail({ events, dark = false }: { events: Array<{ time: s
 
 export function InsightCard({ label, title, body, meta, tone = "stone", dark = false }: { label: string; title: string; body: string; meta?: string; tone?: Tone; dark?: boolean }) {
   return (
-    <article className={`rounded-3xl border p-5 shadow-lg ${dark ? "border-white/10 bg-white/[0.055] shadow-slate-950/20" : "border-white/70 bg-white/84 shadow-slate-950/[0.04]"}`}>
+    <article className={`min-w-0 overflow-hidden rounded-3xl border p-5 shadow-lg ${dark ? "border-white/10 bg-white/[0.055] shadow-slate-950/20" : "border-white/70 bg-white/84 shadow-slate-950/[0.04]"}`}>
       <div className="flex flex-wrap items-center gap-2"><StatusPill tone={tone} compact dark={dark}>{label}</StatusPill>{meta ? <span className={`font-mono text-[0.68rem] uppercase tracking-[0.16em] ${dark ? "text-slate-500" : "text-slate-400"}`}>{meta}</span> : null}</div>
       <h3 className={`mt-4 text-lg font-semibold tracking-[-0.02em] ${dark ? "text-white" : "text-slate-950"}`}>{title}</h3>
       <p className={`mt-3 text-sm leading-7 ${dark ? "text-slate-300" : "text-slate-600"}`}>{body}</p>
@@ -289,7 +289,7 @@ export function FamilyJourneyStepper({ steps }: { steps: Array<{ label: string; 
 export function AssistantPanel({ title, body, items, dark = true }: { title: string; body: string; items: string[]; dark?: boolean }) {
   const panelClass = dark ? "border-cyan-300/20 bg-cyan-300/[0.07] text-white" : "border-cyan-200 bg-white/82 text-slate-950";
   return (
-    <aside className={`rounded-[2rem] border p-5 shadow-2xl backdrop-blur-xl ${panelClass}`}>
+    <aside className={`min-w-0 overflow-hidden rounded-[2rem] border p-5 shadow-2xl backdrop-blur-xl ${panelClass}`}>
       <StatusPill tone="cyan" compact dark={dark}>AI copilot</StatusPill>
       <h3 className={`mt-4 text-xl font-semibold tracking-[-0.035em] ${dark ? "text-white" : "text-slate-950"}`}>{title}</h3>
       <p className={`mt-3 text-sm leading-7 ${dark ? "text-slate-300" : "text-slate-600"}`}>{body}</p>

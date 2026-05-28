@@ -176,6 +176,7 @@
     }
   },
   "Navigation": {
+    "primaryLabel": "მთავარი ნავიგაცია",
     "audit": "აუდიტი",
     "brain": "ტვინი",
     "dashboard": "მართვის პანელი",

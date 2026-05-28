@@ -1,3 +1,5 @@
+import { buildPageMetadata, type Locale } from "@/lib/seo";
+import type { Metadata } from "next";
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import {
   AssistantPanel,
@@ -9,6 +11,16 @@ import {
   SectionHeader,
   StatusPill,
 } from "@/components/prototype/PrototypeKit";
+
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: Locale }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  return buildPageMetadata(locale, "brain");
+}
 
 export default async function BrainViewerPage({ params }: { params: Promise<{ locale: "en" | "ka" }> }) {
   const { locale } = await params;
@@ -23,14 +35,14 @@ export default async function BrainViewerPage({ params }: { params: Promise<{ lo
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <StatusPill tone="violet" dark>{isKa ? "Digital twin brain lab" : "Digital twin brain lab"}</StatusPill>
-              <h1 className="mt-5 max-w-5xl text-4xl font-semibold tracking-[-0.055em] text-white sm:text-6xl">{t("title")}</h1>
+              <h1 className="mt-5 max-w-5xl break-words text-[clamp(2.25rem,10vw,4.25rem)] font-semibold tracking-[-0.055em] text-white sm:text-6xl">{t("title")}</h1>
               <p className="mt-5 max-w-3xl text-sm leading-7 text-slate-300">
                 {isKa
                   ? "ეს ეკრანი გადაკეთებულია Concept C-ის მიხედვით: მარცხენა MRI layer controls, ცენტრში glowing brain lab, მარჯვნივ evidence links და ქვემოთ scan timeline scrubber."
                   : "This screen now follows Concept C: MRI layer controls on the left, a glowing brain lab in the center, evidence links on the right, and a scan timeline scrubber below."}
               </p>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex min-w-0 flex-wrap gap-2">
               <StatusPill tone="emerald" dark>{t("doctorView")}</StatusPill>
               <StatusPill tone="cyan" dark>{t("parentView")}</StatusPill>
               <StatusPill tone="violet" dark>{t("researcherView")}</StatusPill>

@@ -1,6 +1,18 @@
+import { buildPageMetadata, type Locale } from "@/lib/seo";
+import type { Metadata } from "next";
 // Phase 5 placeholder. Today's full clinical view ships in a later phase.
 // BRAIN panel mounts via root layout.
 import { setRequestLocale, getTranslations } from "next-intl/server";
+
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: Locale }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  return buildPageMetadata(locale, "today");
+}
 
 export default async function TodayPage({
   params,

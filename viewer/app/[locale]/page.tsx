@@ -1,3 +1,5 @@
+import { buildPageMetadata, type Locale } from "@/lib/seo";
+import type { Metadata } from "next";
 import { setRequestLocale } from "next-intl/server";
 import {
   AssistantPanel,
@@ -10,7 +12,6 @@ import {
   StatusPill,
 } from "@/components/prototype/PrototypeKit";
 
-type Locale = "en" | "ka";
 
 function copy(locale: Locale) {
   const isKa = locale === "ka";
@@ -71,6 +72,16 @@ function copy(locale: Locale) {
   };
 }
 
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: Locale }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  return buildPageMetadata(locale, "home");
+}
+
 export default async function HomePage({ params }: { params: Promise<{ locale: Locale }> }) {
   const { locale } = await params;
   setRequestLocale(locale);
@@ -102,8 +113,8 @@ export default async function HomePage({ params }: { params: Promise<{ locale: L
               <h1 className="mt-5 max-w-none break-words text-[clamp(2.35rem,5.2vw,4.9rem)] font-semibold leading-[0.98] tracking-[-0.055em] text-slate-950">{c.title}</h1>
               <p className="mt-6 max-w-3xl text-base leading-8 text-slate-600 sm:text-lg">{c.subtitle}</p>
               <div className="mt-8 flex flex-wrap gap-3">
-                <a href={`/${locale}/dashboard`} className="rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white shadow-xl shadow-slate-950/15 transition hover:-translate-y-0.5">{isKa ? "Clinical dashboard" : "Clinical dashboard"}</a>
-                <a href={`/${locale}/brain`} className="rounded-full border border-slate-200 bg-white/82 px-5 py-3 text-sm font-semibold text-slate-800 shadow-sm transition hover:-translate-y-0.5 hover:border-cyan-300">{isKa ? "Digital twin lab" : "Digital twin lab"}</a>
+                <a href={`/${locale}/dashboard`} className="rounded-full bg-slate-950 px-5 py-3 text-sm font-semibold text-white shadow-xl shadow-slate-950/15 transition hover:-translate-y-0.5">{isKa ? "ნახე მართვის პანელი" : "Open clinical dashboard"}</a>
+                <a href={`/${locale}/brain`} className="rounded-full border border-slate-200 bg-white/82 px-5 py-3 text-sm font-semibold text-slate-800 shadow-sm transition hover:-translate-y-0.5 hover:border-cyan-300">{isKa ? "ნახე ციფრული ტვინის ლაბორატორია" : "Open digital twin lab"}</a>
               </div>
             </div>
             <div className="relative z-10 mt-10 grid gap-3 sm:grid-cols-3">

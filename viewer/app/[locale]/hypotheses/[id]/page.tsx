@@ -1,3 +1,5 @@
+import type { Metadata } from "next";
+import { buildCustomMetadata, type Locale } from "@/lib/seo";
 import { notFound } from "next/navigation";
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
@@ -6,6 +8,29 @@ import { getRows } from "@/lib/supabase";
 import { displayField, type BilingualField } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: Locale; id: string }>;
+}): Promise<Metadata> {
+  const { locale, id } = await params;
+  const hypotheses = await getRows<HypothesisDetail>("hypotheses", {
+    select: "id,title,description",
+    id: `eq.${id}`,
+    limit: 1,
+  });
+  const hypothesis = hypotheses.rows[0];
+  const path = `/hypotheses/${id}`;
+  const fallbackTitle = locale === "ka" ? "ჰიპოთეზის დეტალი | ALEKSANDRA_BRAIN" : "Hypothesis Detail | ALEKSANDRA_BRAIN";
+  const title = hypothesis ? `${displayField(hypothesis.title, locale)} | ALEKSANDRA_BRAIN` : fallbackTitle;
+  const description = hypothesis
+    ? `ჰიპოთეზის დეტალური გვერდი აჩვენებს evidence-ს, კლინიკური განხილვის კონტექსტს და next action-ს: ${displayField(hypothesis.description, locale).slice(0, 120)}`
+    : "ჰიპოთეზის დეტალური გვერდი აჩვენებს evidence-ს, კლინიკური განხილვის კონტექსტს და next action-ს.";
+
+  return buildCustomMetadata(locale, path, title, description);
+}
+
 
 type HypothesisDetail = {
   id: string;

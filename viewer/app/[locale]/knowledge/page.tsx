@@ -1,7 +1,19 @@
+import { buildPageMetadata, type Locale } from "@/lib/seo";
+import type { Metadata } from "next";
 // Phase 5 placeholder. Knowledge surfaces papers, graph, hypotheses,
 // and the perception pipeline in a later phase.
 // BRAIN panel mounts via root layout.
 import { setRequestLocale, getTranslations } from "next-intl/server";
+
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: Locale }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  return buildPageMetadata(locale, "knowledge");
+}
 
 export default async function KnowledgePage({
   params,

@@ -1,3 +1,5 @@
+import { buildPageMetadata, type Locale } from "@/lib/seo";
+import type { Metadata } from "next";
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import { getCount, getRows } from "@/lib/supabase";
 import DashboardCharts from "@/components/DashboardCharts";
@@ -14,6 +16,16 @@ import {
 } from "@/components/prototype/PrototypeKit";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: Locale }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  return buildPageMetadata(locale, "dashboard");
+}
+
 
 type Tone = "cyan" | "emerald" | "amber" | "rose" | "violet" | "slate" | "stone";
 
