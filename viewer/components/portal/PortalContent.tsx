@@ -327,13 +327,43 @@ const shells: Record<Locale, Record<PageKey, Omit<Topic, "data">>> = {
 
 function text(value: unknown, locale: Locale = "ka"): string {
   if (value === null || value === undefined) return "";
-  if (typeof value === "string") return value.trim();
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if ((trimmed.startsWith("{") && trimmed.endsWith("}")) || (trimmed.startsWith("[") && trimmed.endsWith("]"))) {
+      try {
+        const parsed = JSON.parse(trimmed) as unknown;
+        const rendered = text(parsed, locale);
+        if (rendered) return rendered;
+      } catch {
+        // Keep the original text when a stored value only looks like JSON.
+      }
+    }
+    return trimmed;
+  }
   if (typeof value === "number" || typeof value === "boolean") return String(value);
   if (Array.isArray(value)) return value.map((entry) => text(entry, locale)).filter(Boolean).join("; ");
   if (typeof value === "object") {
     const obj = value as Record<string, unknown>;
     const direct = text(obj[locale] ?? obj[locale === "ka" ? "en" : "ka"], locale);
     if (direct) return direct;
+
+    const preferredKeys = [
+      "reasoning",
+      "summary",
+      "answer",
+      "recommendation",
+      "recommended_action",
+      "action",
+      "description",
+      "content",
+      "text",
+      "title",
+      "name",
+      "value",
+    ];
+    const preferred = preferredKeys.map((key) => text(obj[key], locale)).find(Boolean);
+    if (preferred) return preferred;
+
     return Object.entries(obj)
       .map(([k, v]) => {
         const rendered = text(v, locale);
