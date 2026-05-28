@@ -33,3 +33,15 @@ Additional final validation completed after the Georgian-first label fixes:
 | `/minimal` HTTP smoke test | Pass, returned `200` |
 
 Tested routes: `/ka`, `/ka/dashboard`, `/ka/brain`, `/ka/hypotheses`, `/ka/hypotheses/mitochondrial-dysfunction`, `/ka/evidence-map`, `/ka/therapies`, `/ka/cohorts`, `/ka/data-integrations`, `/ka/papers`, `/ka/alerts`, `/ka/resources`, `/ka/how-it-works`, `/ka/support`, `/ka/audit`, `/ka/settings`, `/ka/timeline`, `/minimal`.
+
+
+## Production verification — 2026-05-28
+
+Production URL: `https://viewer-sigma-two.vercel.app`.
+
+| Route | Result | Notes |
+|---|---:|---|
+| `/ka` | Pass | Production dashboard renders the dark animated command-center interface with Georgian-first navigation, metric tiles, evidence-to-hypothesis pipeline, research charts, live timeline, and right-side BRAIN assistant panel. Screenshot: `/home/ubuntu/screenshots/viewer-sigma-two_ver_2026-05-28_18-47-30_3174.webp`. |
+| `/ka/hypotheses` | Pass | Production hypotheses submenu renders the dark topic layout with Georgian hero copy, metric cards, operational matrix, checklist blocks, and BRAIN assistant panel. Screenshot: `/home/ubuntu/screenshots/viewer-sigma-two_ver_2026-05-28_18-47-41_6850.webp`. |
+
+Production HTTP smoke tests returned `200` for every tested route: `/ka`, `/ka/dashboard`, `/ka/brain`, `/ka/hypotheses`, `/ka/hypotheses/mitochondrial-dysfunction`, `/ka/evidence-map`, `/ka/therapies`, `/ka/cohorts`, `/ka/data-integrations`, `/ka/papers`, `/ka/alerts`, `/ka/resources`, `/ka/how-it-works`, `/ka/support`, `/ka/audit`, `/ka/settings`, `/ka/timeline`, and `/minimal`.
