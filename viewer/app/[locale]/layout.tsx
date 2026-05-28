@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Noto_Sans_Georgian } from "next/font/google";
 import { notFound } from "next/navigation";
 import { NextIntlClientProvider, hasLocale } from "next-intl";
 import { setRequestLocale } from "next-intl/server";
@@ -8,6 +8,7 @@ import PortalFrame from "@/components/layout/PortalFrame";
 import { buildPageMetadata, type Locale } from "@/lib/seo";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
+const notoSansGeorgian = Noto_Sans_Georgian({ subsets: ["georgian"], variable: "--font-georgian", display: "swap" });
 
 export async function generateMetadata({
   params,
@@ -38,7 +39,7 @@ export default async function LocaleLayout({
   const isKa = typedLocale === "ka";
 
   return (
-    <html lang={typedLocale} className={`${inter.variable} h-full antialiased`}>
+    <html lang={typedLocale} className={`${inter.variable} ${notoSansGeorgian.variable} h-full antialiased`}>
       <body className="min-h-screen bg-slate-50 text-foreground font-sans">
         <NextIntlClientProvider>
           <a className="skip-link" href="#main">

@@ -102,14 +102,14 @@ const georgianPages: Record<PageKey, PageContent> = {
   },
   dashboard: {
     eyebrow: "მართვის ცენტრი",
-    title: "კვლევის მართვის პანელი, სადაც მტკიცებულება ჰიპოთეზად და შემდეგ განხილვად იქცევა.",
-    subtitle: "მონიტორინგის სივრცე აჩვენებს წყაროებს, შემოწმებას, თერაპიის კანდიდატებს, აქტიურ კვლევებს და პარტნიორ მონაცემებს ერთ ფრთხილ არქიტექტურაში.",
+    title: "კვლევის მშვიდი მართვის პანელი.",
+    subtitle: "წყაროები, ჰიპოთეზები, თერაპიები და კვლევები ერთ დაცულ სამუშაო ხედში.",
     icon: Activity,
     metrics: [
-      { label: "მტკიცებულების ჩანაწერები", value: "12,842", detail: "რეცენზირებული და რეალური მონაცემები", tone: "blue" },
-      { label: "შემოწმებული ჰიპოთეზები", value: "173", detail: "შემოწმების რიგში", tone: "violet" },
-      { label: "თერაპიის კანდიდატები", value: "28", detail: "კლინიკური საზღვრით", tone: "emerald" },
-      { label: "აქტიური კვლევები", value: "14", detail: "მრავალცენტრიანი კვლევები", tone: "cyan" },
+      { label: "მტკიცებულებები", value: "12,842", detail: "წყაროები და მონაცემები", tone: "blue" },
+      { label: "ჰიპოთეზები", value: "173", detail: "შემოწმების რიგში", tone: "violet" },
+      { label: "თერაპიები", value: "28", detail: "კლინიკური საზღვრით", tone: "emerald" },
+      { label: "კვლევები", value: "14", detail: "აქტიური პროექტები", tone: "cyan" },
     ],
     cards: [
       { label: "მტკიცებულების რუკა", title: "წყაროების შეგროვება და კურაცია", body: "ყველა წყარო გადის relevance, maturity და safety ნიშნულებს, სანამ ოჯახის ხედვაში გამოჩნდება.", tone: "blue" },
@@ -149,8 +149,8 @@ const georgianPages: Record<PageKey, PageContent> = {
   },
   hypotheses: {
     eyebrow: "ჰიპოთეზების შემოწმება",
-    title: "ჰიპოთეზები ინახება მკაფიო სტატუსით: რას ვამოწმებთ, რატომ და ვისთან.",
-    subtitle: "აქ იდეა ჯერ მხოლოდ სამუშაო ვერსიაა. იგი უნდა იყოს დაკავშირებული წყაროსთან, რისკთან და კლინიკურ შემოწმებასთან.",
+    title: "ჰიპოთეზების მშვიდი შემოწმება.",
+    subtitle: "იდეა რჩება სამუშაო ვერსიად, სანამ წყარო, რისკი და ექიმის კონტექსტი არ დადასტურდება.",
     icon: FlaskConical,
     metrics: [
       { label: "ძლიერი მხარდაჭერა", value: "28%", detail: "მაღალი სანდოობა", tone: "emerald" },
@@ -357,7 +357,7 @@ const georgianPages: Record<PageKey, PageContent> = {
   "how-it-works": {
     eyebrow: "როგორ მუშაობს",
     title: "სისტემა აგროვებს კვლევას, ალაგებს მტკიცებულებას და ამზადებს კითხვებს — გადაწყვეტილებას იღებს ექიმი.",
-    subtitle: "ALEKSANDRA_BRAIN არის კვლევის მხარდამჭერი სივრცე. მისი როლია სურათის დალაგება, არა დიაგნოზის დასმა ან მკურნალობის შეცვლა.",
+    subtitle: "ეს არის კვლევის მხარდამჭერი სივრცე. მისი როლია სურათის დალაგება, არა დიაგნოზის დასმა ან მკურნალობის შეცვლა.",
     icon: InfoIcon,
     metrics: [
       { label: "ნაბიჯი 1", value: "შეგროვება", detail: "წყაროები", tone: "blue" },
@@ -483,7 +483,7 @@ function contentFor(locale: Locale, key: PageKey): PageContent {
 }
 
 export function StatusChip({ children, tone = "blue" }: { children: ReactNode; tone?: Tone }) {
-  return <span className={`inline-flex rounded-full px-3 py-1 text-[0.68rem] font-bold uppercase tracking-[0.18em] ring-1 ${toneClasses[tone].chip}`}>{children}</span>;
+  return <span className={`inline-flex rounded-full px-3 py-1 text-[0.72rem] font-semibold leading-5 tracking-normal ring-1 ${toneClasses[tone].chip}`}>{children}</span>;
 }
 
 export function PortalPanel({ children, className = "" }: { children: ReactNode; className?: string }) {
@@ -539,12 +539,12 @@ function MetricTile({ label, base, suffix = "", detail, tone, icon: Icon, drift 
         <div className={`grid h-10 w-10 place-items-center rounded-2xl ring-1 ${toneClasses[tone].icon}`}><Icon className="h-5 w-5" /></div>
         <Sparkline tone={tone} compact />
       </div>
-      <p className="mt-4 text-[0.67rem] font-bold uppercase tracking-[0.2em] text-slate-400">{label}</p>
+      <p className="mt-3 line-clamp-2 text-[0.74rem] font-medium leading-4 text-slate-400">{label}</p>
       <div className="mt-2 flex items-end gap-2">
-        <p className="text-3xl font-semibold tracking-[-0.05em] text-white">{formatMetric(base, tick, drift)}{suffix}</p>
-        <span className={`pb-1 text-xs font-semibold ${toneClasses[tone].text}`}>{liveLabel}</span>
+        <p className="text-2xl font-semibold tracking-[-0.025em] text-white">{formatMetric(base, tick, drift)}{suffix}</p>
+        <span className={`pb-0.5 text-[0.72rem] font-medium ${toneClasses[tone].text}`}>{liveLabel}</span>
       </div>
-      <p className="mt-1 text-xs leading-5 text-slate-400">{detail}</p>
+      <p className="mt-1 line-clamp-2 text-[0.72rem] leading-5 text-slate-400">{detail}</p>
     </PortalPanel>
   );
 }
@@ -572,13 +572,13 @@ function NeuralField() {
       </svg>
       <div className="relative z-10 flex h-full flex-col justify-between gap-12">
         <div>
-          <StatusChip tone="cyan">ცოცხალი კვლევის ტვინი</StatusChip>
-          <h2 className="mt-4 max-w-2xl text-3xl font-semibold tracking-[0.22em] text-white md:text-4xl">ALEKSANDRA_BRAIN</h2>
-          <p className="mt-3 max-w-xl text-sm leading-6 text-slate-300">ცოცხალი კვლევითი სისტემა, სადაც წყაროები, ჰიპოთეზები და თერაპიის კანდიდატები რეალურ დროში ერთიანდება.</p>
+          <StatusChip tone="cyan">კვლევის პულსი</StatusChip>
+          <h2 className="mt-4 max-w-2xl text-2xl font-semibold tracking-[-0.015em] text-white md:text-3xl">Aleksandra Brain</h2>
+          <p className="mt-3 max-w-xl text-sm leading-6 text-slate-300">კვლევის წყაროები, ჰიპოთეზები და თერაპიის კანდიდატები ერთ მშვიდ სამუშაო ხედში.</p>
         </div>
         <div className="grid gap-3 sm:grid-cols-3">
-          {["მტკიცებულების გრაფი", "ჰიპოთეზების ძრავი", "კლინიკური საზღვარი"].map((label) => (
-            <div key={label} className="rounded-2xl border border-white/10 bg-black/20 px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-cyan-100 backdrop-blur">{label}</div>
+          {["მტკიცებულება", "ჰიპოთეზა", "საზღვარი"].map((label) => (
+            <div key={label} className="rounded-2xl border border-white/10 bg-black/20 px-3 py-2 text-xs font-medium leading-5 text-cyan-100 backdrop-blur">{label}</div>
           ))}
         </div>
       </div>
@@ -598,10 +598,10 @@ function PipelineView() {
     <PortalPanel className="overflow-hidden p-5">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-lg font-semibold tracking-[-0.03em] text-white">მტკიცებულება → ჰიპოთეზა → თერაპიის ნაკადი</h2>
-          <p className="text-xs text-slate-400">ავტომატურად განახლებადი ეტაპები; კლინიკური მოქმედება მხოლოდ ექიმთან.</p>
+          <h2 className="text-base font-semibold tracking-normal text-white">კვლევიდან შეფასებამდე</h2>
+          <p className="text-xs leading-5 text-slate-400">ეტაპები განახლებულია; კლინიკურ გადაწყვეტილებას ექიმი იღებს.</p>
         </div>
-        <StatusChip tone="cyan">ნაკადის მოდელი</StatusChip>
+        <StatusChip tone="cyan">მოდელი</StatusChip>
       </div>
       <div className="relative mt-5 grid gap-3 lg:grid-cols-5">
         <div className="pointer-events-none absolute left-4 right-4 top-12 hidden h-px bg-gradient-to-r from-cyan-400/0 via-cyan-300/70 to-violet-400/0 shadow-[0_0_18px_rgba(34,211,238,0.7)] lg:block" />
@@ -612,8 +612,8 @@ function PipelineView() {
               <div className={`grid h-14 w-14 place-items-center rounded-full ring-1 ${toneClasses[stage.tone].icon} shadow-2xl ${toneClasses[stage.tone].glow}`}>
                 <Icon className="h-7 w-7" />
               </div>
-              <p className="mt-4 text-[0.65rem] font-bold uppercase tracking-[0.18em] text-slate-500">{index + 1}. {stage.label}</p>
-              <p className="mt-2 text-2xl font-semibold tracking-[-0.05em] text-white">{stage.value}</p>
+              <p className="mt-3 text-[0.72rem] font-medium leading-4 text-slate-400">{index + 1}. {stage.label}</p>
+              <p className="mt-2 text-xl font-semibold tracking-[-0.015em] text-white">{stage.value}</p>
               <p className="text-xs text-slate-400">{stage.detail}</p>
             </div>
           );
@@ -650,7 +650,7 @@ function DomainBars() {
   ] as const;
   return (
     <PortalPanel className="p-5">
-      <h2 className="text-base font-semibold text-white">კვლევის წამყვანი დომენები</h2>
+      <h2 className="text-base font-semibold text-white">წამყვანი დომენები</h2>
       <div className="mt-4 space-y-3">
         {rows.map(([label, value, tone]) => (
           <div key={label}>
@@ -675,25 +675,25 @@ export function PortalHomeDashboard({ locale }: { locale: Locale }) {
       <NeuralField />
 
       <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-        <MetricTile label={isKa ? "მტკიცებულების ელემენტები" : "Evidence items"} base={metricSeed[0]} detail={isKa ? "რეცენზირებული + რეალური მონაცემი" : "peer-reviewed + real-world"} tone="cyan" icon={BookOpen} drift={18} liveLabel={isKa ? "ცოცხალი" : "live"} />
-        <MetricTile label={isKa ? "ვალიდირებული ჰიპოთეზები" : "Validated hypotheses"} base={metricSeed[1]} detail={isKa ? "დომენთაშორისი მხარდაჭერა" : "cross-domain support"} tone="violet" icon={FlaskConical} drift={3} liveLabel={isKa ? "ცოცხალი" : "live"} />
-        <MetricTile label={isKa ? "თერაპიის კანდიდატები" : "Therapy candidates"} base={metricSeed[2]} detail={isKa ? "შეფასების ნაკადი" : "evaluation pipeline"} tone="emerald" icon={Activity} drift={2} liveLabel={isKa ? "ცოცხალი" : "live"} />
-        <MetricTile label={isKa ? "აქტიური კვლევები" : "Active studies"} base={metricSeed[3]} detail={isKa ? "მრავალცენტრიანი კვლევები" : "multi-center studies"} tone="blue" icon={UsersRound} drift={1} liveLabel={isKa ? "ცოცხალი" : "live"} />
-        <MetricTile label={isKa ? "მონაცემთა პარტნიორები" : "Data partners"} base={metricSeed[4]} detail={isKa ? "დაკავშირებული ინსტიტუციები" : "institutions connected"} tone="cyan" icon={Database} drift={2} liveLabel={isKa ? "ცოცხალი" : "live"} />
+        <MetricTile label={isKa ? "მტკიცებულებები" : "Evidence items"} base={metricSeed[0]} detail={isKa ? "წყაროები და მონაცემები" : "peer-reviewed + real-world"} tone="cyan" icon={BookOpen} drift={18} liveLabel={isKa ? "ცოცხ." : "live"} />
+        <MetricTile label={isKa ? "ჰიპოთეზები" : "Validated hypotheses"} base={metricSeed[1]} detail={isKa ? "დადასტურების რიგი" : "cross-domain support"} tone="violet" icon={FlaskConical} drift={3} liveLabel={isKa ? "ცოცხ." : "live"} />
+        <MetricTile label={isKa ? "თერაპიები" : "Therapy candidates"} base={metricSeed[2]} detail={isKa ? "შეფასების ნაკადი" : "evaluation pipeline"} tone="emerald" icon={Activity} drift={2} liveLabel={isKa ? "ცოცხ." : "live"} />
+        <MetricTile label={isKa ? "კვლევები" : "Active studies"} base={metricSeed[3]} detail={isKa ? "აქტიური პროექტები" : "multi-center studies"} tone="blue" icon={UsersRound} drift={1} liveLabel={isKa ? "ცოცხ." : "live"} />
+        <MetricTile label={isKa ? "პარტნიორები" : "Data partners"} base={metricSeed[4]} detail={isKa ? "დაკავშირებული ინსტიტუციები" : "institutions connected"} tone="cyan" icon={Database} drift={2} liveLabel={isKa ? "ცოცხ." : "live"} />
       </section>
 
       <PipelineView />
 
       <section className="grid gap-4 xl:grid-cols-[0.95fr_0.95fr_1.1fr]">
         <PortalPanel className="p-5">
-          <h2 className="text-base font-semibold text-white">მტკიცებულება წყაროს მიხედვით</h2>
+          <h2 className="text-base font-semibold text-white">წყაროები</h2>
           <div className="mt-4 grid gap-3">
             <DonutChart value={44} tone="blue" label="რეცენზირებული სტატიები" />
             <DonutChart value={24} tone="cyan" label="კლინიკური რეესტრები" />
           </div>
         </PortalPanel>
         <PortalPanel className="p-5">
-          <h2 className="text-base font-semibold text-white">ჰიპოთეზების ვალიდაციის სტატუსი</h2>
+          <h2 className="text-base font-semibold text-white">ჰიპოთეზების სტატუსი</h2>
           <div className="mt-4 grid gap-3">
             <DonutChart value={28} tone="emerald" label="ძლიერად მხარდაჭერილი" />
             <DonutChart value={41} tone="violet" label="საშუალოდ მხარდაჭერილი" />
@@ -717,8 +717,8 @@ function ClinicalTimeline() {
     <PortalPanel className="overflow-hidden p-5">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h2 className="text-base font-semibold text-white">კლინიკური კვლევის დროითი ხაზი</h2>
-          <p className="text-xs text-slate-400">ძირითადი ეტაპები ცოცხალ კვლევით პროცესში</p>
+          <h2 className="text-base font-semibold text-white">დროითი ხაზი</h2>
+          <p className="text-xs text-slate-400">ძირითადი ეტაპები კვლევის პროცესში</p>
         </div>
         <StatusChip tone="blue">ავტო-სინქრონიზებული</StatusChip>
       </div>
@@ -767,8 +767,8 @@ export function PortalTopicPage({ locale, pageKey }: { locale: Locale; pageKey: 
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_12%_18%,rgba(34,211,238,0.12),transparent_34%),radial-gradient(circle_at_88%_0%,rgba(139,92,246,0.14),transparent_32%)]" />
           <div className="relative z-10">
             <StatusChip tone="cyan">{page.eyebrow}</StatusChip>
-            <h1 className="mt-4 max-w-5xl text-[clamp(1.85rem,3.6vw,3.6rem)] font-semibold leading-[1.02] tracking-[-0.055em] text-white">{page.title}</h1>
-            <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">{page.subtitle}</p>
+            <h1 className="mt-4 max-w-5xl text-[clamp(1.55rem,2.7vw,2.85rem)] font-semibold leading-[1.12] tracking-[-0.02em] text-white">{page.title}</h1>
+            <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-400">{page.subtitle}</p>
           </div>
           <div className="relative z-10 grid min-h-44 place-items-center rounded-[1.25rem] border border-white/10 bg-black/20">
             <div className="absolute h-28 w-28 rounded-full bg-cyan-400/15 blur-2xl" />
@@ -789,10 +789,10 @@ export function PortalTopicPage({ locale, pageKey }: { locale: Locale; pageKey: 
         <PortalPanel className="p-5">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-semibold tracking-[-0.03em] text-white">ოპერაციული მატრიცა</h2>
-              <p className="text-xs text-slate-500">კონკრეტული ელემენტები, სტატუსები და შემდეგი დამუშავების ეტაპი.</p>
+              <h2 className="text-base font-semibold tracking-normal text-white">ოპერაციული მატრიცა</h2>
+              <p className="text-xs leading-5 text-slate-500">ელემენტები, სტატუსები და შემდეგი ეტაპი.</p>
             </div>
-            <StatusChip tone="slate">ცოცხალი გვერდი</StatusChip>
+            <StatusChip tone="slate">ცოცხალი</StatusChip>
           </div>
           <div className="mt-4"><MiniMatrix items={page.worklist} /></div>
         </PortalPanel>
@@ -800,7 +800,7 @@ export function PortalTopicPage({ locale, pageKey }: { locale: Locale; pageKey: 
         <PortalPanel className="p-5">
           <div className="flex items-center gap-2">
             <AlertCircle className="h-5 w-5 text-cyan-200" />
-            <h2 className="text-lg font-semibold tracking-[-0.03em] text-white">{page.asideTitle}</h2>
+            <h2 className="text-base font-semibold tracking-normal text-white">{page.asideTitle}</h2>
           </div>
           <div className="mt-4 space-y-2">
             {page.asideItems.map((item) => (
@@ -822,7 +822,7 @@ export function PortalTopicPage({ locale, pageKey }: { locale: Locale; pageKey: 
                 <StatusChip tone={tone}>{card.label}</StatusChip>
                 <Sparkline tone={tone} compact />
               </div>
-              <h2 className="mt-4 text-lg font-semibold tracking-[-0.035em] text-white">{card.title}</h2>
+              <h2 className="mt-4 text-base font-semibold tracking-normal text-white">{card.title}</h2>
               <p className="mt-2 line-clamp-3 text-sm leading-6 text-slate-400">{card.body}</p>
               <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-white/8">
                 <div className="h-full rounded-full bg-gradient-to-r from-cyan-300 to-violet-300" style={{ width: `${Math.min(92, 42 + index * 17)}%` }} />

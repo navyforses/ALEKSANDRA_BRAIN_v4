@@ -42,11 +42,11 @@ const navGroups: NavGroup[] = [
     titleKa: "საკომანდო ცენტრი",
     titleEn: "Command Center",
     items: [
-      { href: "/", labelKa: "საკომანდო ცენტრი", labelEn: "Command Center", icon: Home, metric: "ცოცხ." },
-      { href: "/dashboard", labelKa: "ცოცხალი კვლევის ტვინი", labelEn: "Living Research Brain", icon: Brain, metric: "12.8k" },
-      { href: "/evidence-map", labelKa: "მტკიცებულების რუკა", labelEn: "Evidence Map", icon: Network, metric: "742" },
-      { href: "/hypotheses", labelKa: "ჰიპოთეზების შემოწმება", labelEn: "Hypothesis Validation", icon: FlaskConical, metric: "173" },
-      { href: "/therapies", labelKa: "თერაპიის კანდიდატები", labelEn: "Therapy Candidates", icon: Stethoscope, metric: "28" },
+      { href: "/", labelKa: "მთავარი", labelEn: "Command Center", icon: Home, metric: "ცოცხ." },
+      { href: "/dashboard", labelKa: "კვლევის ტვინი", labelEn: "Living Research Brain", icon: Brain, metric: "12.8k" },
+      { href: "/evidence-map", labelKa: "მტკიცებულებები", labelEn: "Evidence Map", icon: Network, metric: "742" },
+      { href: "/hypotheses", labelKa: "ჰიპოთეზები", labelEn: "Hypothesis Validation", icon: FlaskConical, metric: "173" },
+      { href: "/therapies", labelKa: "თერაპიები", labelEn: "Therapy Candidates", icon: Stethoscope, metric: "28" },
       { href: "/timeline", labelKa: "დროითი ხაზი", labelEn: "Timeline", icon: CalendarClock, metric: "2025+" },
     ],
   },
@@ -54,18 +54,18 @@ const navGroups: NavGroup[] = [
     titleKa: "მონაცემთა ქსელი",
     titleEn: "Data Network",
     items: [
-      { href: "/cohorts", labelKa: "კვლევის კოჰორტები", labelEn: "Study Cohorts", icon: UsersRound, metric: "14" },
-      { href: "/data-integrations", labelKa: "მონაცემები და ინტეგრაციები", labelEn: "Data & Integrations", icon: Database, metric: "36" },
+      { href: "/cohorts", labelKa: "კოჰორტები", labelEn: "Study Cohorts", icon: UsersRound, metric: "14" },
+      { href: "/data-integrations", labelKa: "მონაცემები", labelEn: "Data & Integrations", icon: Database, metric: "36" },
       { href: "/papers", labelKa: "პუბლიკაციები", labelEn: "Publications", icon: BookOpen, metric: "8.1k" },
-      { href: "/alerts", labelKa: "სიგნალები და განახლებები", labelEn: "Alerts & Updates", icon: Bell, metric: "+9" },
+      { href: "/alerts", labelKa: "სიგნალები", labelEn: "Alerts & Updates", icon: Bell, metric: "+9" },
     ],
   },
   {
     titleKa: "ოპერაციები",
     titleEn: "Operations",
     items: [
-      { href: "/resources", labelKa: "ოჯახისთვის უსაფრთხო შეჯამება", labelEn: "Family-safe summary", icon: Library, metric: "მზად" },
-      { href: "/how-it-works", labelKa: "კლინიკური საზღვარი", labelEn: "Clinical boundary", icon: ShieldCheck, metric: "ჩართ." },
+      { href: "/resources", labelKa: "შეჯამება", labelEn: "Family-safe summary", icon: Library, metric: "მზად" },
+      { href: "/how-it-works", labelKa: "საზღვარი", labelEn: "Clinical boundary", icon: ShieldCheck, metric: "ჩართ." },
       { href: "/support", labelKa: "მხარდაჭერა", labelEn: "Support", icon: LifeBuoy, metric: "24/7" },
       { href: "/audit", labelKa: "აუდიტის კვალი", labelEn: "Audit Trail", icon: FileText, metric: "219" },
       { href: "/settings", labelKa: "პარამეტრები", labelEn: "Settings", icon: Settings, metric: "კონფ." },
@@ -88,10 +88,10 @@ function isActive(current: string, href: string) {
 }
 
 const assistantActions = [
-  { icon: FileText, titleKa: "მტკიცებულების ბრიფი", textKa: "ბოლო 24 საათის წყაროების შეჯამება", titleEn: "Evidence brief", textEn: "Summarize the last 24h source changes" },
-  { icon: FlaskConical, titleKa: "ჰიპოთეზის შემოწმება", textKa: "მტკიცებულების დონე და საწინააღმდეგო სიგნალები", titleEn: "Validate hypothesis", textEn: "Evidence level and counter-signals" },
-  { icon: HeartPulse, titleKa: "თერაპიის ნაკადი", textKa: "კანდიდატების რისკი, ფაზა და სტატუსი", titleEn: "Therapy pipeline", textEn: "Candidate risk, phase and status" },
-  { icon: Sparkles, titleKa: "კვლევის ბრიფის შექმნა", textKa: "ოჯახისთვის უსაფრთხო მოკლე ანგარიში", titleEn: "Generate research brief", textEn: "Family-safe short report" },
+  { icon: FileText, titleKa: "მტკიცებულების ბრიფი", textKa: "ბოლო წყაროების მოკლე შეჯამება", titleEn: "Evidence brief", textEn: "Summarize the last 24h source changes" },
+  { icon: FlaskConical, titleKa: "ჰიპოთეზა", textKa: "მხარდაჭერა და საწინააღმდეგო სიგნალები", titleEn: "Validate hypothesis", textEn: "Evidence level and counter-signals" },
+  { icon: HeartPulse, titleKa: "თერაპიები", textKa: "რისკი, ფაზა და სტატუსი", titleEn: "Therapy pipeline", textEn: "Candidate risk, phase and status" },
+  { icon: Sparkles, titleKa: "კვლევის ბრიფი", textKa: "მოკლე და უსაფრთხო ანგარიში", titleEn: "Generate research brief", textEn: "Family-safe short report" },
 ];
 
 export default function PortalFrame({ children, locale }: { children: ReactNode; locale: Locale }) {
@@ -113,15 +113,15 @@ export default function PortalFrame({ children, locale }: { children: ReactNode;
               <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-emerald-300 shadow-[0_0_16px_rgba(52,211,153,0.85)]" />
             </span>
             <span className="min-w-0">
-              <span className="block truncate text-[0.82rem] font-bold tracking-[-0.02em] text-white">ALEKSANDRA_BRAIN</span>
-              <span className="block text-[0.67rem] font-medium text-cyan-200/70">{isKa ? "ცოცხალი კვლევის ტვინი" : "Living Research Brain"}</span>
+              <span className="block truncate text-[0.82rem] font-semibold tracking-normal text-white">Aleksandra Brain</span>
+              <span className="block text-[0.67rem] font-medium text-cyan-200/70">{isKa ? "კვლევის ტვინი" : "Living Research Brain"}</span>
             </span>
           </Link>
 
           <nav aria-label={isKa ? "მთავარი მენიუ" : "Primary menu"} className="mt-5 space-y-5">
             {navGroups.map((group) => (
               <section key={group.titleEn}>
-                <p className="px-3 text-[0.62rem] font-semibold uppercase tracking-[0.19em] text-blue-200/38">{isKa ? group.titleKa : group.titleEn}</p>
+                <p className="px-3 text-[0.68rem] font-semibold leading-5 tracking-normal text-blue-200/42">{isKa ? group.titleKa : group.titleEn}</p>
                 <div className="mt-2 space-y-1">
                   {group.items.map((item) => {
                     const Icon = item.icon;
@@ -166,9 +166,9 @@ export default function PortalFrame({ children, locale }: { children: ReactNode;
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <span className="inline-flex items-center gap-2 rounded-full border border-emerald-300/20 bg-emerald-300/8 px-3 py-1.5 text-[0.7rem] font-semibold text-emerald-100">
-                  <Radio className="h-3.5 w-3.5 animate-pulse text-emerald-300" /> {isKa ? "ცოცხალი მონაცემთა ნაკადი" : "LIVE DATA STREAM"}
+                  <Radio className="h-3.5 w-3.5 animate-pulse text-emerald-300" /> {isKa ? "მონაცემთა ნაკადი" : "Live data"}
                 </span>
-                <span className="hidden text-xs font-medium text-blue-100/50 sm:inline">{isKa ? "განახლება ყოველ 8 წამში · სიმულაციური მონაცემთა ფენა" : "Refresh every 8 seconds · simulated data layer"}</span>
+                <span className="hidden text-xs font-medium text-blue-100/50 sm:inline">{isKa ? "განახლება ყოველ 8 წამში" : "Refresh every 8 seconds"}</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="hidden items-center gap-2 rounded-2xl border border-cyan-300/12 bg-white/[0.035] px-3 py-2 text-xs font-semibold text-cyan-100 md:inline-flex">
@@ -191,7 +191,7 @@ export default function PortalFrame({ children, locale }: { children: ReactNode;
                   <Brain className="h-5 w-5" />
                 </span>
                 <div>
-                  <h2 className="text-sm font-bold tracking-[-0.02em] text-white">{isKa ? "BRAIN ასისტენტი" : "BRAIN assistant"}</h2>
+                  <h2 className="text-sm font-semibold tracking-normal text-white">{isKa ? "კვლევის ასისტენტი" : "BRAIN assistant"}</h2>
                   <p className="text-[0.68rem] text-cyan-100/55">{isKa ? "კვლევის კოპილოტი" : "research copilot"}</p>
                 </div>
               </div>
@@ -203,7 +203,7 @@ export default function PortalFrame({ children, locale }: { children: ReactNode;
 
             <div className="mt-4 rounded-2xl border border-cyan-300/12 bg-[#081a34] p-4 text-[0.82rem] leading-6 text-blue-100/78">
               {isKa
-                ? "ვაკვირდები მტკიცებულების ნაკადს, ჰიპოთეზების მხარდაჭერას, თერაპიის კანდიდატებს და წყაროების სტატუსს. პასუხები კვლევითია და არ ცვლის კლინიკურ გადაწყვეტილებას."
+                ? "ვაკვირდები წყაროებს, ჰიპოთეზებს და თერაპიის კანდიდატებს. პასუხები კვლევითია და ექიმის გადაწყვეტილებას არ ცვლის."
                 : "I monitor evidence flow, hypothesis support, therapy candidates, and source status. Responses are research-only and do not replace clinical judgment."}
             </div>
 
@@ -224,7 +224,7 @@ export default function PortalFrame({ children, locale }: { children: ReactNode;
             </div>
 
             <div className="mt-4 rounded-2xl border border-purple-300/12 bg-purple-400/[0.055] p-4">
-              <div className="flex items-center gap-2 text-sm font-bold text-purple-100">
+              <div className="flex items-center gap-2 text-sm font-semibold text-purple-100">
                 <Zap className="h-4 w-4 text-purple-200" />
                 {isKa ? "შემოთავაზებული კითხვები" : "Suggested prompts"}
               </div>
@@ -236,14 +236,14 @@ export default function PortalFrame({ children, locale }: { children: ReactNode;
             </div>
 
             <label className="mt-4 flex items-center gap-2 rounded-2xl border border-cyan-300/16 bg-[#061832] px-3 py-2.5 text-sm text-blue-100/55">
-              <span className="sr-only">{isKa ? "ჰკითხე BRAIN ასისტენტს" : "Ask BRAIN assistant"}</span>
-              <input className="min-w-0 flex-1 bg-transparent text-[0.8rem] outline-none placeholder:text-blue-100/36" placeholder={isKa ? "ჰკითხე BRAIN ასისტენტს..." : "Ask BRAIN assistant..."} />
+              <span className="sr-only">{isKa ? "ჰკითხე ასისტენტს" : "Ask BRAIN assistant"}</span>
+              <input className="min-w-0 flex-1 bg-transparent text-[0.8rem] outline-none placeholder:text-blue-100/36" placeholder={isKa ? "ჰკითხე ასისტენტს..." : "Ask BRAIN assistant..."} />
               <button type="button" className="grid h-8 w-8 place-items-center rounded-xl bg-cyan-400/16 text-cyan-200 transition hover:bg-cyan-400/25"><ChevronRight className="h-4 w-4" /></button>
             </label>
 
             <div className="mt-4 rounded-2xl border border-amber-200/14 bg-amber-200/[0.055] p-3 text-[0.68rem] leading-5 text-amber-100/72">
-              <div className="flex items-center gap-2 font-bold text-amber-100"><CircleHelp className="h-3.5 w-3.5" /> {isKa ? "მხოლოდ კვლევისთვის" : "Research only"}</div>
-              <p className="mt-1">{isKa ? "BRAIN ასისტენტი აწვდის კვლევით ინფორმაციას და არ ცვლის ექიმის შეფასებას." : "BRAIN assistant provides research information and is not a substitute for clinical judgment."}</p>
+              <div className="flex items-center gap-2 font-semibold text-amber-100"><CircleHelp className="h-3.5 w-3.5" /> {isKa ? "კვლევისთვის" : "Research only"}</div>
+              <p className="mt-1">{isKa ? "ასისტენტი კვლევით ინფორმაციას აწვდის და ექიმის შეფასებას არ ცვლის." : "BRAIN assistant provides research information and is not a substitute for clinical judgment."}</p>
             </div>
           </div>
         </aside>

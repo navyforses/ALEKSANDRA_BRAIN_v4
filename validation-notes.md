@@ -45,3 +45,11 @@ Production URL: `https://viewer-sigma-two.vercel.app`.
 | `/ka/hypotheses` | Pass | Production hypotheses submenu renders the dark topic layout with Georgian hero copy, metric cards, operational matrix, checklist blocks, and BRAIN assistant panel. Screenshot: `/home/ubuntu/screenshots/viewer-sigma-two_ver_2026-05-28_18-47-41_6850.webp`. |
 
 Production HTTP smoke tests returned `200` for every tested route: `/ka`, `/ka/dashboard`, `/ka/brain`, `/ka/hypotheses`, `/ka/hypotheses/mitochondrial-dysfunction`, `/ka/evidence-map`, `/ka/therapies`, `/ka/cohorts`, `/ka/data-integrations`, `/ka/papers`, `/ka/alerts`, `/ka/resources`, `/ka/how-it-works`, `/ka/support`, `/ka/audit`, `/ka/settings`, `/ka/timeline`, and `/minimal`.
+
+## Typography refinement validation — 2026-05-28
+
+After the Georgian typography/copy refinement, the local production dashboard at `http://127.0.0.1:3002/ka` was visually checked again. The hero heading is now title case (`Aleksandra Brain`) instead of spaced uppercase branding, Georgian labels are shorter, the right assistant panel uses `კვლევის ასისტენტი` and `ჰკითხე ასისტენტს...` instead of BRAIN-heavy Georgian copy, and the UI reads as calmer and less crowded while retaining the dark command-center layout.
+
+Build validation: `npm run build` completed successfully after the final copy fixes. Local HTTP smoke tests returned `200` for `/ka`, `/ka/dashboard`, `/ka/brain`, `/ka/hypotheses`, `/ka/therapies`, `/ka/timeline`, `/ka/evidence-map`, `/ka/cohorts`, `/ka/data-integrations`, `/ka/papers`, `/ka/alerts`, `/ka/resources`, `/ka/how-it-works`, `/ka/support`, `/ka/audit`, `/ka/settings`, and `/minimal`.
+
+Local screenshot: `/home/ubuntu/screenshots/127_0_0_1_2026-05-28_19-02-54_8244.webp`.

@@ -19,7 +19,7 @@ export default async function TopNav() {
         <span className="relative flex h-8 w-8 items-center justify-center rounded-full border border-cyan-300/40 bg-cyan-300/10" aria-hidden="true">
           <span className="h-2.5 w-2.5 rounded-full bg-cyan-300 shadow-[0_0_22px_rgba(103,232,249,0.95)]" />
         </span>
-        <span className="text-sm font-semibold tracking-[-0.02em] text-white">ALEKSANDRA_BRAIN</span>
+        <span className="text-sm font-semibold tracking-normal text-white">Aleksandra Brain</span>
       </Link>
 
       <div className="order-3 flex w-full min-w-0 flex-1 items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/[0.045] p-1 shadow-sm shadow-slate-950/[0.03] backdrop-blur-xl md:order-none md:w-auto">

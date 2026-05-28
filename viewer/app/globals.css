@@ -51,8 +51,8 @@
   --color-medical-blue: #2563eb;
   --color-medical-yellow: #eab308;
 
-  /* Inter is strictly enforced by DESIGN.md for UI */
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  /* Georgian UI uses Noto Sans Georgian first for calmer, more legible text. */
+  --font-sans: var(--font-georgian), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
 
   --radius-lg: var(--radius);
   --radius-md: calc(var(--radius) - 2px);
