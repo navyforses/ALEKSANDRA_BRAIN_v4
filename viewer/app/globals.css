@@ -176,3 +176,52 @@ svg .group:hover rect {
 #main:focus {
   outline: none;
 }
+
+/* Portal document reader: title-only cards open into an A4-like article sheet. */
+@keyframes portal-reader-backdrop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes portal-document-in {
+  from {
+    opacity: 0;
+    transform: translateY(2rem) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.portal-reader-backdrop {
+  animation: portal-reader-backdrop-in 180ms ease-out both;
+}
+
+.portal-a4-sheet {
+  animation: portal-document-in 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.portal-a4-sheet::before {
+  content: "";
+  position: absolute;
+  inset: 0.75rem;
+  pointer-events: none;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 0.9rem;
+}
+
+.portal-document-body p + p {
+  margin-top: 1.1rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .portal-reader-backdrop,
+  .portal-a4-sheet {
+    animation: none;
+  }
+}

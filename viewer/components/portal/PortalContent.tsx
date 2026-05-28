@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import type { Locale } from "@/lib/seo";
 import { getCount, getRows } from "@/lib/supabase";
+import { PortalDocumentList } from "./PortalDocumentList";
 
 type PageKey =
   | "today"
@@ -657,7 +658,7 @@ function MetricCard({ value, locale }: { value: Metric; locale: Locale }) {
 }
 
 function Section({ title, items, locale }: { title: string; items: Item[]; locale: Locale }) {
-  return <section className="mt-8"><h2 className="mb-4 text-xl font-black text-white">{title}</h2>{items.length ? <div className="grid gap-4 lg:grid-cols-2">{items.map((it, i) => <ItemCard key={`${it.source}-${it.title}-${i}`} value={it} locale={locale} />)}</div> : <NoData locale={locale} />}</section>;
+  return <section className="mt-8"><h2 className="mb-4 text-xl font-black text-white">{title}</h2>{items.length ? <PortalDocumentList items={items} locale={locale} /> : <NoData locale={locale} />}</section>;
 }
 
 function Body({ topic, locale }: { topic: Topic; locale: Locale }) {
@@ -687,7 +688,7 @@ function DoctorBrief({ topic, locale }: { topic: Topic; locale: Locale }) {
   return (
     <section className="mt-8 rounded-[2rem] border border-white/10 bg-white/[0.045] p-6">
       <p className="text-xs font-bold uppercase tracking-[0.22em] text-sky-200">{locale === "ka" ? "ექიმთან წასაღები ბრიფი" : "Doctor brief"}</p>
-      <div className="mt-5">{items.length ? <div className="grid gap-4 lg:grid-cols-2">{items.map((it, i) => <ItemCard key={`${it.source}-${it.title}-${i}`} value={it} locale={locale} />)}</div> : <NoData locale={locale} />}</div>
+      <div className="mt-5">{items.length ? <PortalDocumentList items={items} locale={locale} /> : <NoData locale={locale} />}</div>
     </section>
   );
 }
