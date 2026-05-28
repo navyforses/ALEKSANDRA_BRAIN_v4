@@ -7,6 +7,8 @@ import { routing } from "@/i18n/routing";
 import PortalFrame from "@/components/layout/PortalFrame";
 import { buildPageMetadata, type Locale } from "@/lib/seo";
 
+export const dynamic = "force-dynamic";
+
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
 const notoSansGeorgian = Noto_Sans_Georgian({ subsets: ["georgian"], variable: "--font-georgian", display: "swap" });
 

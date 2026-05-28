@@ -4,7 +4,6 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  ArrowRight,
   BookOpen,
   Brain,
   FileText,
@@ -13,7 +12,6 @@ import {
   Info,
   Layers3,
   MessageSquareText,
-  Scale,
   ShieldCheck,
   Stethoscope,
   type LucideIcon,
@@ -22,14 +20,6 @@ import LanguageSwitcher from "@/components/LanguageSwitcher";
 
 type Locale = "en" | "ka";
 type NavItem = { href: string; labelKa: string; labelEn: string; helperKa: string; helperEn: string; icon: LucideIcon };
-
-type AssistantAction = {
-  titleKa: string;
-  titleEn: string;
-  textKa: string;
-  textEn: string;
-  icon: LucideIcon;
-};
 
 const primaryNav: NavItem[] = [
   { href: "/", labelKa: "მთავარი", labelEn: "Home", helperKa: "მოკლე სურათი", helperEn: "Overview", icon: Home },
@@ -43,13 +33,6 @@ const primaryNav: NavItem[] = [
 const secondaryLinks: NavItem[] = [
   { href: "/dashboard", labelKa: "სრული პანელი", labelEn: "Full panel", helperKa: "დეტალური ხედვა", helperEn: "Detailed view", icon: Layers3 },
   { href: "/how-it-works", labelKa: "საზღვარი", labelEn: "Boundary", helperKa: "როგორ წავიკითხოთ", helperEn: "How to read", icon: ShieldCheck },
-];
-
-const assistantActions: AssistantAction[] = [
-  { titleKa: "შეჯამება", titleEn: "Summary", textKa: "მხოლოდ რეალური მონაცემით", textEn: "Only with real data", icon: MessageSquareText },
-  { titleKa: "რისკები", titleEn: "Risks", textKa: "წყაროს არსებობისას", textEn: "Only if sources exist", icon: Scale },
-  { titleKa: "ექიმთან კითხვა", titleEn: "Doctor question", textKa: "მონაცემიდან შედგენილი", textEn: "Built from available data", icon: Stethoscope },
-  { titleKa: "შედარება", titleEn: "Compare", textKa: "მონაცემი არ არის", textEn: "No data available", icon: Layers3 },
 ];
 
 function normalizePath(pathname: string, locale: Locale) {
@@ -159,29 +142,11 @@ export default function PortalFrame({ children, locale }: { children: ReactNode;
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h2 className="text-sm font-semibold text-white">{isKa ? "კვლევის ასისტენტი" : "Research assistant"}</h2>
-                <p className="mt-1 text-[0.72rem] leading-5 text-slate-400">{isKa ? "პასუხი გამოჩნდება მხოლოდ მაშინ, როცა რეალური მონაცემი არსებობს." : "Answers appear only when real data exists."}</p>
+                <p className="mt-3 rounded-2xl border border-dashed border-white/15 bg-white/[0.035] p-3 text-[0.72rem] font-semibold leading-5 text-slate-300">{isKa ? "მონაცემი არ არის" : "No data available"}</p>
               </div>
               <span className="grid h-9 w-9 place-items-center rounded-xl border border-sky-300/20 bg-sky-300/[0.07] text-sky-100">
                 <MessageSquareText className="h-4 w-4" />
               </span>
-            </div>
-
-            <div className="mt-4 grid gap-2">
-              {assistantActions.map((action) => {
-                const Icon = action.icon;
-                return (
-                  <button key={action.titleEn} type="button" className="group flex items-center gap-3 rounded-2xl border border-white/10 bg-[#0c1728] px-3 py-3 text-left transition hover:border-sky-300/25 hover:bg-sky-300/[0.055] focus:outline-none focus:ring-2 focus:ring-sky-300/60">
-                    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-white/10 bg-white/[0.035] text-slate-300 group-hover:text-sky-100">
-                      <Icon className="h-4 w-4" />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-sm font-semibold text-white">{isKa ? action.titleKa : action.titleEn}</span>
-                      <span className="mt-0.5 block truncate text-[0.7rem] leading-4 text-slate-500">{isKa ? action.textKa : action.textEn}</span>
-                    </span>
-                    <ArrowRight className="h-4 w-4 text-slate-500 transition group-hover:translate-x-0.5 group-hover:text-sky-100" />
-                  </button>
-                );
-              })}
             </div>
 
             <div className="mt-4 rounded-2xl border border-white/10 bg-[#0b1424] p-3">
