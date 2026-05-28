@@ -53,3 +53,14 @@ After the Georgian typography/copy refinement, the local production dashboard at
 Build validation: `npm run build` completed successfully after the final copy fixes. Local HTTP smoke tests returned `200` for `/ka`, `/ka/dashboard`, `/ka/brain`, `/ka/hypotheses`, `/ka/therapies`, `/ka/timeline`, `/ka/evidence-map`, `/ka/cohorts`, `/ka/data-integrations`, `/ka/papers`, `/ka/alerts`, `/ka/resources`, `/ka/how-it-works`, `/ka/support`, `/ka/audit`, `/ka/settings`, and `/minimal`.
 
 Local screenshot: `/home/ubuntu/screenshots/127_0_0_1_2026-05-28_19-02-54_8244.webp`.
+
+## Production typography refinement verification — 2026-05-28
+
+Production URL: `https://viewer-sigma-two.vercel.app`.
+
+| Route | Result | Notes |
+|---|---:|---|
+| `/ka?typography_check=verified` | Pass | Live dashboard shows the refined typography: `Aleksandra Brain` instead of uppercase spaced branding, shorter Georgian labels, calmer hero copy, and the right panel now reads `კვლევის ასისტენტი`. Screenshot: `/home/ubuntu/screenshots/viewer-sigma-two_ver_2026-05-28_19-04-53_3716.webp`. |
+| `/ka/hypotheses?typography_check=verified` | Pass | Live hypotheses page shows shorter Georgian headline/copy and the same calmer assistant panel and navigation. Screenshot: `/home/ubuntu/screenshots/viewer-sigma-two_ver_2026-05-28_19-05-05_4082.webp`. |
+
+GitHub workflow checks for commit `2774d1a` completed successfully: Secret Scan and Trust Boundary Lint both passed. Production HTTP checks returned `200` for `/ka`, `/ka/hypotheses`, and `/minimal` after the typography refinement push.
