@@ -1,0 +1,243 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 1050" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0b1020"/>
+      <stop offset="100%" stop-color="#111a33"/>
+    </linearGradient>
+    <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1e6fff"/><stop offset="100%" stop-color="#0a3d91"/>
+    </linearGradient>
+    <linearGradient id="g2" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#22c55e"/><stop offset="100%" stop-color="#0f5132"/>
+    </linearGradient>
+    <linearGradient id="g3" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#a855f7"/><stop offset="100%" stop-color="#4c1d95"/>
+    </linearGradient>
+    <linearGradient id="g4" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f59e0b"/><stop offset="100%" stop-color="#7c2d12"/>
+    </linearGradient>
+    <linearGradient id="g5" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ef4444"/><stop offset="100%" stop-color="#7f1d1d"/>
+    </linearGradient>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M0,0 L10,6 L0,12 z" fill="#9fb0d6"/>
+    </marker>
+  </defs>
+
+  <rect width="1400" height="1050" fill="url(#bg)"/>
+
+  <!-- Title -->
+  <text x="700" y="42" text-anchor="middle" fill="#e6ecff" font-size="26" font-weight="700">ALEKSANDRA_BRAIN v4 — Architecture</text>
+  <text x="700" y="68" text-anchor="middle" fill="#9fb0d6" font-size="14">5 ფენა · 52 MCP · CrewAI 5 აგენტი · 6 Phase დახურულია (2026-05-27)</text>
+
+  <!-- Patient pill -->
+  <rect x="540" y="86" width="320" height="34" rx="17" fill="#0f172a" stroke="#3b82f6" stroke-width="1.5"/>
+  <text x="700" y="108" text-anchor="middle" fill="#dbeafe" font-size="13">პაციენტი: ალექსანდრა ჯინჭარაძე · HIE · 0–2y plasticity window</text>
+
+  <!-- ====================== PERCEPTION ====================== -->
+  <g>
+    <rect x="40" y="150" width="1320" height="135" rx="14" fill="url(#g1)" opacity="0.18" stroke="#1e6fff" stroke-width="1.5"/>
+    <text x="60" y="180" fill="#dbeafe" font-size="18" font-weight="700">1 · PERCEPTION (თვალები)</text>
+    <text x="60" y="200" fill="#9fb0d6" font-size="12">Web ingestion · PDF parsing · cron orchestration</text>
+
+    <g font-size="12" fill="#e6ecff">
+      <rect x="60"   y="215" width="180" height="56" rx="8" fill="#0a3d91" stroke="#60a5fa"/>
+      <text x="150" y="237" text-anchor="middle" font-weight="700">Crawl4AI 0.8.6</text>
+      <text x="150" y="255" text-anchor="middle" font-size="11" fill="#cbd5ff">primary scraper · free</text>
+
+      <rect x="255"  y="215" width="180" height="56" rx="8" fill="#0a3d91" stroke="#60a5fa"/>
+      <text x="345" y="237" text-anchor="middle" font-weight="700">Firecrawl MCP</text>
+      <text x="345" y="255" text-anchor="middle" font-size="11" fill="#cbd5ff">paid fallback · Hobby $16</text>
+
+      <rect x="450"  y="215" width="180" height="56" rx="8" fill="#0a3d91" stroke="#60a5fa"/>
+      <text x="540" y="237" text-anchor="middle" font-weight="700">Browser Use 3.0</text>
+      <text x="540" y="255" text-anchor="middle" font-size="11" fill="#cbd5ff">paywall bypass</text>
+
+      <rect x="645"  y="215" width="180" height="56" rx="8" fill="#0a3d91" stroke="#60a5fa"/>
+      <text x="735" y="237" text-anchor="middle" font-weight="700">RAGFlow ≥0.17</text>
+      <text x="735" y="255" text-anchor="middle" font-size="11" fill="#cbd5ff">PDF → chunks → entities</text>
+
+      <rect x="840"  y="215" width="180" height="56" rx="8" fill="#0a3d91" stroke="#60a5fa"/>
+      <text x="930" y="237" text-anchor="middle" font-weight="700">n8n 2.x</text>
+      <text x="930" y="255" text-anchor="middle" font-size="11" fill="#cbd5ff">cron / 6h · Railway</text>
+
+      <rect x="1035" y="215" width="180" height="56" rx="8" fill="#0a3d91" stroke="#60a5fa"/>
+      <text x="1125" y="237" text-anchor="middle" font-weight="700">NCBI E-Utils</text>
+      <text x="1125" y="255" text-anchor="middle" font-size="11" fill="#cbd5ff">PubMed · 10 req/s</text>
+    </g>
+  </g>
+
+  <!-- arrow -->
+  <line x1="700" y1="290" x2="700" y2="312" stroke="#9fb0d6" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- ====================== MEMORY ====================== -->
+  <g>
+    <rect x="40" y="318" width="1320" height="160" rx="14" fill="url(#g2)" opacity="0.18" stroke="#22c55e" stroke-width="1.5"/>
+    <text x="60" y="348" fill="#dcfce7" font-size="18" font-weight="700">2 · MEMORY (მეხსიერება)</text>
+    <text x="60" y="368" fill="#9fb0d6" font-size="12">Temporal graph · vectors · relational metadata · shared agent memory</text>
+
+    <g font-size="12" fill="#e6ecff">
+      <rect x="60"   y="383" width="180" height="80" rx="8" fill="#14532d" stroke="#4ade80"/>
+      <text x="150" y="406" text-anchor="middle" font-weight="700">Neo4j AuraDB</text>
+      <text x="150" y="424" text-anchor="middle" font-size="11" fill="#bbf7d0">+ Graphiti</text>
+      <text x="150" y="440" text-anchor="middle" font-size="11" fill="#bbf7d0">temporal facts</text>
+      <text x="150" y="455" text-anchor="middle" font-size="11" fill="#bbf7d0">568 entities</text>
+
+      <rect x="255"  y="383" width="180" height="80" rx="8" fill="#14532d" stroke="#4ade80"/>
+      <text x="345" y="406" text-anchor="middle" font-weight="700">Qdrant</text>
+      <text x="345" y="424" text-anchor="middle" font-size="11" fill="#bbf7d0">vector search</text>
+      <text x="345" y="440" text-anchor="middle" font-size="11" fill="#bbf7d0">fastembed local</text>
+      <text x="345" y="455" text-anchor="middle" font-size="11" fill="#bbf7d0">5,302 vectors</text>
+
+      <rect x="450"  y="383" width="180" height="80" rx="8" fill="#14532d" stroke="#4ade80"/>
+      <text x="540" y="406" text-anchor="middle" font-weight="700">Supabase Postgres</text>
+      <text x="540" y="424" text-anchor="middle" font-size="11" fill="#bbf7d0">15 tables · RLS</text>
+      <text x="540" y="440" text-anchor="middle" font-size="11" fill="#bbf7d0">migrations 008→015</text>
+      <text x="540" y="455" text-anchor="middle" font-size="11" fill="#bbf7d0">326 ledger rows</text>
+
+      <rect x="645"  y="383" width="180" height="80" rx="8" fill="#14532d" stroke="#4ade80"/>
+      <text x="735" y="406" text-anchor="middle" font-weight="700">LightRAG 1.4.16</text>
+      <text x="735" y="424" text-anchor="middle" font-size="11" fill="#bbf7d0">graph + vector</text>
+      <text x="735" y="440" text-anchor="middle" font-size="11" fill="#bbf7d0">single query</text>
+
+      <rect x="840"  y="383" width="180" height="80" rx="8" fill="#14532d" stroke="#4ade80"/>
+      <text x="930" y="406" text-anchor="middle" font-weight="700">mem0 (Apr-26)</text>
+      <text x="930" y="424" text-anchor="middle" font-size="11" fill="#bbf7d0">shared agent memory</text>
+      <text x="930" y="440" text-anchor="middle" font-size="11" fill="#bbf7d0">91.6% acc</text>
+
+      <rect x="1035" y="383" width="180" height="80" rx="8" fill="#14532d" stroke="#4ade80"/>
+      <text x="1125" y="406" text-anchor="middle" font-weight="700">Cloudflare R2</text>
+      <text x="1125" y="424" text-anchor="middle" font-size="11" fill="#bbf7d0">artifact storage</text>
+      <text x="1125" y="440" text-anchor="middle" font-size="11" fill="#bbf7d0">zero egress</text>
+      <text x="1125" y="455" text-anchor="middle" font-size="11" fill="#fbbf24">KV deprecated</text>
+    </g>
+  </g>
+
+  <line x1="700" y1="483" x2="700" y2="505" stroke="#9fb0d6" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- ====================== COGNITION ====================== -->
+  <g>
+    <rect x="40" y="511" width="1320" height="170" rx="14" fill="url(#g3)" opacity="0.18" stroke="#a855f7" stroke-width="1.5"/>
+    <text x="60" y="541" fill="#f3e8ff" font-size="18" font-weight="700">3 · COGNITION (აზროვნება)</text>
+    <text x="60" y="561" fill="#9fb0d6" font-size="12">CrewAI · 5 agents · Claude Sonnet 4.5/4.6 · DSPy · Adaptive GoT</text>
+
+    <g font-size="12" fill="#e6ecff">
+      <rect x="60"   y="576" width="220" height="90" rx="8" fill="#4c1d95" stroke="#c084fc"/>
+      <text x="170" y="600" text-anchor="middle" font-weight="700">🕷 Spider</text>
+      <text x="170" y="618" text-anchor="middle" font-size="11" fill="#e9d5ff">Research Paper Hunter</text>
+      <text x="170" y="635" text-anchor="middle" font-size="11" fill="#e9d5ff">5,301 chunks indexed</text>
+
+      <rect x="295"  y="576" width="220" height="90" rx="8" fill="#4c1d95" stroke="#c084fc"/>
+      <text x="405" y="600" text-anchor="middle" font-weight="700">🔬 Analyzer</text>
+      <text x="405" y="618" text-anchor="middle" font-size="11" fill="#e9d5ff">Evidence Quality</text>
+      <text x="405" y="635" text-anchor="middle" font-size="11" fill="#e9d5ff">307 facts</text>
+
+      <rect x="530"  y="576" width="220" height="90" rx="8" fill="#4c1d95" stroke="#c084fc"/>
+      <text x="640" y="600" text-anchor="middle" font-weight="700">💡 Hypothesis</text>
+      <text x="640" y="618" text-anchor="middle" font-size="11" fill="#e9d5ff">Cross-Disease Patterns</text>
+      <text x="640" y="635" text-anchor="middle" font-size="11" fill="#e9d5ff">10 hyp · 3 promising</text>
+
+      <rect x="765"  y="576" width="220" height="90" rx="8" fill="#4c1d95" stroke="#c084fc"/>
+      <text x="875" y="600" text-anchor="middle" font-weight="700">💊 Repurposing</text>
+      <text x="875" y="618" text-anchor="middle" font-size="11" fill="#e9d5ff">Drug Discovery</text>
+      <text x="875" y="635" text-anchor="middle" font-size="11" fill="#e9d5ff">12 candidates · 5 validated</text>
+
+      <rect x="1000" y="576" width="220" height="90" rx="8" fill="#4c1d95" stroke="#c084fc"/>
+      <text x="1110" y="600" text-anchor="middle" font-weight="700">📢 Communicator</text>
+      <text x="1110" y="618" text-anchor="middle" font-size="11" fill="#e9d5ff">Family Liaison</text>
+      <text x="1110" y="635" text-anchor="middle" font-size="11" fill="#e9d5ff">Bilingual EN/KA</text>
+
+      <text x="60" y="655" fill="#9fb0d6" font-size="11">underpinnings: CrewAI 1.14 · DSPy 3.2.1 · Adaptive GoT MCP · Vercel AI SDK v5 · Claude API budget cap $10/mo</text>
+    </g>
+  </g>
+
+  <line x1="430" y1="685" x2="430" y2="707" stroke="#9fb0d6" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="970" y1="685" x2="970" y2="707" stroke="#9fb0d6" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- ====================== VISUALIZATION + ACTION side-by-side ====================== -->
+  <!-- VISUALIZATION -->
+  <g>
+    <rect x="40" y="713" width="640" height="220" rx="14" fill="url(#g4)" opacity="0.18" stroke="#f59e0b" stroke-width="1.5"/>
+    <text x="60" y="743" fill="#fef3c7" font-size="18" font-weight="700">4 · VISUALIZATION (ხედვა)</text>
+    <text x="60" y="763" fill="#9fb0d6" font-size="12">client-side only · MRI never leaves the browser</text>
+
+    <g font-size="12" fill="#e6ecff">
+      <rect x="60"  y="778" width="180" height="68" rx="8" fill="#7c2d12" stroke="#fbbf24"/>
+      <text x="150" y="800" text-anchor="middle" font-weight="700">NiiVue 0.49</text>
+      <text x="150" y="818" text-anchor="middle" font-size="11" fill="#fde68a">WebGL2 MRI viewer</text>
+      <text x="150" y="834" text-anchor="middle" font-size="11" fill="#fde68a">@niivue/nvreact</text>
+
+      <rect x="255" y="778" width="180" height="68" rx="8" fill="#7c2d12" stroke="#fbbf24"/>
+      <text x="345" y="800" text-anchor="middle" font-weight="700">R3F 9.6 + drei</text>
+      <text x="345" y="818" text-anchor="middle" font-size="11" fill="#fde68a">3D anatomical shells</text>
+      <text x="345" y="834" text-anchor="middle" font-size="11" fill="#fde68a">freebrowse fork</text>
+
+      <rect x="450" y="778" width="210" height="68" rx="8" fill="#7c2d12" stroke="#fbbf24"/>
+      <text x="555" y="800" text-anchor="middle" font-weight="700">FastSurfer-LIT</text>
+      <text x="555" y="818" text-anchor="middle" font-size="11" fill="#fde68a">cyst-aware segmentation</text>
+      <text x="555" y="834" text-anchor="middle" font-size="11" fill="#fde68a">local Docker only</text>
+
+      <rect x="60"  y="855" width="180" height="62" rx="8" fill="#7c2d12" stroke="#fbbf24"/>
+      <text x="150" y="877" text-anchor="middle" font-weight="700">BIBSnet</text>
+      <text x="150" y="893" text-anchor="middle" font-size="11" fill="#fde68a">neonatal 0–8mo</text>
+      <text x="150" y="908" text-anchor="middle" font-size="11" fill="#fde68a">600× faster</text>
+
+      <rect x="255" y="855" width="180" height="62" rx="8" fill="#7c2d12" stroke="#fbbf24"/>
+      <text x="345" y="877" text-anchor="middle" font-weight="700">nii2mesh + TVB</text>
+      <text x="345" y="893" text-anchor="middle" font-size="11" fill="#fde68a">STL · brain sim</text>
+
+      <rect x="450" y="855" width="210" height="62" rx="8" fill="#7c2d12" stroke="#fbbf24"/>
+      <text x="555" y="877" text-anchor="middle" font-weight="700">Next.js 14 + Tailwind</text>
+      <text x="555" y="893" text-anchor="middle" font-size="11" fill="#fde68a">Vercel · bilingual EN/KA</text>
+      <text x="555" y="908" text-anchor="middle" font-size="11" fill="#fde68a">next-intl 4.12</text>
+    </g>
+  </g>
+
+  <!-- ACTION -->
+  <g>
+    <rect x="720" y="713" width="640" height="220" rx="14" fill="url(#g5)" opacity="0.18" stroke="#ef4444" stroke-width="1.5"/>
+    <text x="740" y="743" fill="#fee2e2" font-size="18" font-weight="700">5 · ACTION (მოქმედება)</text>
+    <text x="740" y="763" fill="#9fb0d6" font-size="12">outbound channels · BRAIN AI Manager · zero PHI in messages</text>
+
+    <g font-size="12" fill="#e6ecff">
+      <rect x="740"  y="778" width="180" height="68" rx="8" fill="#7f1d1d" stroke="#fca5a5"/>
+      <text x="830" y="800" text-anchor="middle" font-weight="700">Telegram Bot</text>
+      <text x="830" y="818" text-anchor="middle" font-size="11" fill="#fecaca">2-way · push + ask</text>
+      <text x="830" y="834" text-anchor="middle" font-size="11" fill="#fecaca">Whisper voice intake</text>
+
+      <rect x="935"  y="778" width="180" height="68" rx="8" fill="#7f1d1d" stroke="#fca5a5"/>
+      <text x="1025" y="800" text-anchor="middle" font-weight="700">Gmail MCP</text>
+      <text x="1025" y="818" text-anchor="middle" font-size="11" fill="#fecaca">compose-only OAuth</text>
+      <text x="1025" y="834" text-anchor="middle" font-size="11" fill="#fecaca">clinician outreach</text>
+
+      <rect x="1130" y="778" width="210" height="68" rx="8" fill="#7f1d1d" stroke="#fca5a5"/>
+      <text x="1235" y="800" text-anchor="middle" font-weight="700">Notion MCP</text>
+      <text x="1235" y="818" text-anchor="middle" font-size="11" fill="#fecaca">family knowledge base</text>
+      <text x="1235" y="834" text-anchor="middle" font-size="11" fill="#fecaca">96 contacts</text>
+
+      <rect x="740"  y="855" width="180" height="62" rx="8" fill="#7f1d1d" stroke="#fca5a5"/>
+      <text x="830" y="877" text-anchor="middle" font-weight="700">Google Calendar</text>
+      <text x="830" y="893" text-anchor="middle" font-size="11" fill="#fecaca">treatment timeline</text>
+
+      <rect x="935"  y="855" width="180" height="62" rx="8" fill="#7f1d1d" stroke="#fca5a5"/>
+      <text x="1025" y="877" text-anchor="middle" font-weight="700">Weekly Brief PDF</text>
+      <text x="1025" y="893" text-anchor="middle" font-size="11" fill="#fecaca">ReportLab · Sun 09:00 ET</text>
+
+      <rect x="1130" y="855" width="210" height="62" rx="8" fill="#7f1d1d" stroke="#fca5a5"/>
+      <text x="1235" y="877" text-anchor="middle" font-weight="700">Booking / Kiwi</text>
+      <text x="1235" y="893" text-anchor="middle" font-size="11" fill="#fecaca">Duke EAP logistics</text>
+    </g>
+  </g>
+
+  <!-- Footer / status strip -->
+  <g>
+    <rect x="40" y="960" width="1320" height="60" rx="10" fill="#0f172a" stroke="#334155"/>
+    <text x="60" y="985" fill="#cbd5e1" font-size="13" font-weight="700">Status (2026-05-27):</text>
+    <text x="60" y="1005" fill="#94a3b8" font-size="11">
+      Phase 1–6 + 6.1 closed · 89/89 verifier coverage · LLM spend ~$7–8 / $60 cap · Phase 4 acceptance window open → first real Weekly Brief Sun 2026-05-24
+    </text>
+    <text x="1340" y="985" text-anchor="end" fill="#cbd5e1" font-size="13" font-weight="700">52 MCP</text>
+    <text x="1340" y="1005" text-anchor="end" fill="#94a3b8" font-size="11">23 registry · 19 GH · 5 AI Pulse · 5 custom (FastMCP)</text>
+  </g>
+</svg>
