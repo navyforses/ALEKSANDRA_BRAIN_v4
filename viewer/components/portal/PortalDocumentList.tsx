@@ -60,11 +60,36 @@ function documentView(item: ReaderItem, locale: Locale) {
   return { ...item, title, body };
 }
 
+const technicalMarkers = [
+  /source_?hypothesis_?id/i,
+  /target_?pathway/i,
+  /created_?at/i,
+  /validated_?at/i,
+  /updated_?at/i,
+  /pubmed_?signals/i,
+  /has_?pediatric_?data/i,
+  /recent_?year/i,
+  /top_?meta/i,
+  /best_?evidence_?paper_?id/i,
+];
+
+function articleParagraph(value: string) {
+  const raw = value.trim();
+  if (!raw) return "";
+
+  const markerCount = technicalMarkers.filter((marker) => marker.test(raw)).length;
+  const startsAsTechnicalDump = /^\s*(source_?hypothesis_?id|target_?pathway|created_?at|validated_?at|updated_?at|pubmed_?signals|top_?meta)\s*:/i.test(raw);
+  if (startsAsTechnicalDump || markerCount >= 2) return "";
+
+  const cleaned = cleanInlineMarkdown(raw);
+  return cleaned.replace(/^dossier\s*:\s*/i, "").trim();
+}
+
 function splitBody(body?: string) {
   if (!body?.trim()) return [];
   return body
     .split(/\s+—\s+|\n{2,}/g)
-    .map((part) => cleanInlineMarkdown(part))
+    .map((part) => articleParagraph(part))
     .filter(Boolean);
 }
 

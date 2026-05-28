@@ -355,6 +355,12 @@ function text(value: unknown, locale: Locale = "ka"): string {
       "recommendation",
       "recommended_action",
       "action",
+      "assessment",
+      "analysis",
+      "dossier",
+      "narrative",
+      "explanation",
+      "conclusion",
       "description",
       "content",
       "text",
@@ -365,13 +371,10 @@ function text(value: unknown, locale: Locale = "ka"): string {
     const preferred = preferredKeys.map((key) => text(obj[key], locale)).find(Boolean);
     if (preferred) return preferred;
 
-    return Object.entries(obj)
-      .map(([k, v]) => {
-        const rendered = text(v, locale);
-        return rendered ? `${k}: ${rendered}` : "";
-      })
-      .filter(Boolean)
-      .join("; ");
+    // Arbitrary backend metadata objects often contain UUIDs, timestamps, and
+    // audit fields. Do not dump those key-value pairs into the public reader;
+    // if there is no human-facing field above, treat the object as no display data.
+    return "";
   }
   return "";
 }
