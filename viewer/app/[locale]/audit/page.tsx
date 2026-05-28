@@ -1,8 +1,7 @@
-import { buildPageMetadata, type Locale } from "@/lib/seo";
 import type { Metadata } from "next";
-import { setRequestLocale } from 'next-intl/server'
-import AuditLogClient from './AuditLogClient'
-
+import { setRequestLocale } from "next-intl/server";
+import { PortalTopicPage } from "@/components/portal/PortalContent";
+import { buildPageMetadata, type Locale } from "@/lib/seo";
 
 export async function generateMetadata({
   params,
@@ -13,12 +12,13 @@ export async function generateMetadata({
   return buildPageMetadata(locale, "audit");
 }
 
-export default async function AuditLogPage({
+export default async function PortalRoutePage({
   params,
 }: {
-  params: Promise<{ locale: 'en' | 'ka' }>
+  params: Promise<{ locale: Locale }>;
 }) {
-  const { locale } = await params
-  setRequestLocale(locale)
-  return <AuditLogClient />
+  const { locale } = await params;
+  setRequestLocale(locale);
+
+  return <PortalTopicPage locale={locale} pageKey="audit" />;
 }

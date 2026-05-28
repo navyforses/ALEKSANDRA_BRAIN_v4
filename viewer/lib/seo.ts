@@ -14,8 +14,16 @@ export type SeoRoute =
   | "hypotheses"
   | "therapies"
   | "timeline"
-  | "audit"
+  | "evidence-map"
+  | "cohorts"
+  | "data-integrations"
   | "papers"
+  | "alerts"
+  | "resources"
+  | "how-it-works"
+  | "support"
+  | "settings"
+  | "audit"
   | "knowledge";
 
 type RouteCopy = {
@@ -63,20 +71,60 @@ export const routeSeo: Record<SeoRoute, RouteCopy> = {
     title: { ka: "ქრონოლოგია | ALEKSANDRA_BRAIN", en: "Timeline | ALEKSANDRA_BRAIN" },
     description: "ქრონოლოგია აერთიანებს დაკვირვებებს, ვიზიტებს, კვლევით მოვლენებსა და follow-up ამოცანებს დროით კონტექსტში.",
   },
+  "evidence-map": {
+    path: "/evidence-map",
+    title: { ka: "მტკიცებულების რუკა | ALEKSANDRA_BRAIN", en: "Evidence Map | ALEKSANDRA_BRAIN" },
+    description: "მტკიცებულების რუკა აჩვენებს წყაროებს, ჰიპოთეზებს, კითხვებსა და უსაფრთხო შემდეგ ნაბიჯს ერთ დაკავშირებულ კვლევით რუკაზე.",
+  },
+  cohorts: {
+    path: "/cohorts",
+    title: { ka: "კვლევითი ჯგუფები | ALEKSANDRA_BRAIN", en: "Study Cohorts | ALEKSANDRA_BRAIN" },
+    description: "კვლევითი ჯგუფები აჩვენებს გაერთიანებულ ჯგუფებს, შედეგებს და შესაბამისობას პირადი მონაცემების გამჟღავნების გარეშე.",
+  },
+  "data-integrations": {
+    path: "/data-integrations",
+    title: { ka: "მონაცემები და ინტეგრაციები | ALEKSANDRA_BRAIN", en: "Data & Integrations | ALEKSANDRA_BRAIN" },
+    description: "მონაცემებისა და ინტეგრაციების გვერდი აღწერს წყაროებს, განახლების რიტმს, წარმოშობას და შემოწმების პროცესს.",
+  },
+  papers: {
+    path: "/papers",
+    title: { ka: "კვლევითი წყაროები | ALEKSANDRA_BRAIN", en: "Research Papers | ALEKSANDRA_BRAIN" },
+    description: "კვლევითი წყაროების ბიბლიოთეკა აჩვენებს პუბლიკაციებს, შესაბამისობის ქულას, მტკიცებულების დონესა და HIE-სთან კავშირს.",
+  },
+  alerts: {
+    path: "/alerts",
+    title: { ka: "განახლებები | ALEKSANDRA_BRAIN", en: "Alerts & Updates | ALEKSANDRA_BRAIN" },
+    description: "განახლებების გვერდი აჩვენებს ახალ წყაროებს, ექსპერტის კომენტარს და დაკვირვების სიის ცვლილებებს პრიორიტეტითა და უსაფრთხოების კონტექსტით.",
+  },
+  resources: {
+    path: "/resources",
+    title: { ka: "ოჯახის რესურსები | ALEKSANDRA_BRAIN", en: "Family Resources | ALEKSANDRA_BRAIN" },
+    description: "ოჯახის რესურსები შეიცავს მარტივი ენით განმარტებებს, ვიზიტის საკონტროლო სიებს და ექიმთან განსახილველ კითხვებს.",
+  },
+  "how-it-works": {
+    path: "/how-it-works",
+    title: { ka: "როგორ მუშაობს | ALEKSANDRA_BRAIN", en: "How This Works | ALEKSANDRA_BRAIN" },
+    description: "გვერდი განმარტავს როგორ აგროვებს სისტემა კვლევას, როგორ ალაგებს მტკიცებულებას და რატომ რჩება გადაწყვეტილება ექიმთან.",
+  },
+  support: {
+    path: "/support",
+    title: { ka: "დახმარება | ALEKSANDRA_BRAIN", en: "Help & Support | ALEKSANDRA_BRAIN" },
+    description: "დახმარების გვერდი აჩვენებს ოჯახისა და ზრუნვის გუნდისთვის განკუთვნილ პროცესებს, მხარდაჭერას და გამოყენების სცენარებს.",
+  },
+  settings: {
+    path: "/settings",
+    title: { ka: "პარამეტრები | ALEKSANDRA_BRAIN", en: "Settings | ALEKSANDRA_BRAIN" },
+    description: "პარამეტრები აკონტროლებს ენას, ხედვის რეჟიმს, შეხსენებებს და უსაფრთხოების საზღვრის ტექსტებს.",
+  },
   audit: {
     path: "/audit",
     title: { ka: "აუდიტი | ALEKSANDRA_BRAIN", en: "Audit Trail | ALEKSANDRA_BRAIN" },
     description: "აუდიტის ჟურნალი ინახავს ცვლილებების, მიმოხილვების და გუნდის მოქმედებების გამჭვირვალე ისტორიას.",
   },
-  papers: {
-    path: "/papers",
-    title: { ka: "კვლევითი წყაროები | ALEKSANDRA_BRAIN", en: "Research Papers | ALEKSANDRA_BRAIN" },
-    description: "კვლევითი წყაროების ბიბლიოთეკა აჩვენებს პუბლიკაციებს, relevance score-ს, evidence დონესა და HIE-სთან კავშირს.",
-  },
   knowledge: {
     path: "/knowledge",
     title: { ka: "ცოდნის ბაზა | ALEKSANDRA_BRAIN", en: "Knowledge Base | ALEKSANDRA_BRAIN" },
-    description: "ცოდნის ბაზა აერთიანებს წყაროებს, გრაფს, ჰიპოთეზებსა და კვლევის pipeline-ს ოჯახისათვის გასაგებ სტრუქტურაში.",
+    description: "ცოდნის ბაზა აერთიანებს წყაროებს, გრაფს, ჰიპოთეზებსა და კვლევის პროცესს ოჯახისთვის გასაგებ სტრუქტურაში.",
   },
 };
 

@@ -9,7 +9,7 @@ export async function generateMetadata({
   params: Promise<{ locale: Locale }>;
 }): Promise<Metadata> {
   const { locale } = await params;
-  return buildPageMetadata(locale, "papers");
+  return buildPageMetadata(locale, "support");
 }
 
 export default async function PortalRoutePage({
@@ -20,5 +20,5 @@ export default async function PortalRoutePage({
   const { locale } = await params;
   setRequestLocale(locale);
 
-  return <PortalTopicPage locale={locale} pageKey="papers" />;
+  return <PortalTopicPage locale={locale} pageKey="support" />;
 }
