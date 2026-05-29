@@ -233,3 +233,35 @@ svg .group:hover rect {
   line-clamp: 2;
   overflow: hidden;
 }
+
+/* The A4 reader scrolls inside the opened sheet, not in the page behind it. */
+.portal-a4-sheet {
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.portal-a4-sheet::-webkit-scrollbar {
+  width: 0.85rem;
+}
+
+.portal-a4-sheet::-webkit-scrollbar-track {
+  background: rgba(226, 232, 240, 0.9);
+  border-radius: 9999px;
+  margin: 1.25rem 0;
+}
+
+.portal-a4-sheet::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #38bdf8, #0f172a);
+  border: 3px solid rgba(226, 232, 240, 0.9);
+  border-radius: 9999px;
+}
+
+.portal-a4-sheet::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #0ea5e9, #020617);
+}
+
+.portal-a4-sheet {
+  scrollbar-color: #0ea5e9 rgba(226, 232, 240, 0.9);
+  scrollbar-width: thin;
+}

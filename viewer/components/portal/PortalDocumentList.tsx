@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type { Locale } from "@/lib/seo";
 
 type ReaderItem = {
@@ -96,10 +96,17 @@ function splitBody(body?: string) {
 export function PortalDocumentList({ items, locale }: { items: ReaderItem[]; locale: Locale }) {
   const [selected, setSelected] = useState<ReaderItem | null>(null);
   const titleId = useId();
+  const sheetRef = useRef<HTMLElement | null>(null);
   const paragraphs = splitBody(selected?.body);
 
   useEffect(() => {
     if (!selected) return;
+
+    window.requestAnimationFrame(() => {
+      if (!sheetRef.current) return;
+      sheetRef.current.scrollTop = 0;
+      sheetRef.current.focus({ preventScroll: true });
+    });
 
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -139,7 +146,7 @@ export function PortalDocumentList({ items, locale }: { items: ReaderItem[]; loc
 
       {selected ? (
         <div
-          className="portal-reader-backdrop fixed inset-0 z-[90] overflow-y-auto bg-slate-950/80 px-4 py-8 backdrop-blur-md md:py-12"
+          className="portal-reader-backdrop fixed inset-0 z-[90] grid place-items-center overflow-hidden bg-slate-950/80 px-3 py-4 backdrop-blur-md md:px-4 md:py-8"
           role="presentation"
           onMouseDown={(event) => {
             if (event.target === event.currentTarget) setSelected(null);
@@ -149,12 +156,14 @@ export function PortalDocumentList({ items, locale }: { items: ReaderItem[]; loc
             role="dialog"
             aria-modal="true"
             aria-labelledby={titleId}
-            className="portal-a4-sheet relative mx-auto min-h-[min(1123px,calc(100vh-4rem))] w-full max-w-[794px] rounded-[1.25rem] bg-slate-50 px-7 py-8 text-slate-950 shadow-[0_40px_120px_rgba(0,0,0,0.45)] md:px-14 md:py-12"
+            ref={sheetRef}
+            tabIndex={-1}
+            className="portal-a4-sheet relative mx-auto h-[min(1123px,calc(100dvh-2rem))] max-h-[calc(100dvh-2rem)] w-full max-w-[794px] overflow-y-auto overscroll-contain rounded-[1.25rem] bg-slate-50 px-7 py-8 text-slate-950 shadow-[0_40px_120px_rgba(0,0,0,0.45)] outline-none md:h-[min(1123px,calc(100dvh-4rem))] md:max-h-[calc(100dvh-4rem)] md:px-14 md:py-12"
           >
             <button
               type="button"
               onClick={() => setSelected(null)}
-              className="absolute right-5 top-5 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-black uppercase tracking-[0.16em] text-slate-700 shadow-sm transition hover:border-slate-400 hover:text-slate-950 focus:outline-none focus:ring-2 focus:ring-sky-500"
+              className="sticky right-0 top-0 z-20 float-right rounded-full border border-slate-200 bg-white/95 px-4 py-2 text-xs font-black uppercase tracking-[0.16em] text-slate-700 shadow-sm backdrop-blur transition hover:border-slate-400 hover:text-slate-950 focus:outline-none focus:ring-2 focus:ring-sky-500"
             >
               {closeLabel(locale)}
             </button>
