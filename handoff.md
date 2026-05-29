@@ -5,8 +5,8 @@
 > **Session ID:** `70b0b944-c452-403d-96ec-ffc81c75e08f`
 > **Transcript path:** `C:\Users\jinch\.claude\projects\c--Users-jinch-OneDrive--------------aleksandra-brane\70b0b944-c452-403d-96ec-ffc81c75e08f.jsonl`
 > **Previous handoff archived to:** `.handoffs/handoff-2026-05-15-2230.md`
-> **Branch:** `v7-phases-7-0-to-7-5-closure` (15 commits ahead of `main`, HEAD `5bd97f7`)
-> **Resume update (2026-05-28):** §9 confirmation commands re-run from a fresh shell surfaced 5 small bugs (stale Hagmann assertion in `test_load_default_connectome_metadata_shape`, missing `sys.path` guard in verifiers 7.0/7.1/7.2, undersized pytest timeout in `verify_phase_7_2` check 12, stale `middleware.ts` path in `verify_phase_7_5` check 1). All five fixed in commit `6f8e05e fix(v7): post-handoff verifier + test hygiene (8/8 GREEN)`. All 8 verifiers now GREEN, pytest 658 PASS, viewer build PASS. The 11 staged design/AGENTS files (§3) committed separately in `5bd97f7 docs(design): fresh-site concept brief + 8 specialist inputs + AGENTS.md` after user approval. PR strategy confirmed by Shako: keep 14 atomic commits, do **not** squash.
+> **Branch:** `v7-phases-7-0-to-7-5-closure` (17 commits ahead of `main`, HEAD `c0c1863`)
+> **Resume update (2026-05-28):** §9 confirmation commands re-run from a fresh shell surfaced 5 small bugs (stale Hagmann assertion in `test_load_default_connectome_metadata_shape`, missing `sys.path` guard in verifiers 7.0/7.1/7.2, undersized pytest timeout in `verify_phase_7_2` check 12, stale `middleware.ts` path in `verify_phase_7_5` check 1). All five fixed in commit `6f8e05e fix(v7): post-handoff verifier + test hygiene (8/8 GREEN)`. All 8 verifiers now GREEN, pytest 658 PASS, viewer build PASS. The 11 staged design/AGENTS files (§3) committed separately in `5bd97f7 docs(design): fresh-site concept brief + 8 specialist inputs + AGENTS.md` after user approval. Followed by `028ca0d docs(handoff): refresh resume notes` and `c0c1863 fix(test): stabilize test_higher_confidence_level_widens_ci` (deterministic seeded fix retires the DoWhy bootstrap flake — handoff §2 carry-forward closed). PR strategy confirmed by Shako: keep atomic commits, do **not** squash.
 
 ---
 
@@ -65,7 +65,7 @@
 ### What's broken or partial
 | Item | Status | Severity |
 |---|---|---|
-| `test_higher_confidence_level_widens_ci` (brain/causal/tests/test_estimators.py) | Passes in isolation (77s); FLAKES ~5% of the time in cumulative `pytest brain/` runs. DoWhy 0.14 bootstrap CI variance on small samples. | LOW · documented carry-forward; verifier check 12_7_3_12 / 13_7_4_10 etc. tolerate it |
+| ~~`test_higher_confidence_level_widens_ci`~~ | **RESOLVED 2026-05-28** in commit `c0c1863 fix(test): stabilize test_higher_confidence_level_widens_ci`. Test now seeds `np.random` + `random` to the same value before each `estimate_effect` call so both 95%-CI and 99%-CI draw from the *identical* bootstrap distribution. 99%-CI is then wider by mathematical construction (wider quantiles of the same empirical distribution). Empirically: 0 fails in 5-iter shared-seed probe; isolated test PASS in 111s; suite still 8/8 PASS in 206s. | RESOLVED |
 | TVB upstream image `thevirtualbrain/tvb-run` | DockerHub readme flags "Updates discontinued after version 26.7.x" | MEDIUM · use `:latest` (TVB 2.11.0) for now; build custom anaconda/miniconda replacement before next major dependency churn |
 | `viewer/middleware.ts` | DELETED in commit `1073cec`; logic merged into `viewer/proxy.ts`. Phase 7.5 constitutional test repointed in commit `61b1729`. | RESOLVED |
 | Phase 7.5 migrations 021/022/022b/023 | Written + runbooks authored; NOT applied. Verifier checks SKIP in code-complete. | EXPECTED · operator-pending |
@@ -98,6 +98,8 @@ bbcfcbb  feat(v7): Phase 7.3 Layer B — TVB Docker integration (Days 6-10)     
 e55ef6a  chore(v7): ground Hagmann PMID + ignore verifier run logs             3 files
 6f8e05e  fix(v7): post-handoff verifier + test hygiene (8/8 GREEN)             5 files  [2026-05-28]
 5bd97f7  docs(design): fresh-site concept brief + 8 specialist inputs + AGENTS.md 11 files  [2026-05-28]
+028ca0d  docs(handoff): archive v6.1 handoff + refresh v7.0 closure handoff (resume notes) 2 files [2026-05-28]
+c0c1863  fix(test): stabilize test_higher_confidence_level_widens_ci (no more bootstrap flake) 1 file [2026-05-28]
 ```
 
 ### Dirty files (`git status --short`)
@@ -181,8 +183,8 @@ PENDING:
 □ [shako APPLIES] Phase 7.5 production (migrations 021+022+022b+023 + GitHub Actions push + tag v7.5.0)
 □ [shako runs] Phase 7.7 acceptance window late-Dec 2026 → early-Jan 2027
 □ [carry-forward] Replace deprecated tvb-run image with custom anaconda/miniconda build
-□ Flaky-test carry-forward: test_higher_confidence_level_widens_ci
-□ [DECIDE] 11 staged design files — commit separately or discard?
+✓ Flaky-test carry-forward: test_higher_confidence_level_widens_ci  — **RESOLVED 2026-05-28 in `c0c1863`** (deterministic seeded fix)
+✓ [DECIDE] 11 staged design files — **RESOLVED 2026-05-28 in `5bd97f7`** (single docs(design) commit per Shako Option 1)
 ```
 
 ---
@@ -382,10 +384,10 @@ git branch --show-current
 # expected: v7-phases-7-0-to-7-5-closure
 
 git log --oneline main..HEAD | wc -l
-# expected: 15  (was 13 before the 2026-05-28 resume; +2 commits: 6f8e05e fixes, 5bd97f7 design)
+# expected: 17  (was 13 before the 2026-05-28 resume; +4 commits: 6f8e05e fixes, 5bd97f7 design, 028ca0d handoff, c0c1863 flake fix)
 
 git rev-parse --short HEAD
-# expected: 5bd97f7  (was e55ef6a before the 2026-05-28 resume)
+# expected: c0c1863  (was e55ef6a before the 2026-05-28 resume)
 
 git status --short | grep -v "^??" | wc -l
 # expected: 0  (working tree clean)
@@ -395,8 +397,7 @@ git status --short | grep -v "^??" | wc -l
 # expected: 658 passed, 2 skipped, 4 deselected
 # (was: 658 passed, 1 skipped — Docker-down adds a 2nd skip for the conditional live TVB test)
 # wall time: 6–14 minutes depending on hardware
-# tolerated: 657 passed + 1 failed in test_higher_confidence_level_widens_ci (DoWhy bootstrap flake)
-# run in isolation to confirm flake: .venv-v7/Scripts/python.exe -m pytest brain/causal/tests/test_estimators.py::test_higher_confidence_level_widens_ci -v
+# (flake `test_higher_confidence_level_widens_ci` retired in c0c1863 — no longer tolerated, must PASS)
 
 # === Verify viewer TypeScript + Next.js build ===
 cd viewer
