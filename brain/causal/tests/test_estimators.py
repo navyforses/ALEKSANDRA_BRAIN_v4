@@ -8,25 +8,28 @@ so every well-identified estimate must come out negative.
 
 from __future__ import annotations
 
+import random
 import warnings
 
+import numpy as np
 import pytest
 from pydantic import ValidationError
 
 # Silence the well-known DoWhy / pyparsing / statsmodels deprecation noise
+# BEFORE the brain.causal.* imports below pull DoWhy + pydot in.
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
-from brain.causal.dowhy_bootstrap import (
+from brain.causal.dowhy_bootstrap import (  # noqa: E402  (post-filter intentional)
     build_causal_model,
     identify_effect,
     synthetic_data_for_reference_scm,
 )
-from brain.causal.estimators import (
+from brain.causal.estimators import (  # noqa: E402  (post-filter intentional)
     EstimateResult,
     EstimationError,
     estimate_effect,
 )
-from brain.causal.scm import build_reference_scm
+from brain.causal.scm import build_reference_scm  # noqa: E402  (post-filter intentional)
 
 
 # ---------------------------------------------------------------------------
@@ -45,15 +48,13 @@ def _build_reference_model(n: int = 300, seed: int = 7):
 # ---------------------------------------------------------------------------
 def test_linear_regression_returns_negative_effect_on_reference_scm():
     model, estimand = _build_reference_model()
-    result = estimate_effect(model, estimand, "linear_regression",
-                             units="seizures/day")
+    result = estimate_effect(model, estimand, "linear_regression", units="seizures/day")
     assert isinstance(result, EstimateResult)
     assert result.method == "linear_regression"
     assert result.units == "seizures/day"
     # Vigabatrin reduces seizures structurally: effect must be < 0
     assert result.effect < 0.0, (
-        f"expected negative ATE for Vigabatrin -> Seizure freq, "
-        f"got {result.effect}"
+        f"expected negative ATE for Vigabatrin -> Seizure freq, " f"got {result.effect}"
     )
     assert result.n_samples == 300
     # CI brackets the point estimate
@@ -88,11 +89,21 @@ def test_iv_raises_estimation_error_when_no_instrument_in_graph():
 # confidence_level widens CI
 # ---------------------------------------------------------------------------
 def test_higher_confidence_level_widens_ci():
+    # DoWhy 0.14's linear_regression CI is bootstrap-based and consumes the
+    # global numpy / random RNGs. Without seeding, ~5% of runs drew bootstrap
+    # samples that put the 99%-CI marginally inside the 95%-CI -- the test
+    # was a documented carry-forward flake. Seeding numpy + random with the
+    # same value immediately before each call forces both estimates to draw
+    # the *identical* bootstrap distribution; the 99%-CI is then wider by
+    # mathematical construction (wider quantiles of the same empirical
+    # distribution).
     model, estimand = _build_reference_model()
-    r95 = estimate_effect(model, estimand, "linear_regression",
-                          confidence_level=0.95)
-    r99 = estimate_effect(model, estimand, "linear_regression",
-                          confidence_level=0.99)
+    np.random.seed(42)
+    random.seed(42)
+    r95 = estimate_effect(model, estimand, "linear_regression", confidence_level=0.95)
+    np.random.seed(42)
+    random.seed(42)
+    r99 = estimate_effect(model, estimand, "linear_regression", confidence_level=0.99)
     assert r95.ci_low is not None and r95.ci_high is not None
     assert r99.ci_low is not None and r99.ci_high is not None
     width_95 = r95.ci_high - r95.ci_low
@@ -135,8 +146,7 @@ def test_estimate_result_rejects_extra_fields():
 def test_invalid_confidence_level_raises():
     model, estimand = _build_reference_model()
     with pytest.raises(EstimationError, match="confidence_level"):
-        estimate_effect(model, estimand, "linear_regression",
-                        confidence_level=1.5)
+        estimate_effect(model, estimand, "linear_regression", confidence_level=1.5)
 
 
 # ---------------------------------------------------------------------------
