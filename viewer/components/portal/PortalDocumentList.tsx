@@ -168,7 +168,7 @@ export function PortalDocumentList({ items, locale }: { items: ReaderItem[]; loc
               {closeLabel(locale)}
             </button>
 
-            <header className="border-b border-slate-200 pb-7 pr-24">
+            <header className="portal-reader-header border-b border-slate-200 pb-7 pr-24">
               <p className="text-xs font-black uppercase tracking-[0.28em] text-sky-700">ALEKSANDRA BRAIN</p>
               <h1 id={titleId} className="mt-5 text-3xl font-black leading-tight tracking-tight text-slate-950 md:text-5xl">
                 {selected.title}
@@ -176,11 +176,11 @@ export function PortalDocumentList({ items, locale }: { items: ReaderItem[]; loc
               {selected.meta ? <p className="mt-4 inline-flex rounded-full bg-slate-200 px-3 py-1 text-xs font-bold text-slate-700">{selected.meta}</p> : null}
             </header>
 
-            <div className="portal-document-body mt-8 text-[1.02rem] leading-8 text-slate-800 md:text-lg md:leading-9">
+            <div className="portal-document-body portal-reader-body mt-8 text-[1.02rem] leading-8 text-slate-800 md:text-lg md:leading-9">
               {paragraphs.length ? paragraphs.map((paragraph, index) => <p key={`${paragraph.slice(0, 32)}-${index}`}>{paragraph}</p>) : <p className="font-semibold text-slate-500">{noData(locale)}</p>}
             </div>
 
-            <footer className="mt-12 border-t border-slate-200 pt-5 text-xs font-black uppercase tracking-[0.18em] text-slate-500">
+            <footer className="portal-reader-footer mt-12 border-t border-slate-200 pt-5 text-xs font-black uppercase tracking-[0.18em] text-slate-500">
               {sourceLabel(locale)}: {selected.url ? <a href={selected.url} target="_blank" rel="noreferrer" className="text-sky-700 underline decoration-dotted underline-offset-4">{selected.source}</a> : selected.source}
             </footer>
           </article>
