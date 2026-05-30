@@ -35,6 +35,8 @@ cypher-shell -a "$NEO4J_URI" -u "$NEO4J_USERNAME" -p "$NEO4J_PASSWORD" \
 
 ## Post-apply verification
 
+### Cypher smoke (immediate)
+
 ```bash
 cypher-shell -a "$NEO4J_URI" -u "$NEO4J_USERNAME" -p "$NEO4J_PASSWORD" \
   --format plain <<'EOF'
@@ -43,6 +45,21 @@ SHOW INDEXES;
 MATCH (n:CausalNode) RETURN count(n) AS causal_nodes;  // expect 0 pre-Day-4
 MATCH ()-[r:CO_OCCURS_WITH|RELATED_TO]-() RETURN count(r) AS legacy_edges;  // expect ~307 pre-Day-6
 EOF
+```
+
+### Phase 7.1 production verifier (after Days 4-6 mutations land)
+
+After `scripts/refactor/classify_edges.py` + `cross_link.py` + the
+Day-4 CausalNode label upgrade have run, the 7 currently-SKIPed Neo4j
+checks flip to live execution:
+
+```bash
+NEO4J_URI='neo4j+s://<your-aura>.databases.neo4j.io' \
+NEO4J_USERNAME='neo4j' \
+NEO4J_PASSWORD='<your-password>' \
+.venv-v7/Scripts/python.exe scripts/verify_phase_7_1.py --mode production
+# Expected: 9/9 PASS, 0 SKIP, 0 FAIL, exit code 0
+# (was 2/9 PASS + 7 SKIP in --mode code-complete)
 ```
 
 ## Rollback
