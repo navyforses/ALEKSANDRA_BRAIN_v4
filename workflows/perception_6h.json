@@ -22,6 +22,7 @@
     },
     {
       "parameters": {
+        "method": "POST",
         "url": "={{ $env.PERCEPTION_WORKER_URL }}/perception-tick",
         "options": {
           "timeout": 600000
@@ -32,7 +33,7 @@
       "typeVersion": 4.2,
       "position": [460, 300],
       "id": "perception-call",
-      "_comment": "Phase 1: replace PERCEPTION_WORKER_URL with Railway worker URL. For local-only drill, this node is skipped and scripts/perception_tick.py is run from venv."
+      "_comment": "POST to perception_worker /perception-tick. method:POST is explicit — older n8n defaulted to GET when method was omitted, producing 404 not_found. For local-only drill, this node is skipped and scripts/perception_tick.py is run from venv."
     },
     {
       "parameters": {
