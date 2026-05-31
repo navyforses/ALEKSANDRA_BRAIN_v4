@@ -51,7 +51,6 @@ import argparse
 import json
 import os
 import re
-import shutil
 import subprocess
 import sys
 import time
@@ -80,7 +79,9 @@ MC_100_SAMPLE_TIMEOUT_S = 90.0  # spec says <60s; allow margin for first-run imp
 MC_10K_SAMPLE_TIMEOUT_S = 600.0  # spec says <10 min
 CACHE_HIT_TIMEOUT_S = 1.0
 MIN_PNG_BYTES = 10 * 1024
-REGRESSION_TIMEOUT_S = 900.0
+REGRESSION_TIMEOUT_S = 1200.0  # bumped from 900s — full brain/ suite needs
+# more headroom under verifier subprocess overhead on Windows-Docker-Desktop
+# hardware. Standalone pytest = ~7-8 min; verifier subprocess = ~10-14 min.
 REGRESSION_BASELINE_MIN_TESTS = 449  # Phase 7.2 close baseline
 TOLERATED_FLAKE = "test_higher_confidence_level_widens_ci"
 
@@ -247,8 +248,7 @@ def check_mc_10k_samples(mode: str) -> CheckResult:
     return CheckResult(
         status="PASS",
         actual=(
-            f"n_samples=10000 horizon={scaled.horizon_days} "
-            f"in {elapsed:.1f} s"
+            f"n_samples=10000 horizon={scaled.horizon_days} " f"in {elapsed:.1f} s"
         ),
     )
 
@@ -269,9 +269,7 @@ def check_aggregator_shape(mode: str) -> CheckResult:
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore")
         arr = simulate_scenario(scenario)
-        summary = aggregate_trajectories(
-            arr, scenario=scenario, elapsed_seconds=1.0
-        )
+        summary = aggregate_trajectories(arr, scenario=scenario, elapsed_seconds=1.0)
 
     expected_rows = len(scenario.outcomes) * (scenario.horizon_days + 1)
     if len(summary.summaries) != expected_rows:
@@ -341,9 +339,7 @@ def check_compare(mode: str) -> CheckResult:
             arr_b,
             prefer_higher=default_prefer_higher_map(),
         )
-    out_of_range = [
-        d for d in cmp_res.deltas if not (0.0 <= d.p_a_better <= 1.0)
-    ]
+    out_of_range = [d for d in cmp_res.deltas if not (0.0 <= d.p_a_better <= 1.0)]
     if out_of_range:
         return CheckResult(
             status="FAIL",
@@ -419,10 +415,7 @@ def check_tvb_container(mode: str) -> CheckResult:
             status="SKIP",
             actual="docker daemon not reachable",
             expected=f"docker daemon up + {TVB_IMAGE} pulled",
-            remediation=(
-                "install Docker Desktop on host; "
-                f"docker pull {TVB_IMAGE}"
-            ),
+            remediation=("install Docker Desktop on host; " f"docker pull {TVB_IMAGE}"),
         )
     if not image_ok:
         return CheckResult(
@@ -679,9 +672,7 @@ def check_regression(mode: str) -> CheckResult:
     stdout = proc.stdout or ""
     tail_lines = stdout.strip().splitlines()
     summary = (
-        tail_lines[-1].strip()
-        if tail_lines
-        else (proc.stderr or "").strip()[-200:]
+        tail_lines[-1].strip() if tail_lines else (proc.stderr or "").strip()[-200:]
     )
 
     # Parse summary like "479 passed in 90.5s" or "478 passed, 1 failed in 90.5s"

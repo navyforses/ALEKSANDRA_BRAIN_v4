@@ -274,7 +274,9 @@ export async function fetchBeliefSnapshot(): Promise<BeliefSnapshot> {
     return MOCK_SNAPSHOT;
   }
   try {
-    const res = await fetch(`${API_BASE}/api/belief/snapshot`, {
+    // FND-02: Phase 7.0 belief snapshot is the 13-D posterior summary
+    // (mean / sd / hdi). No MRI / DICOM / PHI ever traverses this path.
+    const res = await fetch(`${API_BASE}/api/belief/snapshot`, /* allow-remote */ {
       cache: "no-store",
     });
     if (!res.ok) {
@@ -294,7 +296,9 @@ export async function fetchBeliefHistory(
     return makeMockHistory(dimName, days);
   }
   try {
-    const res = await fetch(
+    // FND-02: Phase 7.0 belief history is per-dim time series of posterior
+    // moments. No MRI / DICOM / PHI ever traverses this path.
+    const res = await fetch( /* allow-remote */
       `${API_BASE}/api/belief/history?dim=${encodeURIComponent(dimName)}&days=${days}`,
       { cache: "no-store" },
     );

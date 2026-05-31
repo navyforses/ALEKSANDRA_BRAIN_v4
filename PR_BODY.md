@@ -1,25 +1,103 @@
-# v7.0 Closure Batch — Phase 7.0 → 7.7 + Maintenance + Design
+# v7.0 Closure Batch — Phase 7.0 → 7.7 + Maintenance + Design + Manus reconciliation
 
-**18 atomic commits** · **274 files** · **+56,290 / -300** lines
+**20+ atomic commits** + 1 merge commit · ~340 files · +60K lines
 Branch: `v7-phases-7-0-to-7-5-closure` → `main`
 
 ---
 
 ## TL;DR
 
-This PR closes the entire v7.0 digital-twin sprint as **code-complete**: 8
-phases (Belief Foundation through Acceptance Window) plus 5 maintenance
-commits plus 1 design-vision artifact. Every phase verifier runs
-`--mode code-complete` GREEN, `pytest brain/ -m "not slow"` reports
-**658 PASS · 2 SKIP**, `viewer/` builds clean with 4 new bilingual routes,
-and the 13 inviolable constitutional rules are physically enforced (CSP,
-DB triggers + CHECK constraints + RLS, Pydantic strict, output formatters,
-PHI regex, budget hard stops, CI gates).
+This PR closes the entire v7.0 digital-twin sprint as **code-complete** AND
+reconciles in the Manus AI portal redesign that landed on `origin/main` in
+parallel (22 commits between 2026-05-25 and 2026-05-30):
+
+- **8 v7 phases** (Belief Foundation → Acceptance Window) + 5 maintenance
+  commits + 1 design-vision artifact + 1 merge commit reconciling Manus.
+- Every phase verifier runs `--mode code-complete` GREEN.
+- `pytest brain/ -m "not slow"` reports **658 PASS · 2 SKIP** in ~7-8 min.
+- `viewer/` builds clean. **~30 routes** now live: Manus's 10 portal
+  routes, the 4 v7 analytical dashboards (twin/causal/simulate/drift), 2
+  new widget routes (active-questions/snapshot), the repurposed
+  `/dashboard` hub linking them all, plus the pre-existing pages.
+- The 13 inviolable constitutional rules are physically enforced (CSP,
+  DB triggers + CHECK constraints + RLS, Pydantic strict, output
+  formatters, PHI regex, budget hard stops, CI gates).
+- **Phase 7.5 Rule #1 CSP + DICOM POST rejector survives the merge** —
+  proxy.ts keeps the v7 wrapper structure while adopting Manus's
+  `minimal` matcher token. Constitutional tests 14/14 PASS post-merge.
 
 **Production-apply is OUT-OF-SCOPE for this PR.** Every migration / Neo4j
 cypher / TVB container / Telegram outbound stays gated behind `--mode
 production` runs that require operator credentials. Six runbooks under
 `scripts/migrations/` document each step.
+
+---
+
+## Manus reconciliation (added 2026-05-30/31)
+
+The Manus AI redesign introduced a portal architecture (`PortalFrame` +
+`PortalTopicPage` + dark command center) and rewrote 4 family-facing
+pages to call `<PortalTopicPage pageKey="..."/>`. Those pages were the
+mount points for 4 Phase 7.6 widgets (ActiveQuestionsSection,
+SnapshotWidget, SimulationGraph, TwinImpactFilter). `PortalTopicPage` is
+data-driven with no children slot, so the widgets had no home.
+
+The reconciliation strategy (confirmed with user before execution):
+
+1. **Merge `origin/main` INTO v7 branch** with `--no-ff` (single merge
+   commit; preserves both linear histories; avoids replaying 19+ atomic
+   commits over a moving target).
+2. **Widget placement → dedicated paths.** 4 widgets get their own
+   surfaces:
+   - `ActiveQuestionsSection` → new route `/[locale]/active-questions/`
+   - `SnapshotWidget` → new route `/[locale]/snapshot/`
+   - `SimulationGraph` → folded into existing `/[locale]/simulate/`
+   - `TwinImpactFilter` → folded into existing `/[locale]/twin/`
+3. **TopNav → repurpose `/dashboard` as v7 tools hub.** Manus added a
+   `/dashboard` tab to TopNav but built no content there. The merge
+   replaces Manus's `<PortalTopicPage pageKey="dashboard"/>` with an
+   8-card link grid that launches every v7 surface plus the most
+   clinician-relevant Manus portal pages (hypotheses, papers).
+4. **Dark-mode refactor of 4 analytical routes → deferred to Phase
+   7.6.1.** The v7 analytical routes (twin/causal/simulate/drift)
+   currently hardcode light-mode colors and will visually clash with
+   Manus's dark portal chrome. Tracked as accepted debt; the feature
+   flags in `viewer/lib/flags.ts` provide the rollback handle if the
+   visual debt becomes user-facing harm.
+
+### 7-file conflict resolution
+
+| File | Resolution |
+|---|---|
+| `viewer/proxy.ts` | Kept v7's Phase 7.5 Rule #1 CSP + DICOM rejector wrap. Added Manus's `minimal` matcher token. |
+| `viewer/messages/en.json`, `ka.json` | Union merge (auto, no collisions). +8 v7 namespaces + 23 Manus namespaces + 1 new `DashboardHub` namespace. |
+| `viewer/app/[locale]/today/page.tsx` | Accepted Manus's `<PortalTopicPage pageKey="today"/>`. |
+| `viewer/app/[locale]/page.tsx` (home) | Accepted Manus's `<PortalHomeDashboard/>`. |
+| `viewer/app/[locale]/hypotheses/page.tsx` | Accepted Manus's `<PortalTopicPage pageKey="hypotheses"/>`. |
+| `viewer/app/[locale]/papers/page.tsx` | Accepted Manus's `<PortalTopicPage pageKey="papers"/>`. |
+
+### Verifier hygiene
+
+The merge surfaced 3 verifier bugs (timeouts + stale host-route map):
+
+- `verify_phase_7_6.py` — `WIDGET_HOST_ROUTES` updated to point at the
+  new widget surfaces (active-questions, snapshot, simulate, twin).
+- `verify_phase_7_3.py` + `verify_phase_7_4.py` — `REGRESSION_TIMEOUT_S`
+  bumped 900s → 1200s. Standalone pytest runs in ~7-8 min, but verifier
+  subprocess overhead pushes it past 900s; matches the timeout already
+  in `verify_phase_7_2.py`.
+
+### Rollback
+
+The merge tag `pre-manus-merge-backup` was created on the v7 HEAD before
+the merge. To roll the merge back:
+
+```bash
+git reset --hard pre-manus-merge-backup
+```
+
+The reset is destructive; only run it if the merge needs to be redone
+from scratch.
 
 ---
 

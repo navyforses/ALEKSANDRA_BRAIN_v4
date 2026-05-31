@@ -6,6 +6,15 @@
 // shipped a sibling middleware.ts; the build then refused with
 // "Both middleware file and proxy file are detected". Merge resolves it.
 //
+// Matcher excludes:
+//   - _next    → Next.js asset paths
+//   - _vercel  → Vercel system paths
+//   - .*\\..*   → static files (any path containing a dot in a segment)
+//   - minimal  → standalone design preview (Manus), outside localized chrome
+// Matcher INCLUDES `/api/*` so Rule #1 can inspect DICOM POST attempts
+// before the API handler runs. The proxy short-circuits non-DICOM API
+// requests at line 90; only the inspect-and-pass-through path matters.
+//
 // Responsibilities (in order):
 //   1. Rule #1 — reject MRI/DICOM POSTs to /api/* with HTTP 415.
 //   2. next-intl locale routing for non-API paths.
@@ -93,7 +102,7 @@ export default function proxy(
 // Matcher: broad enough to cover API (for Rule #1) + locale routes + every
 // non-asset path needing CSP. Excludes static files + _next + _vercel.
 export const config = {
-  matcher: '/((?!_next|_vercel|.*\\..*).*)',
+  matcher: '/((?!_next|_vercel|minimal|.*\\..*).*)',
 };
 
 // Exported for unit tests; not consumed by Next.js itself.

@@ -126,17 +126,28 @@ WIDGET_FILES = [
     VIEWER / "components" / "inbox" / "ActiveQuestionsSection.tsx",
 ]
 
-# Spec assumes /research + /inbox; actual viewer uses /papers + /today.
-# The host-page mapping uses the actual routes.
+# Spec originally assumed /research + /inbox; pre-Manus actual viewer used
+# /papers + /today. After the Manus AI portal reconciliation merge
+# (2026-05-30) the 4 host pages were rewritten to <PortalTopicPage/>, which
+# exposes no children slot. The 4 widgets now live at dedicated paths
+# (active-questions, snapshot) or are folded into adjacent v7 analytical
+# routes (twin, simulate). All 4 stay reachable from the /dashboard hub
+# (viewer/app/[locale]/dashboard/page.tsx).
 WIDGET_HOST_ROUTES = [
-    (VIEWER / "app" / "[locale]" / "page.tsx", "SnapshotWidget"),
     (
-        VIEWER / "app" / "[locale]" / "hypotheses" / "page.tsx",
+        VIEWER / "app" / "[locale]" / "snapshot" / "page.tsx",
+        "SnapshotWidget",
+    ),
+    (
+        VIEWER / "app" / "[locale]" / "simulate" / "page.tsx",
         "SimulationGraph",
     ),
-    (VIEWER / "app" / "[locale]" / "papers" / "page.tsx", "TwinImpactFilter"),
     (
-        VIEWER / "app" / "[locale]" / "today" / "page.tsx",
+        VIEWER / "app" / "[locale]" / "twin" / "page.tsx",
+        "TwinImpactFilter",
+    ),
+    (
+        VIEWER / "app" / "[locale]" / "active-questions" / "page.tsx",
         "ActiveQuestionsSection",
     ),
 ]
@@ -209,9 +220,7 @@ def check_widgets(mode: str) -> CheckResult:
             continue
         src = host.read_text(encoding="utf-8")
         if name not in src:
-            unreferenced.append(
-                f"{name} not referenced in {host.relative_to(ROOT)}"
-            )
+            unreferenced.append(f"{name} not referenced in {host.relative_to(ROOT)}")
     if missing or unreferenced:
         return CheckResult(
             status="FAIL",

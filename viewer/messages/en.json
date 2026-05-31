@@ -37,6 +37,7 @@
     "accessPosture": "Access posture",
     "accessPostureBody": "Server-rendered data only. Service credentials remain on the server, and MRI data is never fetched here.",
     "configWarning": "Supabase environment is not configured for the viewer runtime. The page shell is ready; live counts appear after `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are set on the server.",
+    "configurationPending": "Waiting for server configuration",
     "emptyHypotheses": "No hypothesis rows returned.",
     "emptyPapers": "No paper rows returned.",
     "emptyRuns": "No recent runs.",
@@ -78,6 +79,7 @@
     "confirmedKpi": "Confirmed",
     "curatorAction": "Curator action",
     "curatorActionBody": "Confirmation marks the evidence link curated for research follow-up. It is not a clinical treatment recommendation.",
+    "configWarning": "Hypotheses are ready to display after Supabase is configured on the server.",
     "curatorNotePlaceholder": "Optional curator note (why? evidence quality? next step?)",
     "currentOutcome": "Current outcome (last curator note)",
     "detailReasoningPlaceholder": "Why this verdict? Which paper carries the weight? What is the next step?",
@@ -174,6 +176,7 @@
     }
   },
   "Navigation": {
+    "primaryLabel": "Primary navigation",
     "audit": "Audit",
     "brain": "Brain",
     "dashboard": "Dashboard",
@@ -386,6 +389,46 @@
       "responded": "Responded",
       "skipped": "Skipped",
       "expired": "Expired"
+    }
+  },
+  "DashboardHub": {
+    "phaseLabel": "Phase 7.6",
+    "title": "v7 tools hub",
+    "subtitle": "Launch points for the Phase 7.0-7.7 analytical surfaces, widget routes, and the most clinician-relevant portal pages. Family-facing reading lives on the rest of the portal.",
+    "footer": "Click a card to enter the surface. Each route gates itself via its own feature flag; disabled surfaces return 404.",
+    "cards": {
+      "twin": {
+        "title": "Twin Status",
+        "description": "13-dimension belief posterior histograms with TwinImpactFilter (KL-divergence sort)."
+      },
+      "causal": {
+        "title": "Causal Graph",
+        "description": "571-node SCM in vis-network; Pearl 5-type edge taxonomy."
+      },
+      "simulate": {
+        "title": "Simulation Studio",
+        "description": "Scenario builder + Monte Carlo comparison + per-hypothesis benefit graph."
+      },
+      "drift": {
+        "title": "Belief Drift",
+        "description": "Posterior trajectory timeline across the 13 dimensions."
+      },
+      "activeQuestions": {
+        "title": "Active Questions",
+        "description": "Phase 7.4 EIG-ranked questions for the current week, with response status."
+      },
+      "snapshot": {
+        "title": "Twin Snapshot",
+        "description": "Compact 13-dim posterior summary (mean + 80% HDI + delta)."
+      },
+      "hypotheses": {
+        "title": "Hypotheses",
+        "description": "Manus portal page — live hypothesis grid with status badges."
+      },
+      "papers": {
+        "title": "Papers",
+        "description": "Manus portal page — research paper list with relevance scores."
+      }
     }
   }
 }

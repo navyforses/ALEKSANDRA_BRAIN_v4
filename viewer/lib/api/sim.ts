@@ -160,7 +160,9 @@ export async function saveScenario(
     return { scenario_id: id, scenario_hash: id };
   }
   try {
-    const res = await fetch(`${API_BASE}/api/sim/scenario`, {
+    // FND-02: Phase 7.3 save-scenario writes the (de-identified) scenario
+    // definition. No MRI / DICOM / PHI ever traverses this path.
+    const res = await fetch(`${API_BASE}/api/sim/scenario`, /* allow-remote */ {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(scenario),
@@ -180,7 +182,9 @@ export async function listScenarios(): Promise<ScenarioRecord[]> {
     return MOCK_SCENARIO_LIST;
   }
   try {
-    const res = await fetch(`${API_BASE}/api/sim/scenarios`, {
+    // FND-02: Phase 7.3 scenarios list is the saved scenario registry.
+    // No MRI / DICOM / PHI ever traverses this path.
+    const res = await fetch(`${API_BASE}/api/sim/scenarios`, /* allow-remote */ {
       cache: "no-store",
     });
     if (!res.ok) {
@@ -200,7 +204,9 @@ export async function compareScenarios(
     return MOCK_COMPARISON;
   }
   try {
-    const res = await fetch(
+    // FND-02: Phase 7.3 scenario comparison is Monte Carlo posterior
+    // delta. No MRI / DICOM / PHI ever traverses this path.
+    const res = await fetch( /* allow-remote */
       `${API_BASE}/api/sim/compare?a=${encodeURIComponent(scenarioA)}&b=${encodeURIComponent(scenarioB)}`,
       { cache: "no-store" },
     );

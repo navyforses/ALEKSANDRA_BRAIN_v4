@@ -171,7 +171,9 @@ export async function fetchCausalGraph(): Promise<CausalGraphResponse> {
     return MOCK_GRAPH;
   }
   try {
-    const res = await fetch(`${API_BASE}/api/causal/graph`, {
+    // FND-02: Phase 7.2 causal graph is the SCM topology + edge weights.
+    // No MRI / DICOM / PHI ever traverses this path.
+    const res = await fetch(`${API_BASE}/api/causal/graph`, /* allow-remote */ {
       cache: "no-store",
     });
     if (!res.ok) {
@@ -188,7 +190,9 @@ export async function fetchSCMList(): Promise<SCMRecord[]> {
     return MOCK_SCM_LIST;
   }
   try {
-    const res = await fetch(`${API_BASE}/api/causal/scms`, {
+    // FND-02: Phase 7.2 SCM list is the SCM registry metadata.
+    // No MRI / DICOM / PHI ever traverses this path.
+    const res = await fetch(`${API_BASE}/api/causal/scms`, /* allow-remote */ {
       cache: "no-store",
     });
     if (!res.ok) {

@@ -1,0 +1,387 @@
+{
+  "updatedAt": "2026-05-29T01:44:24.857Z",
+  "createdAt": "2026-05-19T18:05:50.050Z",
+  "id": "AUJNiWeKZUALyhK0",
+  "name": "chunking-trigger",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 30
+            }
+          ]
+        }
+      },
+      "name": "Every 30 minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        240,
+        304
+      ],
+      "id": "trigger-30m"
+    },
+    {
+      "parameters": {
+        "url": "=https://aleksandra-worker-production.up.railway.app/chunking-tick",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"limit\": 0, \"score\": true}",
+        "options": {
+          "timeout": 1500000
+        }
+      },
+      "name": "Run chunking-tick",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        464,
+        304
+      ],
+      "id": "chunking-call"
+    },
+    {
+      "parameters": {
+        "jsCode": "// process_ledger.run() returns the totals dict; format a Telegram-ready summary.\nconst r = $input.first().json;\nconst chunks = r.chunks_inserted ?? 0;\nconst embedded = r.chunks_embedded ?? 0;\nconst papers = r.papers_inserted ?? 0;\nconst scored = r.relevance_scored ?? 0;\nconst failed = r.relevance_failed ?? 0;\nconst errs = r.errors ?? 0;\n// Only post a Telegram summary when something happened OR an error occurred —\n// chatty 30-min cron messages on quiet hours would burn the family's attention.\nconst noisy = (chunks + papers + scored + errs) > 0;\nconst summary = `📚 chunking-tick  +${papers} papers  +${chunks} chunks  +${embedded} embedded  +${scored} scored  ${errs ? '⚠️ '+errs+' errors' : ''}`;\nreturn [{ json: { summary, noisy, ...r } }];"
+      },
+      "name": "Format summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        688,
+        304
+      ],
+      "id": "format-summary"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "is-noisy",
+              "leftValue": "={{ $json.noisy }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "name": "Has new activity?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        912,
+        304
+      ],
+      "id": "noisy-gate"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/sendMessage",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"chat_id\": \"{{ $env.TELEGRAM_CHAT_ID }}\", \"text\": {{ JSON.stringify($json.summary) }}}",
+        "options": {}
+      },
+      "name": "Telegram summary",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1120,
+        240
+      ],
+      "id": "telegram-post"
+    }
+  ],
+  "connections": {
+    "Every 30 minutes": {
+      "main": [
+        [
+          {
+            "node": "Run chunking-tick",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run chunking-tick": {
+      "main": [
+        [
+          {
+            "node": "Format summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format summary": {
+      "main": [
+        [
+          {
+            "node": "Has new activity?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has new activity?": {
+      "main": [
+        [
+          {
+            "node": "Telegram summary",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveExecutionProgress": true,
+    "saveDataSuccessExecution": "all",
+    "saveDataErrorExecution": "all",
+    "executionTimeout": 1800,
+    "binaryMode": "separate"
+  },
+  "staticData": {
+    "node:Every 30 minutes": {
+      "recurrenceRules": []
+    }
+  },
+  "meta": null,
+  "pinData": {},
+  "versionId": "517249d5-dba1-4b83-b3b7-937be50449b3",
+  "activeVersionId": "2d6668ce-62cf-409f-9a4c-a5673de36094",
+  "versionCounter": 13,
+  "triggerCount": 1,
+  "shared": [
+    {
+      "updatedAt": "2026-05-19T18:05:50.050Z",
+      "createdAt": "2026-05-19T18:05:50.050Z",
+      "role": "workflow:owner",
+      "workflowId": "AUJNiWeKZUALyhK0",
+      "projectId": "Khb3y80fILFSGV6G",
+      "project": {
+        "updatedAt": "2026-05-14T15:03:48.585Z",
+        "createdAt": "2026-05-14T14:39:17.493Z",
+        "id": "Khb3y80fILFSGV6G",
+        "name": "shako jincharadze <jincharadzeshako@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "788bfec0-70f2-4249-aba2-198c94ecebf2"
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": {
+    "updatedAt": "2026-05-19T18:05:50.050Z",
+    "createdAt": "2026-05-19T18:05:50.050Z",
+    "versionId": "2d6668ce-62cf-409f-9a4c-a5673de36094",
+    "workflowId": "AUJNiWeKZUALyhK0",
+    "nodes": [
+      {
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "minutes",
+                "minutesInterval": 30
+              }
+            ]
+          }
+        },
+        "name": "Every 30 minutes",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.1,
+        "position": [
+          240,
+          300
+        ],
+        "id": "trigger-30m"
+      },
+      {
+        "parameters": {
+          "url": "={{ $env.PERCEPTION_WORKER_URL }}/chunking-tick",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={\"limit\": 0, \"score\": true}",
+          "options": {
+            "timeout": 1500000
+          }
+        },
+        "name": "Run chunking-tick",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          460,
+          300
+        ],
+        "id": "chunking-call"
+      },
+      {
+        "parameters": {
+          "jsCode": "// process_ledger.run() returns the totals dict; format a Telegram-ready summary.\nconst r = $input.first().json;\nconst chunks = r.chunks_inserted ?? 0;\nconst embedded = r.chunks_embedded ?? 0;\nconst papers = r.papers_inserted ?? 0;\nconst scored = r.relevance_scored ?? 0;\nconst failed = r.relevance_failed ?? 0;\nconst errs = r.errors ?? 0;\n// Only post a Telegram summary when something happened OR an error occurred —\n// chatty 30-min cron messages on quiet hours would burn the family's attention.\nconst noisy = (chunks + papers + scored + errs) > 0;\nconst summary = `📚 chunking-tick  +${papers} papers  +${chunks} chunks  +${embedded} embedded  +${scored} scored  ${errs ? '⚠️ '+errs+' errors' : ''}`;\nreturn [{ json: { summary, noisy, ...r } }];"
+        },
+        "name": "Format summary",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          680,
+          300
+        ],
+        "id": "format-summary"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose"
+            },
+            "conditions": [
+              {
+                "id": "is-noisy",
+                "leftValue": "={{ $json.noisy }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "name": "Has new activity?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          900,
+          300
+        ],
+        "id": "noisy-gate"
+      },
+      {
+        "parameters": {
+          "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/sendMessage",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={\"chat_id\": \"{{ $env.TELEGRAM_CHAT_ID }}\", \"text\": {{ JSON.stringify($json.summary) }}}",
+          "options": {}
+        },
+        "name": "Telegram summary",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1120,
+          240
+        ],
+        "id": "telegram-post"
+      }
+    ],
+    "connections": {
+      "Every 30 minutes": {
+        "main": [
+          [
+            {
+              "node": "Run chunking-tick",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Run chunking-tick": {
+        "main": [
+          [
+            {
+              "node": "Format summary",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Format summary": {
+        "main": [
+          [
+            {
+              "node": "Has new activity?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Has new activity?": {
+        "main": [
+          [
+            {
+              "node": "Telegram summary",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          []
+        ]
+      }
+    },
+    "authors": "shako jincharadze",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-05-19T18:05:50.884Z",
+        "id": 12,
+        "workflowId": "AUJNiWeKZUALyhK0",
+        "versionId": "2d6668ce-62cf-409f-9a4c-a5673de36094",
+        "event": "activated",
+        "userId": "788bfec0-70f2-4249-aba2-198c94ecebf2"
+      },
+      {
+        "createdAt": "2026-05-29T01:42:39.025Z",
+        "id": 16,
+        "workflowId": "AUJNiWeKZUALyhK0",
+        "versionId": "2d6668ce-62cf-409f-9a4c-a5673de36094",
+        "event": "deactivated",
+        "userId": "788bfec0-70f2-4249-aba2-198c94ecebf2"
+      },
+      {
+        "createdAt": "2026-05-29T01:42:39.098Z",
+        "id": 17,
+        "workflowId": "AUJNiWeKZUALyhK0",
+        "versionId": "2d6668ce-62cf-409f-9a4c-a5673de36094",
+        "event": "activated",
+        "userId": "788bfec0-70f2-4249-aba2-198c94ecebf2"
+      }
+    ]
+  }
+}

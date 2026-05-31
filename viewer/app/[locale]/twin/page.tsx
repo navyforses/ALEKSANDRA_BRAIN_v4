@@ -11,6 +11,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { fetchBeliefSnapshot } from "@/lib/api/belief";
 import { isEnabled } from "@/lib/flags";
 import DimensionGrid from "./DimensionGrid";
+import TwinImpactFilter from "@/components/research/TwinImpactFilter";
 
 export const dynamic = "force-dynamic";
 
@@ -67,6 +68,12 @@ export default async function TwinPage({
         <section className="rounded-md border border-stone-200 bg-amber-50/40 p-4 text-xs leading-6 text-stone-700">
           {t("mockNotice")}
         </section>
+
+        {/* TwinImpactFilter folded in during the Manus AI portal merge
+            (2026-05-30). Originally sat above the Research Pulse list on
+            /[locale]/papers (which Manus rewrote to PortalTopicPage);
+            surfacing here so the KL-divergence sort stays reachable. */}
+        <TwinImpactFilter />
 
         <DimensionGrid snapshot={snapshot} locale={locale} />
 

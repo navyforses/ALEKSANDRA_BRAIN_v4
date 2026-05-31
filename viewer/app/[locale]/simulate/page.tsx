@@ -10,6 +10,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { compareScenarios, listScenarios } from "@/lib/api/sim";
 import { isEnabled } from "@/lib/flags";
 import SimulateStudio from "./SimulateStudio";
+import SimulationGraph from "@/components/hypotheses/SimulationGraph";
 
 export const dynamic = "force-dynamic";
 
@@ -74,6 +75,25 @@ export default async function SimulatePage({
           initialComparison={initialComparison}
           locale={locale}
         />
+
+        {/* SimulationGraph integration target — folded in during the
+            Manus AI portal merge (2026-05-30). Per-hypothesis benefit
+            histograms render here as part of scenario evaluation; deep
+            per-hypothesis surfacing lives at /[locale]/hypotheses/[id]
+            and is deferred to Phase 7.6.1. */}
+        {scenarios[0]?.scm_id ? (
+          <section className="rounded-md border border-stone-200 bg-white p-4">
+            <h2 className="text-sm font-semibold text-stone-900">
+              {locale === "ka"
+                ? "ჰიპოთეზის სარგებლის გრაფიკი"
+                : "Hypothesis benefit graph"}
+            </h2>
+            <SimulationGraph
+              hypothesisId={scenarios[0].scm_id}
+              locale={locale}
+            />
+          </section>
+        ) : null}
 
         <footer className="text-xs text-stone-500">
           {t("decisionFooter")}

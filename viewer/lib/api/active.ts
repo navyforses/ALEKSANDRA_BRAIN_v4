@@ -88,7 +88,9 @@ export async function fetchActiveQuestions(
     const url = weekIso
       ? `${API_BASE}/api/active/questions?week=${encodeURIComponent(weekIso)}`
       : `${API_BASE}/api/active/questions`;
-    const res = await fetch(url, { cache: "no-store" });
+    // FND-02: Phase 7.4 active questions are research metadata (EIG ranks,
+    // bilingual prompts, response status). Never MRI/DICOM. PHI-free.
+    const res = await fetch(url, { cache: "no-store" }); /* allow-remote */
     if (!res.ok) {
       return MOCK_QUESTIONS;
     }

@@ -41,7 +41,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import math
 import os
 import re
 import subprocess
@@ -64,7 +63,9 @@ LOG_DIR = ROOT / "v7_architecture" / "foundation_logs"
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
-REGRESSION_TIMEOUT_S = 900.0
+REGRESSION_TIMEOUT_S = 1200.0  # bumped from 900s — full brain/ suite needs
+# more headroom under verifier subprocess overhead on Windows-Docker-Desktop
+# hardware. Standalone pytest = ~7-8 min; verifier subprocess = ~10-14 min.
 REGRESSION_BASELINE_MIN_TESTS = 493  # Phase 7.3 baseline
 TOLERATED_FLAKE = "test_higher_confidence_level_widens_ci"
 
@@ -96,8 +97,7 @@ def check(
                     id=check_id,
                     description=description,
                     status="SKIP",
-                    remediation=skip_reason
-                    or "requires production mode",
+                    remediation=skip_reason or "requires production mode",
                     elapsed_s=0.0,
                 )
             t0 = time.perf_counter()
@@ -186,7 +186,7 @@ def check_eig_nonneg(mode: str) -> CheckResult:
         )
     return CheckResult(
         status="PASS",
-        actual=f"13/13 dims with EIG >= 0; sample H_n=0.05..0.5",
+        actual="13/13 dims with EIG >= 0; sample H_n=0.05..0.5",
     )
 
 
@@ -262,7 +262,7 @@ def check_template_coverage(mode: str) -> CheckResult:
         )
     return CheckResult(
         status="PASS",
-        actual=f"13 ka + 13 en = 26 templates; anti-loop check clean",
+        actual="13 ka + 13 en = 26 templates; anti-loop check clean",
     )
 
 
@@ -362,7 +362,7 @@ def check_response_parser(mode: str) -> CheckResult:
         )
     return CheckResult(
         status="PASS",
-        actual=f"5/5 sample transcripts parsed correctly",
+        actual="5/5 sample transcripts parsed correctly",
     )
 
 
@@ -457,7 +457,7 @@ def check_integration(mode: str) -> CheckResult:
         )
     return CheckResult(
         status="PASS",
-        actual=f"live update() returned delta payload",
+        actual="live update() returned delta payload",
     )
 
 
@@ -541,9 +541,7 @@ def check_regression(mode: str) -> CheckResult:
     stdout = proc.stdout or ""
     tail_lines = stdout.strip().splitlines()
     summary = (
-        tail_lines[-1].strip()
-        if tail_lines
-        else (proc.stderr or "").strip()[-200:]
+        tail_lines[-1].strip() if tail_lines else (proc.stderr or "").strip()[-200:]
     )
 
     pass_match = re.search(r"(\d+)\s+passed", summary)

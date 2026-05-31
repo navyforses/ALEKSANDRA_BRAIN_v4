@@ -16,18 +16,24 @@ export default function LanguageSwitcher() {
   };
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex w-full shrink-0 items-center gap-2 overflow-x-auto sm:w-auto" aria-label={locale === 'ka' ? 'ენის გადართვა' : 'Language switcher'}>
       <button
+        type="button"
         onClick={() => switchLocale('en')}
         aria-label="Switch to English"
-        className={`px-3 py-1 text-sm rounded transition-colors ${locale === 'en' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800 hover:bg-gray-300'}`}
+        aria-pressed={locale === 'en'}
+        lang="en"
+        className={`rounded-full px-3 py-2 text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-200 ${locale === 'en' ? 'bg-blue-600 text-white' : 'bg-white/90 text-slate-800 hover:bg-cyan-50'}`}
       >
         English
       </button>
       <button
+        type="button"
         onClick={() => switchLocale('ka')}
         aria-label="გადართვა ქართულზე"
-        className={`px-3 py-1 text-sm rounded transition-colors ${locale === 'ka' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800 hover:bg-gray-300'}`}
+        aria-pressed={locale === 'ka'}
+        lang="ka"
+        className={`rounded-full px-3 py-2 text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-200 ${locale === 'ka' ? 'bg-blue-600 text-white' : 'bg-white/90 text-slate-800 hover:bg-cyan-50'}`}
       >
         ქართული
       </button>

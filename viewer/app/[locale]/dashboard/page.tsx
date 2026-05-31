@@ -1,279 +1,138 @@
-import { setRequestLocale, getTranslations } from "next-intl/server";
+// viewer/app/[locale]/dashboard/page.tsx — v7 tools hub.
+//
+// Repurposed during the Manus AI portal reconciliation merge (2026-05-30).
+// Manus's version called <PortalTopicPage pageKey="dashboard"/>; the user
+// chose to repurpose this URL as the v7 launcher hub since /dashboard is
+// already in TopNav (viewer/components/layout/TopNav.tsx:8). Manus's
+// PortalTopicPage(dashboard) content can be restored at a different URL
+// in a follow-up phase if executive-overview-style content is desired.
+//
+// 8-card grid linking the 4 Phase 7.6 analytical routes (twin / causal /
+// simulate / drift), the 2 widget routes orphaned by Manus's portal
+// rewrites (active-questions, snapshot), and 2 Manus portal pages most
+// relevant to clinician audience (hypotheses, papers).
+//
+// Not flag-gated — the hub itself is always reachable; individual route
+// flags handle their own NO-GO via notFound().
+
+import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
-import { getCount, getRows } from "@/lib/supabase";
-import DashboardCharts from "@/components/DashboardCharts";
 
 export const dynamic = "force-dynamic";
 
-type RunRow = {
-  kind: string;
-  agent_id: string | null;
-  start_time: string;
-  exit_status: string;
-  token_cost: string | number | null;
+type HubCard = {
+  key:
+    | "twin"
+    | "causal"
+    | "simulate"
+    | "drift"
+    | "activeQuestions"
+    | "snapshot"
+    | "hypotheses"
+    | "papers";
+  href:
+    | "/twin"
+    | "/causal"
+    | "/simulate"
+    | "/drift"
+    | "/active-questions"
+    | "/snapshot"
+    | "/hypotheses"
+    | "/papers";
+  group: "analytical" | "widget" | "portal";
 };
 
-type PaperRow = {
-  title: string;
-  pmid: string | null;
-  ct_id: string | null;
-  relevance_score: number | null;
-  direct_relevance: boolean | null;
-  cross_disease_source: string | null;
-  ingested_at?: string;
-};
+const CARDS: HubCard[] = [
+  { key: "twin", href: "/twin", group: "analytical" },
+  { key: "causal", href: "/causal", group: "analytical" },
+  { key: "simulate", href: "/simulate", group: "analytical" },
+  { key: "drift", href: "/drift", group: "analytical" },
+  { key: "activeQuestions", href: "/active-questions", group: "widget" },
+  { key: "snapshot", href: "/snapshot", group: "widget" },
+  { key: "hypotheses", href: "/hypotheses", group: "portal" },
+  { key: "papers", href: "/papers", group: "portal" },
+];
 
-type HypothesisRow = {
-  status: string | null;
-};
-
-const metricSpecs = [
-  ["evidence_ledger", "metricEvidenceLedger"],
-  ["papers", "metricPapers"],
-  ["paper_chunks", "metricChunks"],
-  ["hypotheses", "metricHypotheses"],
-] as const;
-
-function statusTone(status: string | null) {
-  if (status === "confirmed") return "bg-emerald-50 text-emerald-800 ring-emerald-200";
-  if (status === "promising" || status === "pursuing") return "bg-cyan-50 text-cyan-800 ring-cyan-200";
-  if (status === "rejected") return "bg-rose-50 text-rose-800 ring-rose-200";
-  return "bg-stone-100 text-stone-700 ring-stone-200";
+function groupTone(group: HubCard["group"]): string {
+  switch (group) {
+    case "analytical":
+      return "border-cyan-300/50 bg-cyan-50 hover:border-cyan-400 hover:bg-cyan-100";
+    case "widget":
+      return "border-emerald-300/50 bg-emerald-50 hover:border-emerald-400 hover:bg-emerald-100";
+    case "portal":
+      return "border-stone-300 bg-stone-50 hover:border-stone-400 hover:bg-stone-100";
+  }
 }
 
-function formatMoney(value: string | number | null) {
-  const n = Number(value ?? 0);
-  return `$${n.toFixed(6)}`;
+function groupLabel(group: HubCard["group"], locale: "en" | "ka"): string {
+  if (locale === "ka") {
+    switch (group) {
+      case "analytical":
+        return "ანალიტიკური";
+      case "widget":
+        return "ვიჯეტი";
+      case "portal":
+        return "პორტალი";
+    }
+  }
+  switch (group) {
+    case "analytical":
+      return "Analytical";
+    case "widget":
+      return "Widget";
+    case "portal":
+      return "Portal";
+  }
 }
 
-export default async function DashboardPage({
+export default async function DashboardHubPage({
   params,
 }: {
   params: Promise<{ locale: "en" | "ka" }>;
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
-  const t = await getTranslations("Dashboard");
-  const tNav = await getTranslations("Navigation");
-  const tShared = await getTranslations("Shared");
 
-  const [counts, runs, papers, hypotheses, runsForSpend, papersForIngestion] = await Promise.all([
-    Promise.all(metricSpecs.map(([path]) => getCount(path))),
-    getRows<RunRow>("runs", {
-      select: "kind,agent_id,start_time,exit_status,token_cost",
-      order: "start_time.desc",
-      limit: 8,
-    }),
-    getRows<PaperRow>("papers", {
-      select: "title,pmid,ct_id,relevance_score,direct_relevance,cross_disease_source",
-      order: "relevance_score.desc.nullslast",
-      limit: 6,
-    }),
-    getRows<HypothesisRow>("hypotheses", {
-      select: "status",
-      limit: 200,
-    }),
-    getRows<RunRow>("runs", {
-      select: "start_time,token_cost",
-      order: "start_time.desc",
-      limit: 300,
-    }),
-    getRows<PaperRow & { ingested_at: string }>("papers", {
-      select: "ingested_at,relevance_score",
-      order: "ingested_at.desc",
-      limit: 200,
-    }),
-  ]);
-
-  const configured = counts.some((c) => c.configured) || runs.configured;
-  const statusCounts = hypotheses.rows.reduce<Record<string, number>>((acc, row) => {
-    const key = row.status || "unknown";
-    acc[key] = (acc[key] || 0) + 1;
-    return acc;
-  }, {});
-
-  // Group spends and ingestion over the last 30 days
-  const dates = Array.from({ length: 30 }, (_, i) => {
-    const d = new Date();
-    d.setDate(d.getDate() - (29 - i));
-    return d.toISOString().split("T")[0]; // YYYY-MM-DD
-  });
-
-  const dailySpends = dates.map((date) => {
-    const dayRuns = (runsForSpend?.rows || []).filter((r) => r.start_time?.startsWith(date));
-    const cost = dayRuns.reduce((sum, r) => sum + Number(r.token_cost ?? 0), 0);
-    return { date, cost, tokens: 0 };
-  });
-
-  const dailyIngestion = dates.map((date) => {
-    const dayPapers = (papersForIngestion?.rows || []).filter(
-      (p) => p.ingested_at && p.ingested_at.startsWith(date)
-    );
-    const count = dayPapers.length;
-    const avgRelevance =
-      count > 0
-        ? dayPapers.reduce((sum, p) => sum + (p.relevance_score ?? 0), 0) / count
-        : 0;
-    return { date, count, avgRelevance };
-  });
-
-  const hypothesisCounts = Object.entries(statusCounts).map(([status, count]) => ({
-    status,
-    count,
-  }));
+  const t = await getTranslations({ locale, namespace: "DashboardHub" });
 
   return (
     <main className="min-h-screen bg-stone-50 text-stone-950">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-5 py-6 sm:px-8">
-        <nav className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-200 pb-4">
-          <div className="flex items-center gap-2">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-            </span>
-            <Link href="/" className="font-mono text-sm font-semibold tracking-normal hover:text-stone-700 transition-colors">
-              ALEKSANDRA_BRAIN
-            </Link>
-          </div>
-          <div className="flex flex-wrap items-center gap-2 text-sm">
-            <Link className="rounded-md bg-white px-3 py-2 text-stone-900 ring-1 ring-stone-200 shadow-sm transition-all" href="/dashboard">
-              {tNav("dashboard")}
-            </Link>
-            <Link className="rounded-md px-3 py-2 text-stone-700 hover:bg-white transition-all" href="/hypotheses">
-              {tNav("hypotheses")}
-            </Link>
-            <Link className="rounded-md px-3 py-2 text-stone-700 hover:bg-white transition-all" href="/papers">
-              {tNav("papers")}
-            </Link>
-            <Link className="rounded-md px-3 py-2 text-stone-700 hover:bg-white transition-all" href="/therapies">
-              {tNav("therapies")}
-            </Link>
-            <Link className="rounded-md px-3 py-2 text-stone-700 hover:bg-white transition-all" href="/timeline">
-              {tNav("timeline")}
-            </Link>
-          </div>
-        </nav>
-
-        <header className="grid gap-4 lg:grid-cols-[1.3fr_0.7fr]">
-          <div>
-            <p className="font-mono text-xs uppercase text-cyan-700">{t("phaseLabel")}</p>
-            <h1 className="mt-1 text-3xl font-semibold tracking-normal sm:text-4xl">
-              {t("title")}
-            </h1>
-            <p className="mt-3 max-w-3xl text-sm leading-6 text-stone-600">
-              {t("subtitle")}
-            </p>
-          </div>
-          <div className="rounded-md border border-stone-200 bg-white p-4 shadow-sm transition-all hover:shadow-md duration-300">
-            <p className="font-mono text-xs uppercase text-stone-500">{t("accessPosture")}</p>
-            <p className="mt-2 text-sm leading-6 text-stone-700">
-              {t("accessPostureBody")}
-            </p>
-            <p className="mt-3 text-sm font-medium text-emerald-700 flex items-center gap-1.5">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-              {t("rlsSmoke")}
-            </p>
-          </div>
+        <header>
+          <p className="font-mono text-xs uppercase text-cyan-700">
+            {t("phaseLabel")}
+          </p>
+          <h1 className="mt-1 text-3xl font-semibold tracking-normal sm:text-4xl">
+            {t("title")}
+          </h1>
+          <p className="mt-3 max-w-3xl text-sm leading-6 text-stone-600">
+            {t("subtitle")}
+          </p>
         </header>
 
-        {!configured ? (
-          <section className="rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
-            {t("configWarning")}
-          </section>
-        ) : null}
-
         <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {metricSpecs.map(([, labelKey], index) => (
-            <div key={labelKey} className="rounded-md border border-stone-200 bg-white p-4 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md hover:border-stone-300">
-              <p className="font-mono text-xs uppercase text-stone-500">{t(labelKey)}</p>
-              <p className="mt-2 text-3xl font-semibold tracking-normal">
-                {counts[index]?.count.toLocaleString() ?? 0}
-              </p>
-              <p className="mt-1 text-xs text-stone-500">{counts[index]?.error || t("liveSupabaseCount")}</p>
-            </div>
+          {CARDS.map((card) => (
+            <Link
+              key={card.key}
+              href={card.href}
+              className={`flex flex-col gap-2 rounded-md border p-4 transition ${groupTone(
+                card.group,
+              )}`}
+            >
+              <span className="font-mono text-[10px] uppercase text-stone-500">
+                {groupLabel(card.group, locale)}
+              </span>
+              <span className="text-base font-semibold text-stone-900">
+                {t(`cards.${card.key}.title`)}
+              </span>
+              <span className="text-xs leading-5 text-stone-600">
+                {t(`cards.${card.key}.description`)}
+              </span>
+            </Link>
           ))}
         </section>
 
-        {/* Dynamic Analytics Charts Component */}
-        {configured && (
-          <section className="rounded-md border border-stone-200 bg-stone-100/30 p-5">
-            <DashboardCharts
-              hypothesisCounts={hypothesisCounts}
-              dailySpends={dailySpends}
-              dailyIngestion={dailyIngestion}
-              totalSpendLimitDaily={10.0}
-              totalSpendLimitMonthly={60.0}
-            />
-          </section>
-        )}
-
-        <section className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
-          <div className="rounded-md border border-stone-200 bg-white">
-            <div className="border-b border-stone-200 p-4">
-              <h2 className="text-base font-semibold">{t("hypothesisStatus")}</h2>
-            </div>
-            <div className="flex flex-wrap gap-2 p-4">
-              {Object.entries(statusCounts).length > 0 ? (
-                Object.entries(statusCounts).map(([status, count]) => (
-                  <span
-                    key={status}
-                    className={`rounded-md px-3 py-2 text-sm ring-1 ${statusTone(status)}`}
-                  >
-                    {status}: <span className="font-semibold">{count}</span>
-                  </span>
-                ))
-              ) : (
-                <p className="text-sm text-stone-500">{t("emptyHypotheses")}</p>
-              )}
-            </div>
-          </div>
-
-          <div className="rounded-md border border-stone-200 bg-white">
-            <div className="border-b border-stone-200 p-4">
-              <h2 className="text-base font-semibold">{t("latestEvents")}</h2>
-            </div>
-            <div className="divide-y divide-stone-100">
-              {runs.rows.map((run) => (
-                <div key={`${run.kind}-${run.start_time}`} className="grid gap-2 p-4 sm:grid-cols-[1fr_auto]">
-                  <div>
-                    <p className="font-medium">{run.kind}</p>
-                    <p className="text-xs text-stone-500">
-                      {run.agent_id || t("system")} · {new Date(run.start_time).toLocaleString()}
-                    </p>
-                  </div>
-                  <div className="text-left sm:text-right">
-                    <p className="text-sm">{run.exit_status}</p>
-                    <p className="font-mono text-xs text-stone-500">{formatMoney(run.token_cost)}</p>
-                  </div>
-                </div>
-              ))}
-              {runs.rows.length === 0 ? <p className="p-4 text-sm text-stone-500">{t("emptyRuns")}</p> : null}
-            </div>
-          </div>
-        </section>
-
-        <section className="rounded-md border border-stone-200 bg-white">
-          <div className="border-b border-stone-200 p-4">
-            <h2 className="text-base font-semibold">{t("topPapers")}</h2>
-          </div>
-          <div className="divide-y divide-stone-100">
-            {papers.rows.map((paper) => (
-              <article key={`${paper.pmid || paper.ct_id || paper.title}`} className="grid gap-2 p-4 md:grid-cols-[auto_1fr]">
-                <div className="font-mono text-sm text-cyan-700">
-                  {paper.relevance_score == null ? tShared("na") : paper.relevance_score.toFixed(2)}
-                </div>
-                <div>
-                  <h3 className="text-sm font-medium leading-6">{paper.title}</h3>
-                  <p className="mt-1 text-xs text-stone-500">
-                    {paper.pmid ? `PMID ${paper.pmid}` : paper.ct_id || tShared("sourcePending")} ·{" "}
-                    {paper.direct_relevance ? "direct HIE" : paper.cross_disease_source || "cross-source"}
-                  </p>
-                </div>
-              </article>
-            ))}
-            {papers.rows.length === 0 ? <p className="p-4 text-sm text-stone-500">{t("emptyPapers")}</p> : null}
-          </div>
-        </section>
+        <footer className="text-xs text-stone-500">{t("footer")}</footer>
       </div>
     </main>
   );
