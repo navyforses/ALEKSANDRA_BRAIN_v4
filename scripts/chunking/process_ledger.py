@@ -34,6 +34,7 @@ import httpx
 from scripts.chunking.chunker import chunk_text
 from scripts.chunking.embedder import ChunkRow, upsert_chunks
 from scripts.chunking.extractor import extract_text
+from scripts.extraction.translate import build_bilingual
 from scripts.ledger import (
     _get_r2_client,
     _supabase_creds,
@@ -254,12 +255,12 @@ def _build_papers_row(ledger_row: dict) -> dict | None:
             publication_year = None
 
     return {
-        "title": title,
+        "title": build_bilingual(title),
         "pmid": pmid,
         "ct_id": ct_id,
         "doi": doi,
         "pmc_id": pmc_id,
-        "abstract": meta.get("abstract_excerpt"),
+        "abstract": build_bilingual(meta.get("abstract_excerpt")),
         "authors": meta.get("authors"),
         "journal": meta.get("journal"),
         "publication_year": publication_year,
