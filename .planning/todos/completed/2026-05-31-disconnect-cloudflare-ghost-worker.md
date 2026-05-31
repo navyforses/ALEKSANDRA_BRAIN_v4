@@ -1,12 +1,14 @@
 ---
-status: pending
+status: completed
 created: 2026-05-31
+completed: 2026-05-30
 resolves_phase: maintenance
 source: CLAUDE.md MEMORY layer note ("ghost Cloudflare Worker `aleksandrabrane4` slated for disconnect")
 owner: Shako (operator — requires Cloudflare dashboard access)
-priority: P2 (CI noise; not blocking any phase, but every PR shows a red ❌)
+priority: P2 (CI noise; not blocking any phase, but every PR showed a red ❌)
 estimated_window: 5 minutes (one Cloudflare dashboard click + verify next PR)
 related_pr: navyforses/ALEKSANDRA_BRAIN_v4#3, #4 (both observed the failure)
+resolution: Worker service deleted via Cloudflare dashboard 2026-05-30 (Option B). CLAUDE.md MEMORY-layer note updated to "deleted 2026-05-30".
 ---
 
 # Disconnect ghost Cloudflare Worker `aleksandrabrane4`
