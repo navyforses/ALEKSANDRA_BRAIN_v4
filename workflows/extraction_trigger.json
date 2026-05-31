@@ -47,7 +47,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// batch_ingest.run_batch returns the grand totals dict.\nconst r = $input.first().json;\nconst seen = r.papers_seen ?? 0;\nconst processed = r.papers_processed ?? 0;\nconst eps = r.episodes_created ?? 0;\nconst ents = r.entities_added ?? r.entities_after - r.entities_before ?? 0;\nconst errs = r.errors ?? 0;\nconst noisy = (processed + eps + errs) > 0;\nconst summary = `🧠 extraction-tick  +${processed} papers  +${eps} episodes  ~${ents} entities  ${errs ? '⚠️ '+errs+' errors' : ''}`;\nreturn [{ json: { summary, noisy, ...r } }];"
+        "jsCode": "// batch_ingest.run_batch returns the grand totals dict.\nconst r = $input.first().json;\nconst seen = r.papers_seen ?? 0;\nconst processed = r.papers_processed ?? 0;\nconst eps = r.episodes_created ?? 0;\n// entities_added is the canonical key (after/before delta is the fallback).\n// Parenthesize the subtraction — without it, JS parses `a ?? b - c ?? 0` as\n// `a ?? (b - c) ?? 0`, and `undefined - undefined` is NaN, which is not\n// nullish, so `?? 0` does NOT rescue it. Result on Telegram: '~NaN entities'.\nlet ents = r.entities_added;\nif (ents == null) {\n  const delta = (r.entities_after ?? 0) - (r.entities_before ?? 0);\n  ents = Number.isFinite(delta) ? Math.max(0, delta) : 0;\n}\nconst errs = r.errors ?? 0;\nconst noisy = (processed + eps + errs) > 0;\nconst summary = `🧠 extraction-tick  +${processed} papers  +${eps} episodes  ~${ents} entities  ${errs ? '⚠️ '+errs+' errors' : ''}`;\nreturn [{ json: { summary, noisy, ...r } }];"
       },
       "name": "Format summary",
       "type": "n8n-nodes-base.code",
