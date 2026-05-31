@@ -56,7 +56,7 @@ type HypothesisDetail = {
 
 type SupportingPaper = {
   id: string;
-  title: string | null;
+  title: BilingualField;
   pmid: string | null;
   ct_id: string | null;
   doi: string | null;
@@ -287,7 +287,7 @@ export default async function HypothesisDetailPage({
                 </div>
                 <div>
                   <h3 className="text-sm font-medium leading-6">
-                    {p.title || "(untitled)"}
+                    {displayField(p.title, locale) || "(untitled)"}
                   </h3>
                   <p className="mt-1 text-xs text-stone-500">
                     {p.pmid
