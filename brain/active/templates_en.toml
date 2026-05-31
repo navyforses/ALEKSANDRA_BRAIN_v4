@@ -1,0 +1,68 @@
+# brain/active/templates_en.toml
+# Phase 7.4 Day 5 — 13 EN question templates, one per BeliefDimension.
+# Wife-facing English mirror of templates_ka.toml. Direct tone.
+
+[cyst_volume_pct]
+template = "Could you forward Aleksandra's most recent MRI report this week? The radiologist usually gives cyst volume as a percentage. This will sharpen our model by about {eig_pct}%."
+variables = ["eig_pct"]
+expected_format = "float_value"
+
+[brainstem_function]
+template = "At the last neurology visit, how did the doctor describe Aleksandra's brainstem function: impaired, partial, or intact? Your answer sharpens the brainstem assessment by about {eig_pct}%."
+variables = ["eig_pct"]
+expected_format = "categorical_choice"
+
+[seizure_freq_per_day]
+template = "How many visible seizure episodes did you observe in the past 24 hours? Just a number is fine. This reduces uncertainty on seizure frequency by about {eig_pct}%."
+variables = ["eig_pct"]
+expected_format = "integer_count"
+
+[muscle_tone_hammersmith]
+template = "Please ask the PT for this week's Hammersmith (HINE) total score and reply with the number. The result improves our muscle-tone estimate by about {eig_pct}%."
+variables = ["eig_pct"]
+expected_format = "integer_count"
+
+[eye_tracking_seconds]
+template = "Could you take a five-minute video with a red ball about 30 cm away and note the longest fixation in seconds? This observation sharpens visual tracking by about {eig_pct}%."
+variables = ["eig_pct"]
+expected_format = "integer_seconds"
+
+[head_control_seconds]
+template = "Place Aleksandra on her tummy for one minute and time how many seconds she holds her head vertically. Reply with the number. This sharpens the head-control estimate by about {eig_pct}%."
+variables = ["eig_pct"]
+expected_format = "integer_seconds"
+
+[gmfcs_level]
+template = "Which GMFCS level did the PT record at the last assessment: 1, 2, 3, 4, or 5? Reply with the level number. This sharpens motor-capability assessment by about {eig_pct}%."
+variables = ["eig_pct"]
+expected_format = "scale_0_5"
+
+[bayley_cognitive]
+template = "When you have the next Bayley-III result, please send the cognitive composite score. This improves the cognitive-development model by about {eig_pct}%. An interim PT estimate also works."
+variables = ["eig_pct"]
+expected_format = "integer_count"
+
+[feeding_stage]
+template = "How is Aleksandra feeding this week: NG-tube, partial oral, full-oral puree, or solid food? Pick one. Your answer sharpens the feeding-stage estimate by about {eig_pct}%."
+variables = ["eig_pct"]
+expected_format = "categorical_choice"
+
+[respiratory_apnea_per_day]
+template = "In the past 24 hours, did the home monitor detect any apnea event? Yes or no. Your answer sharpens respiratory-risk assessment by about {eig_pct}%."
+variables = ["eig_pct"]
+expected_format = "boolean"
+
+[csf_biomarkers]
+template = "If you have a recent lumbar-puncture result, reply with one biomarker value: NSE, S100B, GFAP, or Tau. Even a single value sharpens the biomarker model by about {eig_pct}%."
+variables = ["eig_pct"]
+expected_format = "float_value"
+
+[neuroplasticity_resource]
+template = "Please confirm Aleksandra's age in days as of today. This number sharpens the neuroplasticity-window calculation by about {eig_pct}%."
+variables = ["eig_pct"]
+expected_format = "integer_count"
+
+[family_readiness]
+template = "On a 0-5 scale, how stable did the family feel this week? 0 means overwhelmed, 5 means thriving. Your answer sharpens the family-readiness estimate by about {eig_pct}%."
+variables = ["eig_pct"]
+expected_format = "scale_0_5"

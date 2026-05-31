@@ -1,0 +1,40 @@
+# Phase 7.3 Layer B — OPTIONAL hosted-mode TheVirtualBrain docker-compose.
+#
+# The default ALEKSANDRA_BRAIN runtime path is EPHEMERAL: every call to
+# `brain.sim.tvb_adapter.run_tvb_simulation` spawns a one-shot
+# `docker run --rm --name tvb-aleksandra-<uuid>` container, mounts a
+# temp dir at /work, executes the in-container TVB script, and reaps the
+# container automatically. The Layer-B verifier checks (7/8/9) exercise
+# that ephemeral path.
+#
+# This compose file is the OPTIONAL hosted-mode alternative for
+# operators who want a long-running TVB service (e.g. on Railway,
+# ~$10/month) to amortise container-startup cost across many requests.
+# It is NOT used by the current code-complete adapter path.
+#
+# Reference:
+#   - v7_architecture/70_PHASES/73_PHASE_7_3_SIMULATION_ENGINE_3W.md §2.1
+#   - brain/sim/tvb_adapter.py (ephemeral-container default)
+
+services:
+  tvb:
+    # Pinned to :latest because that is the image the local pipeline pulled.
+    # Spec called for tvb-run:2.9.x; the upstream image moved past 2.9 and
+    # the DockerHub readme flags "Updates discontinued after 26.7.x" --
+    # tracked as MVP carry-forward in PHASE_7_3_LAYER_B_EXIT_REPORT.md.
+    image: thevirtualbrain/tvb-run:latest
+    container_name: aleksandra-tvb
+    # Map the in-container web UI (port 8080) to host 8888 per
+    # .claude/agents/v7-neurosim.md "Container web UI listens on 8080".
+    ports:
+      - "8888:8080"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    # No bind mounts -- the ephemeral adapter passes scripts via
+    # `docker exec` if/when this hosted mode is wired up. Avoids leaking
+    # host paths into a long-running container.

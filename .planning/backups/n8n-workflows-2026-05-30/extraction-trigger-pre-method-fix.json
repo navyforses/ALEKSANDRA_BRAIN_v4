@@ -1,0 +1,387 @@
+{
+  "updatedAt": "2026-05-29T01:37:33.172Z",
+  "createdAt": "2026-05-19T18:05:51.272Z",
+  "id": "kpHfWbsIS4cfkHPq",
+  "name": "extraction-trigger",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 30
+            }
+          ]
+        }
+      },
+      "name": "Every 30 minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        240,
+        304
+      ],
+      "id": "trigger-30m"
+    },
+    {
+      "parameters": {
+        "url": "=https://aleksandra-worker-production.up.railway.app/extraction-tick",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"force\": false, \"limit\": null}",
+        "options": {
+          "timeout": 3000000
+        }
+      },
+      "name": "Run extraction-tick",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        464,
+        304
+      ],
+      "id": "extraction-call"
+    },
+    {
+      "parameters": {
+        "jsCode": "// batch_ingest.run_batch returns the grand totals dict.\nconst r = $input.first().json;\nconst seen = r.papers_seen ?? 0;\nconst processed = r.papers_processed ?? 0;\nconst eps = r.episodes_created ?? 0;\nconst ents = r.entities_added ?? r.entities_after - r.entities_before ?? 0;\nconst errs = r.errors ?? 0;\nconst noisy = (processed + eps + errs) > 0;\nconst summary = `🧠 extraction-tick  +${processed} papers  +${eps} episodes  ~${ents} entities  ${errs ? '⚠️ '+errs+' errors' : ''}`;\nreturn [{ json: { summary, noisy, ...r } }];"
+      },
+      "name": "Format summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        688,
+        304
+      ],
+      "id": "format-summary"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "is-noisy",
+              "leftValue": "={{ $json.noisy }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "name": "Has new activity?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        912,
+        304
+      ],
+      "id": "noisy-gate"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/sendMessage",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"chat_id\": \"{{ $env.TELEGRAM_CHAT_ID }}\", \"text\": {{ JSON.stringify($json.summary) }}}",
+        "options": {}
+      },
+      "name": "Telegram summary",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1120,
+        240
+      ],
+      "id": "telegram-post"
+    }
+  ],
+  "connections": {
+    "Every 30 minutes": {
+      "main": [
+        [
+          {
+            "node": "Run extraction-tick",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run extraction-tick": {
+      "main": [
+        [
+          {
+            "node": "Format summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format summary": {
+      "main": [
+        [
+          {
+            "node": "Has new activity?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has new activity?": {
+      "main": [
+        [
+          {
+            "node": "Telegram summary",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveExecutionProgress": true,
+    "saveDataSuccessExecution": "all",
+    "saveDataErrorExecution": "all",
+    "executionTimeout": 3600,
+    "binaryMode": "separate"
+  },
+  "staticData": {
+    "node:Every 30 minutes": {
+      "recurrenceRules": []
+    }
+  },
+  "meta": null,
+  "pinData": {},
+  "versionId": "755c39a5-2e06-4401-a22c-a3410a903310",
+  "activeVersionId": "e7d00fa5-9dfb-42ff-bcae-2f670efcc954",
+  "versionCounter": 14,
+  "triggerCount": 1,
+  "shared": [
+    {
+      "updatedAt": "2026-05-19T18:05:51.272Z",
+      "createdAt": "2026-05-19T18:05:51.272Z",
+      "role": "workflow:owner",
+      "workflowId": "kpHfWbsIS4cfkHPq",
+      "projectId": "Khb3y80fILFSGV6G",
+      "project": {
+        "updatedAt": "2026-05-14T15:03:48.585Z",
+        "createdAt": "2026-05-14T14:39:17.493Z",
+        "id": "Khb3y80fILFSGV6G",
+        "name": "shako jincharadze <jincharadzeshako@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "788bfec0-70f2-4249-aba2-198c94ecebf2"
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": {
+    "updatedAt": "2026-05-19T18:05:51.272Z",
+    "createdAt": "2026-05-19T18:05:51.272Z",
+    "versionId": "e7d00fa5-9dfb-42ff-bcae-2f670efcc954",
+    "workflowId": "kpHfWbsIS4cfkHPq",
+    "nodes": [
+      {
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "minutes",
+                "minutesInterval": 30
+              }
+            ]
+          }
+        },
+        "name": "Every 30 minutes",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.1,
+        "position": [
+          240,
+          300
+        ],
+        "id": "trigger-30m"
+      },
+      {
+        "parameters": {
+          "url": "={{ $env.PERCEPTION_WORKER_URL }}/extraction-tick",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={\"force\": false, \"limit\": null}",
+          "options": {
+            "timeout": 3000000
+          }
+        },
+        "name": "Run extraction-tick",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          460,
+          300
+        ],
+        "id": "extraction-call"
+      },
+      {
+        "parameters": {
+          "jsCode": "// batch_ingest.run_batch returns the grand totals dict.\nconst r = $input.first().json;\nconst seen = r.papers_seen ?? 0;\nconst processed = r.papers_processed ?? 0;\nconst eps = r.episodes_created ?? 0;\nconst ents = r.entities_added ?? r.entities_after - r.entities_before ?? 0;\nconst errs = r.errors ?? 0;\nconst noisy = (processed + eps + errs) > 0;\nconst summary = `🧠 extraction-tick  +${processed} papers  +${eps} episodes  ~${ents} entities  ${errs ? '⚠️ '+errs+' errors' : ''}`;\nreturn [{ json: { summary, noisy, ...r } }];"
+        },
+        "name": "Format summary",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          680,
+          300
+        ],
+        "id": "format-summary"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose"
+            },
+            "conditions": [
+              {
+                "id": "is-noisy",
+                "leftValue": "={{ $json.noisy }}",
+                "rightValue": true,
+                "operator": {
+                  "type": "boolean",
+                  "operation": "true",
+                  "singleValue": true
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "name": "Has new activity?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          900,
+          300
+        ],
+        "id": "noisy-gate"
+      },
+      {
+        "parameters": {
+          "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/sendMessage",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={\"chat_id\": \"{{ $env.TELEGRAM_CHAT_ID }}\", \"text\": {{ JSON.stringify($json.summary) }}}",
+          "options": {}
+        },
+        "name": "Telegram summary",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1120,
+          240
+        ],
+        "id": "telegram-post"
+      }
+    ],
+    "connections": {
+      "Every 30 minutes": {
+        "main": [
+          [
+            {
+              "node": "Run extraction-tick",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Run extraction-tick": {
+        "main": [
+          [
+            {
+              "node": "Format summary",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Format summary": {
+        "main": [
+          [
+            {
+              "node": "Has new activity?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Has new activity?": {
+        "main": [
+          [
+            {
+              "node": "Telegram summary",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          []
+        ]
+      }
+    },
+    "authors": "shako jincharadze",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-05-19T18:05:52.031Z",
+        "id": 13,
+        "workflowId": "kpHfWbsIS4cfkHPq",
+        "versionId": "e7d00fa5-9dfb-42ff-bcae-2f670efcc954",
+        "event": "activated",
+        "userId": "788bfec0-70f2-4249-aba2-198c94ecebf2"
+      },
+      {
+        "createdAt": "2026-05-26T02:15:27.919Z",
+        "id": 14,
+        "workflowId": "kpHfWbsIS4cfkHPq",
+        "versionId": "e7d00fa5-9dfb-42ff-bcae-2f670efcc954",
+        "event": "deactivated",
+        "userId": "788bfec0-70f2-4249-aba2-198c94ecebf2"
+      },
+      {
+        "createdAt": "2026-05-26T02:15:27.964Z",
+        "id": 15,
+        "workflowId": "kpHfWbsIS4cfkHPq",
+        "versionId": "e7d00fa5-9dfb-42ff-bcae-2f670efcc954",
+        "event": "activated",
+        "userId": "788bfec0-70f2-4249-aba2-198c94ecebf2"
+      }
+    ]
+  }
+}

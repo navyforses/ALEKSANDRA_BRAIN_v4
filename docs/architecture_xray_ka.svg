@@ -1,0 +1,262 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1620" font-family="'Segoe UI', 'Noto Sans Georgian', system-ui, sans-serif">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0b1020"/>
+      <stop offset="100%" stop-color="#0d1530"/>
+    </linearGradient>
+    <linearGradient id="gPer" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#1e6fff"/><stop offset="100%" stop-color="#0a3d91"/></linearGradient>
+    <linearGradient id="gMem" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#a855f7"/><stop offset="100%" stop-color="#4c1d95"/></linearGradient>
+    <linearGradient id="gCog" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#22c55e"/><stop offset="100%" stop-color="#0f5132"/></linearGradient>
+    <linearGradient id="gAct" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#f59e0b"/><stop offset="100%" stop-color="#7c2d12"/></linearGradient>
+    <linearGradient id="gPortal" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#06b6d4"/><stop offset="100%" stop-color="#0e7490"/></linearGradient>
+    <linearGradient id="gViz" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#ef4444"/><stop offset="100%" stop-color="#7f1d1d"/></linearGradient>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="9" refY="6" orient="auto"><path d="M0,0 L10,6 L0,12 z" fill="#9fb0d6"/></marker>
+  </defs>
+
+  <rect width="1600" height="1620" fill="url(#bg)"/>
+
+  <!-- ===== Title ===== -->
+  <text x="800" y="46" text-anchor="middle" fill="#e6ecff" font-size="30" font-weight="800">ALEKSANDRA_BRAIN — სისტემის სრული რენტგენი</text>
+  <text x="800" y="74" text-anchor="middle" fill="#9fb0d6" font-size="15">v7 · 5 ფენა + Bayesian/Causal ტვინი · 24-გვერდიანი პორტალი · 52 MCP · CrewAI 5 აგენტი</text>
+  <rect x="560" y="92" width="480" height="34" rx="17" fill="#0f172a" stroke="#3b82f6" stroke-width="1.5"/>
+  <text x="800" y="114" text-anchor="middle" fill="#dbeafe" font-size="13">პაციენტი: ალექსანდრა ჯინჭარაძე · მძიმე HIE · 0–2 წ. ნეიროპლასტიკურობის ფანჯარა</text>
+
+  <!-- legend: data flow -->
+  <text x="60" y="118" fill="#64748b" font-size="12">↓ მონაცემის ნაკადი — ზემოდან ქვემოთ</text>
+
+  <!-- ===== 1 · PERCEPTION ===== -->
+  <g>
+    <rect x="40" y="150" width="1520" height="150" rx="14" fill="url(#gPer)" opacity="0.16" stroke="#1e6fff" stroke-width="1.5"/>
+    <text x="62" y="182" fill="#dbeafe" font-size="19" font-weight="700">1 · აღქმა — ვინ ეძებს და აგროვებს</text>
+    <text x="62" y="203" fill="#9fb0d6" font-size="12.5">ვებ-ძიება · PDF დამუშავება · cron ორკესტრაცია (n8n, ყოველ 6 სთ)</text>
+    <g font-size="12.5" fill="#e6ecff">
+      <rect x="62"   y="218" width="232" height="64" rx="8" fill="#0a3d91" stroke="#60a5fa"/>
+      <text x="178" y="242" text-anchor="middle" font-weight="700">Crawl4AI 0.8.6</text>
+      <text x="178" y="262" text-anchor="middle" font-size="11" fill="#cbd5ff">მთავარი scraper · უფასო/ლოკალური</text>
+      <rect x="306"  y="218" width="232" height="64" rx="8" fill="#0a3d91" stroke="#60a5fa"/>
+      <text x="422" y="242" text-anchor="middle" font-weight="700">NCBI E-Utilities</text>
+      <text x="422" y="262" text-anchor="middle" font-size="11" fill="#cbd5ff">PubMed · ClinicalTrials</text>
+      <rect x="550"  y="218" width="232" height="64" rx="8" fill="#0a3d91" stroke="#60a5fa"/>
+      <text x="666" y="242" text-anchor="middle" font-weight="700">Firecrawl MCP</text>
+      <text x="666" y="262" text-anchor="middle" font-size="11" fill="#cbd5ff">ფასიანი fallback (JS/anti-bot)</text>
+      <rect x="794"  y="218" width="232" height="64" rx="8" fill="#0a3d91" stroke="#60a5fa"/>
+      <text x="910" y="242" text-anchor="middle" font-weight="700">Browser Use 3.0</text>
+      <text x="910" y="262" text-anchor="middle" font-size="11" fill="#cbd5ff">paywall-ის გვერდის ავლა</text>
+      <rect x="1038" y="218" width="232" height="64" rx="8" fill="#0a3d91" stroke="#60a5fa"/>
+      <text x="1154" y="242" text-anchor="middle" font-weight="700">RAGFlow ≥0.17</text>
+      <text x="1154" y="262" text-anchor="middle" font-size="11" fill="#cbd5ff">PDF → chunks → entities</text>
+      <rect x="1282" y="218" width="278" height="64" rx="8" fill="#0a3d91" stroke="#60a5fa"/>
+      <text x="1421" y="242" text-anchor="middle" font-weight="700">n8n workflows ×11</text>
+      <text x="1421" y="262" text-anchor="middle" font-size="11" fill="#cbd5ff">perception_6h · chunking · extraction</text>
+    </g>
+  </g>
+  <line x1="800" y1="300" x2="800" y2="322" stroke="#9fb0d6" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- ===== 2 · MEMORY ===== -->
+  <g>
+    <rect x="40" y="328" width="1520" height="160" rx="14" fill="url(#gMem)" opacity="0.16" stroke="#a855f7" stroke-width="1.5"/>
+    <text x="62" y="360" fill="#f3e8ff" font-size="19" font-weight="700">2 · მეხსიერება — სად და როგორ ინახება</text>
+    <text x="62" y="381" fill="#9fb0d6" font-size="12.5">დროითი გრაფი · ვექტორები · რელაციური მეტამონაცემი · აგენტების საერთო მეხსიერება</text>
+    <g font-size="12.5" fill="#e6ecff">
+      <rect x="62"   y="396" width="232" height="78" rx="8" fill="#4c1d95" stroke="#c084fc"/>
+      <text x="178" y="419" text-anchor="middle" font-weight="700">Neo4j + Graphiti</text>
+      <text x="178" y="438" text-anchor="middle" font-size="11" fill="#e9d5ff">ცოდნის გრაფი · confidence decay</text>
+      <text x="178" y="456" text-anchor="middle" font-size="11" fill="#e9d5ff">568 entities · 307 facts</text>
+      <rect x="306"  y="396" width="232" height="78" rx="8" fill="#4c1d95" stroke="#c084fc"/>
+      <text x="422" y="419" text-anchor="middle" font-weight="700">Qdrant</text>
+      <text x="422" y="438" text-anchor="middle" font-size="11" fill="#e9d5ff">ვექტორული ძიება · fastembed</text>
+      <text x="422" y="456" text-anchor="middle" font-size="11" fill="#e9d5ff">5,302 ვექტორი</text>
+      <rect x="550"  y="396" width="232" height="78" rx="8" fill="#4c1d95" stroke="#c084fc"/>
+      <text x="666" y="419" text-anchor="middle" font-weight="700">Supabase Postgres</text>
+      <text x="666" y="438" text-anchor="middle" font-size="11" fill="#e9d5ff">15 ცხრილი · RLS დაცვა</text>
+      <text x="666" y="456" text-anchor="middle" font-size="11" fill="#e9d5ff">migrations 008→015</text>
+      <rect x="794"  y="396" width="232" height="78" rx="8" fill="#4c1d95" stroke="#c084fc"/>
+      <text x="910" y="419" text-anchor="middle" font-weight="700">LightRAG 1.4.16</text>
+      <text x="910" y="438" text-anchor="middle" font-size="11" fill="#e9d5ff">graph + vector ერთ query-ში</text>
+      <rect x="1038" y="396" width="232" height="78" rx="8" fill="#4c1d95" stroke="#c084fc"/>
+      <text x="1154" y="419" text-anchor="middle" font-weight="700">mem0</text>
+      <text x="1154" y="438" text-anchor="middle" font-size="11" fill="#e9d5ff">5 აგენტის საერთო მეხსიერება</text>
+      <rect x="1282" y="396" width="278" height="78" rx="8" fill="#4c1d95" stroke="#c084fc"/>
+      <text x="1421" y="419" text-anchor="middle" font-weight="700">Cloudflare R2</text>
+      <text x="1421" y="438" text-anchor="middle" font-size="11" fill="#e9d5ff">raw artifacts · zero egress</text>
+      <text x="1421" y="456" text-anchor="middle" font-size="11" fill="#fbbf24">KV deprecated</text>
+    </g>
+  </g>
+  <line x1="800" y1="488" x2="800" y2="510" stroke="#9fb0d6" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- ===== 3 · COGNITION ===== -->
+  <g>
+    <rect x="40" y="516" width="1520" height="270" rx="14" fill="url(#gCog)" opacity="0.16" stroke="#22c55e" stroke-width="1.5"/>
+    <text x="62" y="548" fill="#dcfce7" font-size="19" font-weight="700">3 · აზროვნება — რომელი AI აანალიზებს</text>
+    <text x="62" y="569" fill="#9fb0d6" font-size="12.5">CrewAI 5 აგენტი · ძრავა: Claude Sonnet 4.5 (default) / 4.6 (რთული შემთხვევები) · DSPy · Adaptive GoT MCP</text>
+
+    <!-- left: 5 CrewAI agents -->
+    <g font-size="12.5" fill="#e6ecff">
+      <rect x="62"  y="584" width="176" height="86" rx="8" fill="#14532d" stroke="#4ade80"/>
+      <text x="150" y="608" text-anchor="middle" font-weight="700">🕷 Spider</text>
+      <text x="150" y="627" text-anchor="middle" font-size="11" fill="#bbf7d0">Paper Hunter</text>
+      <text x="150" y="644" text-anchor="middle" font-size="11" fill="#bbf7d0">5,301 chunks</text>
+      <rect x="248" y="584" width="176" height="86" rx="8" fill="#14532d" stroke="#4ade80"/>
+      <text x="336" y="608" text-anchor="middle" font-weight="700">🔬 Analyzer</text>
+      <text x="336" y="627" text-anchor="middle" font-size="11" fill="#bbf7d0">Evidence Quality</text>
+      <rect x="434" y="584" width="176" height="86" rx="8" fill="#14532d" stroke="#4ade80"/>
+      <text x="522" y="608" text-anchor="middle" font-weight="700">💡 Hypothesis</text>
+      <text x="522" y="627" text-anchor="middle" font-size="11" fill="#bbf7d0">Cross-Disease</text>
+      <text x="522" y="644" text-anchor="middle" font-size="11" fill="#bbf7d0">10 hyp · 3 promising</text>
+      <rect x="620" y="584" width="176" height="86" rx="8" fill="#14532d" stroke="#4ade80"/>
+      <text x="708" y="608" text-anchor="middle" font-weight="700">💊 Repurposing</text>
+      <text x="708" y="627" text-anchor="middle" font-size="11" fill="#bbf7d0">Drug Discovery</text>
+      <text x="708" y="644" text-anchor="middle" font-size="11" fill="#bbf7d0">12 cand · 5 valid</text>
+      <rect x="806" y="584" width="176" height="86" rx="8" fill="#14532d" stroke="#4ade80"/>
+      <text x="894" y="608" text-anchor="middle" font-weight="700">📢 Communicator</text>
+      <text x="894" y="627" text-anchor="middle" font-size="11" fill="#bbf7d0">Family Liaison</text>
+      <text x="894" y="644" text-anchor="middle" font-size="11" fill="#bbf7d0">ორენოვანი EN/KA</text>
+    </g>
+
+    <!-- right: v7 reasoning brain -->
+    <rect x="998" y="584" width="562" height="186" rx="10" fill="#052e16" stroke="#34d399" stroke-dasharray="4 3"/>
+    <text x="1018" y="606" fill="#a7f3d0" font-size="14" font-weight="700">v7 მსჯელობის ტვინი (Phase 7.0–7.4)</text>
+    <g font-size="12" fill="#e6ecff">
+      <rect x="1018" y="618" width="172" height="64" rx="8" fill="#065f46" stroke="#6ee7b7"/>
+      <text x="1104" y="640" text-anchor="middle" font-weight="700">PyMC / NumPyro</text>
+      <text x="1104" y="659" text-anchor="middle" font-size="10.5" fill="#d1fae5">ბაიესის რწმენა (13-D)</text>
+      <rect x="1198" y="618" width="172" height="64" rx="8" fill="#065f46" stroke="#6ee7b7"/>
+      <text x="1284" y="640" text-anchor="middle" font-weight="700">DoWhy / Pearl SCM</text>
+      <text x="1284" y="659" text-anchor="middle" font-size="10.5" fill="#d1fae5">do() · counterfactual</text>
+      <rect x="1378" y="618" width="172" height="64" rx="8" fill="#065f46" stroke="#6ee7b7"/>
+      <text x="1464" y="640" text-anchor="middle" font-weight="700">TVB Docker</text>
+      <text x="1464" y="659" text-anchor="middle" font-size="10.5" fill="#d1fae5">neural-mass სიმულაცია</text>
+      <rect x="1018" y="690" width="262" height="64" rx="8" fill="#065f46" stroke="#6ee7b7"/>
+      <text x="1149" y="712" text-anchor="middle" font-weight="700">Shannon EIG → აქტიური კითხვები</text>
+      <text x="1149" y="731" text-anchor="middle" font-size="10.5" fill="#d1fae5">entropy · ინფორმაციის მოგება</text>
+      <rect x="1288" y="690" width="262" height="64" rx="8" fill="#065f46" stroke="#6ee7b7"/>
+      <text x="1419" y="712" text-anchor="middle" font-weight="700">Monte Carlo ტრაექტორია</text>
+      <text x="1419" y="731" text-anchor="middle" font-size="10.5" fill="#d1fae5">scenario aggregator</text>
+    </g>
+    <text x="62" y="762" fill="#9fb0d6" font-size="11">custom MCP: aleksandra_niivue_mcp · swarm_orchestrator · panic_stop · (52 MCP arsenal: 23 registry + 19 GH + 5 AI-Pulse + 5 custom)</text>
+  </g>
+  <line x1="430" y1="786" x2="430" y2="808" stroke="#9fb0d6" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="1180" y1="786" x2="1180" y2="808" stroke="#9fb0d6" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- ===== 4 · ACTION ===== -->
+  <g>
+    <rect x="40" y="814" width="1520" height="156" rx="14" fill="url(#gAct)" opacity="0.16" stroke="#f59e0b" stroke-width="1.5"/>
+    <text x="62" y="846" fill="#fef3c7" font-size="19" font-weight="700">4 · მოქმედება — ვინ წერს ანალიზს და უგზავნის ოჯახს</text>
+    <text x="62" y="867" fill="#9fb0d6" font-size="12.5">Communicator + compose_bilingual → ორენოვანი {en, ka} რეპორტი · შეტყობინებებში PHI არასოდეს</text>
+    <g font-size="12.5" fill="#e6ecff">
+      <rect x="62"   y="882" width="288" height="70" rx="8" fill="#7c2d12" stroke="#fbbf24"/>
+      <text x="206" y="906" text-anchor="middle" font-weight="700">📄 Weekly Brief / Manager Briefing</text>
+      <text x="206" y="926" text-anchor="middle" font-size="11" fill="#fde68a">ReportLab PDF · კვირას 09:00 ET</text>
+      <text x="206" y="942" text-anchor="middle" font-size="11" fill="#fde68a">compose_bilingual (Anthropic tool_use)</text>
+      <rect x="362"  y="882" width="222" height="70" rx="8" fill="#7c2d12" stroke="#fbbf24"/>
+      <text x="473" y="906" text-anchor="middle" font-weight="700">Telegram Bot</text>
+      <text x="473" y="926" text-anchor="middle" font-size="11" fill="#fde68a">2-way · ქართული (.ka)</text>
+      <text x="473" y="942" text-anchor="middle" font-size="11" fill="#fde68a">Whisper ხმოვანი intake</text>
+      <rect x="596"  y="882" width="222" height="70" rx="8" fill="#7c2d12" stroke="#fbbf24"/>
+      <text x="707" y="906" text-anchor="middle" font-weight="700">Gmail MCP</text>
+      <text x="707" y="926" text-anchor="middle" font-size="11" fill="#fde68a">digest (.en) · compose-only</text>
+      <text x="707" y="942" text-anchor="middle" font-size="11" fill="#fde68a">ექიმთან outreach</text>
+      <rect x="830"  y="882" width="222" height="70" rx="8" fill="#7c2d12" stroke="#fbbf24"/>
+      <text x="941" y="906" text-anchor="middle" font-weight="700">Notion MCP</text>
+      <text x="941" y="926" text-anchor="middle" font-size="11" fill="#fde68a">ოჯახის knowledge base</text>
+      <text x="941" y="942" text-anchor="middle" font-size="11" fill="#fde68a">96 contacts</text>
+      <rect x="1064" y="882" width="222" height="70" rx="8" fill="#7c2d12" stroke="#fbbf24"/>
+      <text x="1175" y="906" text-anchor="middle" font-weight="700">Google Calendar</text>
+      <text x="1175" y="926" text-anchor="middle" font-size="11" fill="#fde68a">მკურნალობის timeline</text>
+      <rect x="1298" y="882" width="262" height="70" rx="8" fill="#7c2d12" stroke="#fbbf24"/>
+      <text x="1429" y="906" text-anchor="middle" font-weight="700">Booking / Kiwi</text>
+      <text x="1429" y="926" text-anchor="middle" font-size="11" fill="#fde68a">Duke EAP მგზავრობა</text>
+    </g>
+  </g>
+  <line x1="800" y1="970" x2="800" y2="992" stroke="#9fb0d6" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- ===== 5 · FRONTEND PORTAL ===== -->
+  <g>
+    <rect x="40" y="998" width="1520" height="386" rx="14" fill="url(#gPortal)" opacity="0.16" stroke="#06b6d4" stroke-width="1.5"/>
+    <text x="62" y="1030" fill="#cffafe" font-size="19" font-weight="700">5 · პორტალი — რას ხედავს ოჯახი და ექიმი (Next.js · ორენოვანი · 24 გვერდი)</text>
+    <text x="62" y="1051" fill="#9fb0d6" font-size="12.5">app/[locale]/* · next-intl (KA + EN) · Plotly · vis-network · react-flow · Vercel hosting</text>
+
+    <!-- 6 category cards -->
+    <!-- card 1 -->
+    <rect x="62"   y="1066" width="236" height="296" rx="10" fill="#0e3a44" stroke="#22d3ee"/>
+    <text x="180" y="1090" text-anchor="middle" fill="#a5f3fc" font-size="13.5" font-weight="700">ოჯახის ყოველდღიური</text>
+    <g font-size="12" fill="#e0f2fe">
+      <text x="80" y="1120">• today — „დღეს“</text>
+      <text x="80" y="1146">• dashboard — მთავარი კოკპიტი</text>
+      <text x="80" y="1172">• timeline — ქრონოლოგია</text>
+      <text x="80" y="1198">• snapshot — სწრაფი ანახი</text>
+    </g>
+    <!-- card 2 -->
+    <rect x="306"  y="1066" width="236" height="296" rx="10" fill="#0e3a44" stroke="#22d3ee"/>
+    <text x="424" y="1090" text-anchor="middle" fill="#a5f3fc" font-size="13.5" font-weight="700">ციფრული ტყუპი (Bayes)</text>
+    <g font-size="12" fill="#e0f2fe">
+      <text x="324" y="1120">• twin — ტყუპის სტატუსი</text>
+      <text x="324" y="1146">• drift — რწმენის ცვლა</text>
+      <text x="324" y="1172">• active-questions —</text>
+      <text x="340" y="1192">აქტიური კითხვები (EIG)</text>
+    </g>
+    <!-- card 3 -->
+    <rect x="550"  y="1066" width="236" height="296" rx="10" fill="#0e3a44" stroke="#22d3ee"/>
+    <text x="668" y="1090" text-anchor="middle" fill="#a5f3fc" font-size="13.5" font-weight="700">მიზეზობრიობა &amp; სიმულაცია</text>
+    <g font-size="12" fill="#e0f2fe">
+      <text x="568" y="1120">• causal — მიზეზობრივი</text>
+      <text x="584" y="1140">გრაფი (DAG, 571 node)</text>
+      <text x="568" y="1170">• simulate — სიმულაციის</text>
+      <text x="584" y="1190">სტუდია (TVB · react-flow)</text>
+    </g>
+    <!-- card 4 -->
+    <rect x="794"  y="1066" width="236" height="296" rx="10" fill="#0e3a44" stroke="#22d3ee"/>
+    <text x="912" y="1090" text-anchor="middle" fill="#a5f3fc" font-size="13.5" font-weight="700">კვლევა &amp; მტკიცებულება</text>
+    <g font-size="12" fill="#e0f2fe">
+      <text x="812" y="1118">• hypotheses — ჰიპოთეზები</text>
+      <text x="812" y="1142">• therapies — თერაპიები</text>
+      <text x="812" y="1166">• papers — სტატიები</text>
+      <text x="812" y="1190">• knowledge — ცოდნა</text>
+      <text x="812" y="1214">• evidence-map — რუკა</text>
+      <text x="812" y="1238">• cohorts — კოჰორტები</text>
+    </g>
+    <!-- card 5 -->
+    <rect x="1038" y="1066" width="236" height="296" rx="10" fill="#3a1f1f" stroke="#fca5a5"/>
+    <text x="1156" y="1090" text-anchor="middle" fill="#fecaca" font-size="13.5" font-weight="700">სამედიცინო 3D</text>
+    <g font-size="12" fill="#fee2e2">
+      <text x="1056" y="1120">• brain — MRI viewer</text>
+      <text x="1072" y="1142">NiiVue + R3F</text>
+      <text x="1056" y="1176" font-weight="700" fill="#fca5a5">🔒 MRI მხოლოდ</text>
+      <text x="1056" y="1196" font-weight="700" fill="#fca5a5">ბრაუზერში —</text>
+      <text x="1056" y="1216" font-weight="700" fill="#fca5a5">არასოდეს სერვერზე</text>
+    </g>
+    <!-- card 6 -->
+    <rect x="1282" y="1066" width="278" height="296" rx="10" fill="#0e3a44" stroke="#22d3ee"/>
+    <text x="1421" y="1090" text-anchor="middle" fill="#a5f3fc" font-size="13.5" font-weight="700">ოპერაცია &amp; დაცვა</text>
+    <g font-size="12" fill="#e0f2fe">
+      <text x="1300" y="1118">• alerts — გაფრთხილებები</text>
+      <text x="1300" y="1142">• audit — აუდიტის ჟურნალი</text>
+      <text x="1300" y="1166">• data-integrations</text>
+      <text x="1300" y="1190">• settings — პარამეტრები</text>
+      <text x="1300" y="1214">• support · resources</text>
+      <text x="1300" y="1238">• how-it-works — როგორ მუშაობს</text>
+    </g>
+  </g>
+
+  <!-- ===== Constitution + Doctor footer ===== -->
+  <g>
+    <rect x="40" y="1404" width="1000" height="180" rx="12" fill="#1a1206" stroke="#f59e0b" stroke-width="1.5"/>
+    <text x="62" y="1436" fill="#fde68a" font-size="18" font-weight="700">⚖️ კონსTITუცია + უსაფრთხოება (Phase 7.5 · ყველგან გავლებული)</text>
+    <g font-size="12.5" fill="#fef3c7">
+      <text x="62" y="1466">• 13 ხელშეუხებელი წესის ფიზიკური აღსრულება (CSP · middleware · Postgres triggers/CHECK/RLS)</text>
+      <text x="62" y="1490">• PHI redactor (regex, ქართული suffix-glue) — შეტყობინებებში პერსონალური მონაცემი არ გადის</text>
+      <text x="62" y="1514">• ბიუჯეტის hard-stop: check_daily_budget() ყოველი LLM-ის წინ · სულ ~$7–8 / $60 cap</text>
+      <text x="62" y="1538">• panic_stop · i18n parity · override audit table · GitHub Actions CI gates</text>
+      <text x="62" y="1564" fill="#fbbf24">89/89 cumulative verifier coverage (Phase 1–6.1)</text>
+    </g>
+
+    <rect x="1060" y="1404" width="500" height="180" rx="12" fill="#0f172a" stroke="#3b82f6" stroke-width="1.5"/>
+    <text x="1310" y="1440" text-anchor="middle" fill="#dbeafe" font-size="17" font-weight="700">👨‍⚕️ საბოლოო გადაწყვეტილება</text>
+    <text x="1310" y="1474" text-anchor="middle" fill="#bfdbfe" font-size="13">სისტემა მხოლოდ აღმოაჩენს, აფასებს</text>
+    <text x="1310" y="1496" text-anchor="middle" fill="#bfdbfe" font-size="13">და ხსნის — არ ნიშნავს მკურნალობას.</text>
+    <text x="1310" y="1530" text-anchor="middle" fill="#e6ecff" font-size="14" font-weight="700">ყველა სამედიცინო გადაწყვეტილებას</text>
+    <text x="1310" y="1552" text-anchor="middle" fill="#e6ecff" font-size="14" font-weight="700">რეალური ექიმი იღებს.</text>
+    <text x="1310" y="1576" text-anchor="middle" fill="#94a3b8" font-size="11">„Unknown potential“ — არა „limited outcomes“</text>
+  </g>
+</svg>

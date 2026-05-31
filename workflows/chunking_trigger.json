@@ -29,6 +29,7 @@
     },
     {
       "parameters": {
+        "method": "POST",
         "url": "={{ $env.PERCEPTION_WORKER_URL }}/chunking-tick",
         "sendBody": true,
         "specifyBody": "json",
@@ -42,7 +43,7 @@
       "typeVersion": 4.2,
       "position": [460, 300],
       "id": "chunking-call",
-      "_comment": "POST to perception_worker /chunking-tick. Body: limit=0 means all unchunked ledger rows; score=true runs Haiku 4.5 relevance pass on any papers with NULL relevance_score."
+      "_comment": "POST to perception_worker /chunking-tick. Body: limit=0 means all unchunked ledger rows; score=true runs Haiku 4.5 relevance pass on any papers with NULL relevance_score. method:POST is explicit — older n8n defaulted to GET when method was omitted, producing 404 not_found."
     },
     {
       "parameters": {

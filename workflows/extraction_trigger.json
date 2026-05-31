@@ -29,6 +29,7 @@
     },
     {
       "parameters": {
+        "method": "POST",
         "url": "={{ $env.PERCEPTION_WORKER_URL }}/extraction-tick",
         "sendBody": true,
         "specifyBody": "json",
@@ -42,7 +43,7 @@
       "typeVersion": 4.2,
       "position": [460, 300],
       "id": "extraction-call",
-      "_comment": "POST to perception_worker /extraction-tick. force=false respects kv_state guard; limit=null processes everything pending."
+      "_comment": "POST to perception_worker /extraction-tick. force=false respects kv_state guard; limit=null processes everything pending. method:POST is explicit — older n8n defaulted to GET when method was omitted, producing 404 not_found."
     },
     {
       "parameters": {

@@ -357,3 +357,70 @@ to the orchestrator with the failure mode; downstream waves stay blocked.
 | Post snapshot diff | `diff X.policies.pre.txt X.policies.post.txt` |
 | Rollback data | `psql ... DELETE; psql ... -f X.pre012.dump; COMMIT` |
 | Rollback type | `ALTER TABLE X ALTER COLUMN c TYPE text USING c->>'en';` |
+
+---
+
+## Post-hoc capture script (added 2026-05-24 by v7-devops)
+
+Migration 012 was applied to production on 2026-05-20, but Steps 1, 2, and
+Step 4 sub-check 6 above were NOT run in the same maintenance window. The
+four `.pre012.dump` and four `.policies.pre.txt` files in
+`scripts/migrations/012_rollback/` remain Plan-06-06 placeholders, and the
+four `.policies.post.txt` files plus `post_apply_smoke.txt` were never
+authored.
+
+To close the deferred-artifacts hole (todo:
+`.planning/todos/pending/2026-05-21-capture-migration-012-rollback-artifacts.md`)
+in one 20-minute window, run:
+
+```bash
+SUPABASE_DB_URL='postgres://service_role:...@db.<project-ref>.supabase.co:5432/postgres' \
+  bash scripts/migrations/012_rollback/capture_post_artifacts.sh
+```
+
+The script is **idempotent** (re-running overwrites in place), **dry-run-safe**
+(pre-flight aborts before any DB connection if `psql`, `pg_dump`, or
+`SUPABASE_DB_URL` is missing), and **read-only against the DB** (only `\d`
+describes and `pg_dump --data-only` reads — zero writes).
+
+### What it does
+
+1. Pre-flight: asserts `psql` + `pg_dump` on `$PATH`, `SUPABASE_DB_URL` set,
+   connection reachable, and the URL points at a **service-role** user (not
+   `anon` / `authenticated`, otherwise RLS would hide rows from `pg_dump`).
+2. Step 1: writes live `\d <table>` output to `<table>.policies.post.txt`
+   for each of `aleksandra_timeline`, `hypotheses`, `therapies`, `briefs`,
+   and mirrors each into `<table>.policies.pre.txt` (the "new operational
+   baseline" — see todo Step 1 note on the redefined semantics).
+3. Step 2: `pg_dump --data-only --column-inserts` per table into
+   `<table>.pre012.dump`, asserting non-empty + correct pg_dump banner.
+4. Step 4 sub-check 6: writes `post_apply_smoke.txt` containing
+   `SELECT pg_typeof(<col>)` for each of the 6 converted JSONB columns plus
+   the I18N-09 mirror invariant counts. Asserts `jsonb` appears ≥ 6 times
+   and `mirrored_rows == total_rows`.
+5. Exits 0 only if every assertion passes. Exits 1 on the first failure,
+   leaving partial artifacts on disk for Shako to inspect.
+
+### Required environment
+
+| Variable | Purpose | Source |
+|---|---|---|
+| `SUPABASE_DB_URL` | service-role connection string for production Supabase | same value used by `scripts/communicator/weekly_brief.py` per Phase 5 Operator Runbook |
+
+### After the script exits 0
+
+```bash
+# 1. Run the production-mode verifier (resolves I18N-05 + I18N-09 to PASS)
+python -m scripts.verify_phase6 --mode production --bucket B
+
+# 2. Commit the populated artifacts
+git add scripts/migrations/012_rollback/*.pre012.dump \
+        scripts/migrations/012_rollback/*.policies.pre.txt \
+        scripts/migrations/012_rollback/*.policies.post.txt \
+        scripts/migrations/012_rollback/post_apply_smoke.txt
+git commit -m "chore(06-07-followup): capture migration 012 rollback artifacts post-hoc"
+
+# 3. Move the todo
+git mv .planning/todos/pending/2026-05-21-capture-migration-012-rollback-artifacts.md \
+       .planning/todos/completed/
+```

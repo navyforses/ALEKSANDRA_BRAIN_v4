@@ -96,6 +96,16 @@ briefs/*.pdf
 scripts/repurposing/run_logs/
 .observer/
 
+# Verifier run logs (timestamped JSON snapshots — regenerated per verifier run)
+v7_architecture/foundation_logs/verify_phase_*_*.json
+v7_architecture/foundation_logs/*.log
+
+# graphify-out skill build artifacts
+graphify-out/
+
+# Codex skill build artifacts
+.codex/
+
 # Local imports / contact exports (may contain personal emails)
 data/notion_contacts.csv
 

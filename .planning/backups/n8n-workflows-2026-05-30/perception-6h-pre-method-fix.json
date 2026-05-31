@@ -1,0 +1,288 @@
+{
+  "updatedAt": "2026-05-29T01:48:31.559Z",
+  "createdAt": "2026-05-19T18:05:48.941Z",
+  "id": "EzuGTcCywkHPQT8M",
+  "name": "perception-6h",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 6
+            }
+          ]
+        }
+      },
+      "name": "Every 6 hours",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        240,
+        304
+      ],
+      "id": "trigger-6h"
+    },
+    {
+      "parameters": {
+        "url": "=https://aleksandra-worker-production.up.railway.app/perception-tick",
+        "options": {
+          "timeout": 600000
+        }
+      },
+      "name": "Run perception_tick",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        464,
+        304
+      ],
+      "id": "perception-call"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse perception_tick response. The Python orchestrator returns:\n//   {\n//     \"exit_status\": \"completed\" | \"killed_by_budget_gate\",\n//     \"counts\": { pubmed: {...}, ctgov: {...}, ... },\n//     \"total_new_rows\": N,\n//     \"duration_seconds\": N\n//   }\nconst r = $input.first().json;\nconst exit_status = r.exit_status || 'unknown';\nconst total = r.total_new_rows ?? 0;\nconst dt = r.duration_seconds ?? 0;\nconst counts = r.counts || {};\nconst g = (step, key) => parseInt((counts[step] || {})[key] || 0);\nconst pubmed = g('pubmed', 'ledger_inserted');\nconst ctgov = g('ctgov', 'ledger_inserted');\nconst preprints = g('preprints', 'ledger_inserted');\nconst gap = g('gap_filler', 'ledger_inserted');\nconst neg = g('negative', 'ledger_inserted');\nconst summary = `\\u{1F578}\\uFE0F perception_tick ${exit_status} +${total} rows in ${dt}s\\n  pubmed=${pubmed} ctgov=${ctgov} preprints=${preprints}\\n  gap-fill=${gap} negative=${neg}`;\nreturn [{ json: { summary, exit_status, total, ...r } }];"
+      },
+      "name": "Format summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        688,
+        304
+      ],
+      "id": "format-summary"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/sendMessage",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"chat_id\": \"{{ $env.TELEGRAM_CHAT_ID }}\", \"text\": {{ JSON.stringify($json.summary) }}}",
+        "options": {}
+      },
+      "name": "Telegram summary",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        912,
+        304
+      ],
+      "id": "telegram-post"
+    }
+  ],
+  "connections": {
+    "Every 6 hours": {
+      "main": [
+        [
+          {
+            "node": "Run perception_tick",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run perception_tick": {
+      "main": [
+        [
+          {
+            "node": "Format summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format summary": {
+      "main": [
+        [
+          {
+            "node": "Telegram summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "staticData": {
+    "node:Every 6 hours": {
+      "recurrenceRules": [
+        18
+      ]
+    }
+  },
+  "meta": null,
+  "pinData": {},
+  "versionId": "6e00777b-be7a-46ed-ae84-2736f78ceefc",
+  "activeVersionId": "54c321bd-5fa5-4e5b-837d-2a1bb24be0ca",
+  "versionCounter": 23,
+  "triggerCount": 1,
+  "shared": [
+    {
+      "updatedAt": "2026-05-19T18:05:48.941Z",
+      "createdAt": "2026-05-19T18:05:48.941Z",
+      "role": "workflow:owner",
+      "workflowId": "EzuGTcCywkHPQT8M",
+      "projectId": "Khb3y80fILFSGV6G",
+      "project": {
+        "updatedAt": "2026-05-14T15:03:48.585Z",
+        "createdAt": "2026-05-14T14:39:17.493Z",
+        "id": "Khb3y80fILFSGV6G",
+        "name": "shako jincharadze <jincharadzeshako@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "788bfec0-70f2-4249-aba2-198c94ecebf2"
+      }
+    }
+  ],
+  "tags": [],
+  "activeVersion": {
+    "updatedAt": "2026-05-19T18:05:48.941Z",
+    "createdAt": "2026-05-19T18:05:48.941Z",
+    "versionId": "54c321bd-5fa5-4e5b-837d-2a1bb24be0ca",
+    "workflowId": "EzuGTcCywkHPQT8M",
+    "nodes": [
+      {
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "hours",
+                "hoursInterval": 6
+              }
+            ]
+          }
+        },
+        "name": "Every 6 hours",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.1,
+        "position": [
+          240,
+          300
+        ],
+        "id": "trigger-6h"
+      },
+      {
+        "parameters": {
+          "url": "={{ $env.PERCEPTION_WORKER_URL }}/perception-tick",
+          "options": {
+            "timeout": 600000
+          }
+        },
+        "name": "Run perception_tick",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          460,
+          300
+        ],
+        "id": "perception-call"
+      },
+      {
+        "parameters": {
+          "jsCode": "// Parse perception_tick response. The Python orchestrator returns:\n//   {\n//     \"exit_status\": \"completed\" | \"killed_by_budget_gate\",\n//     \"counts\": { pubmed: {...}, ctgov: {...}, ... },\n//     \"total_new_rows\": N,\n//     \"duration_seconds\": N\n//   }\nconst r = $input.first().json;\nconst exit_status = r.exit_status || 'unknown';\nconst total = r.total_new_rows ?? 0;\nconst dt = r.duration_seconds ?? 0;\nconst counts = r.counts || {};\nconst g = (step, key) => parseInt((counts[step] || {})[key] || 0);\nconst pubmed = g('pubmed', 'ledger_inserted');\nconst ctgov = g('ctgov', 'ledger_inserted');\nconst preprints = g('preprints', 'ledger_inserted');\nconst gap = g('gap_filler', 'ledger_inserted');\nconst neg = g('negative', 'ledger_inserted');\nconst summary = `\\u{1F578}\\uFE0F perception_tick ${exit_status} +${total} rows in ${dt}s\\n  pubmed=${pubmed} ctgov=${ctgov} preprints=${preprints}\\n  gap-fill=${gap} negative=${neg}`;\nreturn [{ json: { summary, exit_status, total, ...r } }];"
+        },
+        "name": "Format summary",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          680,
+          300
+        ],
+        "id": "format-summary"
+      },
+      {
+        "parameters": {
+          "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/sendMessage",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={\"chat_id\": \"{{ $env.TELEGRAM_CHAT_ID }}\", \"text\": {{ JSON.stringify($json.summary) }}}",
+          "options": {}
+        },
+        "name": "Telegram summary",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          900,
+          300
+        ],
+        "id": "telegram-post"
+      }
+    ],
+    "connections": {
+      "Every 6 hours": {
+        "main": [
+          [
+            {
+              "node": "Run perception_tick",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Run perception_tick": {
+        "main": [
+          [
+            {
+              "node": "Format summary",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Format summary": {
+        "main": [
+          [
+            {
+              "node": "Telegram summary",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "authors": "shako jincharadze",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-05-19T18:05:49.600Z",
+        "id": 11,
+        "workflowId": "EzuGTcCywkHPQT8M",
+        "versionId": "54c321bd-5fa5-4e5b-837d-2a1bb24be0ca",
+        "event": "activated",
+        "userId": "788bfec0-70f2-4249-aba2-198c94ecebf2"
+      },
+      {
+        "createdAt": "2026-05-29T01:48:31.659Z",
+        "id": 18,
+        "workflowId": "EzuGTcCywkHPQT8M",
+        "versionId": "54c321bd-5fa5-4e5b-837d-2a1bb24be0ca",
+        "event": "deactivated",
+        "userId": "788bfec0-70f2-4249-aba2-198c94ecebf2"
+      },
+      {
+        "createdAt": "2026-05-29T01:48:31.712Z",
+        "id": 19,
+        "workflowId": "EzuGTcCywkHPQT8M",
+        "versionId": "54c321bd-5fa5-4e5b-837d-2a1bb24be0ca",
+        "event": "activated",
+        "userId": "788bfec0-70f2-4249-aba2-198c94ecebf2"
+      }
+    ]
+  }
+}
