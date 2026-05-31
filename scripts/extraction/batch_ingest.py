@@ -25,7 +25,11 @@ import time
 
 import httpx
 
-from scripts.extraction.graphiti_client import close_graphiti, ensure_indices
+from scripts.extraction.graphiti_client import (
+    close_graphiti,
+    ensure_indices,
+    get_graphiti,
+)
 from scripts.extraction.ingest_paper import (
     already_processed,
     ingest_paper_as_episode,
@@ -33,6 +37,26 @@ from scripts.extraction.ingest_paper import (
 from scripts.ledger import _supabase_creds, _supabase_headers
 
 MAX_ERRORS = 3
+GROUP_ID = "hie_research"
+
+
+async def _count_entities() -> int | None:
+    """Count Graphiti-extracted entities under group_id='hie_research'.
+
+    Returns None on driver error so the formatter falls back to 0 without
+    poisoning the Telegram summary with NaN.
+    """
+    try:
+        g = get_graphiti()
+        async with g.driver.session() as session:
+            result = await session.run(
+                "MATCH (n:Entity {group_id: $gid}) RETURN count(n) AS c",
+                gid=GROUP_ID,
+            )
+            record = await result.single()
+            return int(record["c"]) if record else 0
+    except Exception:
+        return None
 
 
 def _fetch_all_ledger_ids() -> list[tuple[str, str, str]]:
@@ -64,6 +88,9 @@ async def run_batch(*, force: bool, limit: int | None) -> dict:
     print(f"[batch] {len(ledger_rows)} ledger rows total")
 
     await ensure_indices()
+
+    entities_before = await _count_entities()
+    grand["entities_before"] = entities_before if entities_before is not None else 0
 
     t_start = time.time()
     for idx, (lid, stype, sid) in enumerate(ledger_rows, start=1):
@@ -105,6 +132,12 @@ async def run_batch(*, force: bool, limit: int | None) -> dict:
                 f"[batch] HARD STOP — {grand['errors']} errors >= MAX_ERRORS={MAX_ERRORS}"
             )
             break
+
+    entities_after = await _count_entities()
+    grand["entities_after"] = entities_after if entities_after is not None else 0
+    grand["entities_added"] = max(
+        0, grand["entities_after"] - grand["entities_before"]
+    )
 
     await close_graphiti()
     grand["elapsed_total_s"] = round(time.time() - t_start, 1)
