@@ -701,7 +701,7 @@ export async function PortalHomeDashboard({ locale }: { locale: Locale }) {
   return <Shell locale={locale} active="today"><Body topic={current} locale={locale} /><DoctorBrief topic={current} locale={locale} /></Shell>;
 }
 
-export async function PortalTopicPage({ locale, pageKey }: { locale: Locale; pageKey: PageKey }) {
+export async function PortalTopicPage({ locale, pageKey, extra }: { locale: Locale; pageKey: PageKey; extra?: ReactNode }) {
   const current = await topic(locale, pageKey);
-  return <Shell locale={locale} active={pageKey}><Body topic={current} locale={locale} />{pageKey === "resources" || pageKey === "today" || pageKey === "dashboard" ? <DoctorBrief topic={current} locale={locale} /> : null}</Shell>;
+  return <Shell locale={locale} active={pageKey}>{extra ? <div className="mb-8">{extra}</div> : null}<Body topic={current} locale={locale} />{pageKey === "resources" || pageKey === "today" || pageKey === "dashboard" ? <DoctorBrief topic={current} locale={locale} /> : null}</Shell>;
 }
