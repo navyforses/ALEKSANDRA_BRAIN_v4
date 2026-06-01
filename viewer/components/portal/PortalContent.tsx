@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { type BilingualField, displayField } from "@/lib/i18n";
 import type { Locale } from "@/lib/seo";
 import { getCount, getRows } from "@/lib/supabase";
 import { PortalDocumentList } from "./PortalDocumentList";
@@ -55,8 +56,8 @@ type Topic = {
 
 type Paper = {
   id?: string;
-  title?: string;
-  abstract?: string;
+  title?: BilingualField;
+  abstract?: BilingualField;
   journal?: string;
   publication_year?: number;
   paper_type?: string;
@@ -412,9 +413,9 @@ function latest(locale: Locale, values: Array<string | undefined>) {
   return picked ? date(picked.toISOString(), locale) : undefined;
 }
 
-function paperItem(row: Paper): Item | null {
+function paperItem(row: Paper, locale: Locale): Item | null {
   return item(
-    row.title,
+    displayField(row.title, locale),
     join([row.ai_summary, text(row.ai_key_findings), row.ai_aleksandra_implications], " — "),
     join([row.source, row.pmid ? `PMID ${row.pmid}` : undefined, row.doi ? `DOI ${row.doi}` : undefined, rowSource("papers", row.id)]),
     join([row.journal, row.publication_year, row.relevance_score !== undefined ? `relevance ${percent(row.relevance_score)}` : undefined, row.confidence_level]),
@@ -539,7 +540,7 @@ async function overview(locale: Locale): Promise<TopicData> {
   const b = briefItems(briefs.rows[0], locale);
   return {
     metrics: metrics.filter(Boolean) as Metric[],
-    evidence: [...timeline.rows.map((r) => timelineItem(r, locale)), ...papers.rows.map(paperItem)].filter(Boolean) as Item[],
+    evidence: [...timeline.rows.map((r) => timelineItem(r, locale)), ...papers.rows.map((r) => paperItem(r, locale))].filter(Boolean) as Item[],
     uncertainty: hypotheses.rows.map((r) => hypothesisItem(r, locale)).filter(Boolean) as Item[],
     risks: therapies.rows.map(therapyItem).filter(Boolean) as Item[],
     questions: [...hypotheses.rows.map((r) => item(r.title, r.recommended_action, rowSource("hypotheses", r.id), r.status, undefined, locale)), ...therapies.rows.map((r) => item(r.name, r.aleksandra_notes || r.ai_assessment, rowSource("therapies", r.id), r.aleksandra_status))].filter(Boolean) as Item[],
@@ -552,7 +553,7 @@ async function load(pageKey: PageKey, locale: Locale): Promise<TopicData> {
   if (pageKey === "today" || pageKey === "dashboard") return overview(locale);
   if (pageKey === "papers" || pageKey === "evidence-map") {
     const rows = await getRows<Paper>("papers", { select: "id,title,abstract,journal,publication_year,paper_type,evidence_level,relevance_score,relevance_tags,direct_relevance,cross_disease_source,ai_summary,ai_key_findings,ai_limitations,ai_aleksandra_implications,confidence_level,source,source_url,pmid,doi,ingested_at,updated_at,created_at", order: "ingested_at.desc", limit: 12 });
-    return { ...emptyData, evidence: rows.rows.map(paperItem).filter(Boolean) as Item[], risks: rows.rows.map((r) => item(r.title, text(r.ai_limitations), rowSource("papers", r.id), r.confidence_level, r.source_url)).filter(Boolean) as Item[], updated: latest(locale, rows.rows.map((r) => r.updated_at || r.ingested_at || r.created_at)) };
+    return { ...emptyData, evidence: rows.rows.map((r) => paperItem(r, locale)).filter(Boolean) as Item[], risks: rows.rows.map((r) => item(displayField(r.title, locale), text(r.ai_limitations), rowSource("papers", r.id), r.confidence_level, r.source_url)).filter(Boolean) as Item[], updated: latest(locale, rows.rows.map((r) => r.updated_at || r.ingested_at || r.created_at)) };
   }
   if (pageKey === "hypotheses") {
     const rows = await getRows<Hypothesis>("hypotheses", { select: "id,title,description,hypothesis_type,confidence_level,novelty_score,feasibility_score,urgency,ai_reasoning,recommended_action,status,outcome,reviewed_at,updated_at,created_at", order: "created_at.desc", limit: 12 });
@@ -590,7 +591,7 @@ async function load(pageKey: PageKey, locale: Locale): Promise<TopicData> {
       getRows<Therapy>("therapies", { select: "id,name,evidence_summary,aleksandra_status,ai_assessment,updated_at,created_at", order: "updated_at.desc", limit: 5 }),
     ]);
     const b = briefItems(briefs.rows[0], locale);
-    return { ...emptyData, evidence: [...b, ...papers.rows.map(paperItem), ...hypotheses.rows.map((r) => hypothesisItem(r, locale)), ...therapies.rows.map(therapyItem)].filter(Boolean) as Item[], questions: b.filter((x) => x.source.includes("questions")), briefItems: b, updated: latest(locale, [...briefs.rows.map((r) => r.generated_at), ...papers.rows.map((r) => r.updated_at || r.created_at), ...hypotheses.rows.map((r) => r.updated_at || r.created_at), ...therapies.rows.map((r) => r.updated_at || r.created_at)]) };
+    return { ...emptyData, evidence: [...b, ...papers.rows.map((r) => paperItem(r, locale)), ...hypotheses.rows.map((r) => hypothesisItem(r, locale)), ...therapies.rows.map(therapyItem)].filter(Boolean) as Item[], questions: b.filter((x) => x.source.includes("questions")), briefItems: b, updated: latest(locale, [...briefs.rows.map((r) => r.generated_at), ...papers.rows.map((r) => r.updated_at || r.created_at), ...hypotheses.rows.map((r) => r.updated_at || r.created_at), ...therapies.rows.map((r) => r.updated_at || r.created_at)]) };
   }
   if (pageKey === "knowledge" || pageKey === "how-it-works") {
     const [reports, ingestion] = await Promise.all([
