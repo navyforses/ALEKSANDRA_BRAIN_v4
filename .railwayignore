@@ -1,0 +1,22 @@
+# .railwayignore — shrink the `railway up` upload for the Python worker.
+#
+# The Railway service `aleksandra-worker` builds from Dockerfile.worker and
+# only needs the Python source (scripts/, brain/) + requirements.txt. The
+# heavy non-worker trees below balloon the upload tarball and make indexing
+# time out on the OneDrive-synced working copy. The Next.js frontend deploys
+# separately via Vercel, so viewer/ is never part of the worker build.
+#
+# (railway up also honours .gitignore; this file is the extra exclusion that
+# keeps node_modules-walking off the critical path.)
+
+viewer/
+external-skills/
+tests/
+graphify-out/
+design_mockups/
+docs/
+v7_architecture/
+.planning/
+.handoffs/
+.ruff_cache/
+.git/
