@@ -90,11 +90,16 @@ def _materialize_oauth_from_env() -> None:
         ("GMAIL_OAUTH_TOKEN_B64", GMAIL_TOKEN_PATH),
         ("GMAIL_OAUTH_CREDENTIALS_B64", GMAIL_CREDENTIALS_PATH),
     ):
-        raw = os.environ.get(env_name, "").strip()
+        # Strip ALL whitespace (terminal paste / shell line-wrapping can inject
+        # newlines mid-string), then decode leniently. validate=True would
+        # reject a wrapped-but-otherwise-valid base64 value and skip writing
+        # the file, which surfaces downstream as a misleading "credentials
+        # missing" FileNotFoundError rather than the real transport problem.
+        raw = "".join(os.environ.get(env_name, "").split())
         if not raw or os.path.exists(path):
             continue
         try:
-            data = base64.b64decode(raw, validate=True)
+            data = base64.b64decode(raw)
         except (ValueError, binascii.Error):
             continue
         parent = os.path.dirname(path)
