@@ -56,7 +56,29 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-PY = ROOT / ".venv-v7" / "Scripts" / "python.exe"
+
+class _SkipCheck(Exception):
+    """Raised by subprocess helpers when the dedicated .venv-v7 is absent.
+
+    Local dev runs the heavy checks inside .venv-v7; CI has no such venv, so
+    those checks record SKIP (not FAIL) instead of a FileNotFoundError.
+    """
+
+
+def _resolve_v7_python() -> tuple[Path, bool]:
+    """Return (python_path, dedicated_venv_present).
+
+    Prefers .venv-v7 (Windows Scripts/python.exe or POSIX bin/python); falls
+    back to the running interpreter when that venv is absent (e.g. CI).
+    """
+    for rel in ("Scripts/python.exe", "bin/python", "bin/python3"):
+        cand = ROOT / ".venv-v7" / rel
+        if cand.exists():
+            return cand, True
+    return Path(sys.executable), False
+
+
+PY, _V7_VENV_PRESENT = _resolve_v7_python()
 MAIN_VENV_PY = ROOT / ".venv" / "Scripts" / "python.exe"
 
 # ---------------------------------------------------------------------------
@@ -136,6 +158,12 @@ def check(
             t0 = time.perf_counter()
             try:
                 result = fn(mode)
+            except _SkipCheck as skip:
+                result = CheckResult(
+                    status="SKIP",
+                    actual=str(skip),
+                    remediation="run inside .venv-v7 locally for this check",
+                )
             except Exception as exc:  # noqa: BLE001 — verifier surfaces every failure
                 result = CheckResult(
                     status="FAIL",
@@ -157,6 +185,8 @@ def check(
 # ---------------------------------------------------------------------------
 def _run_pytest(node_ids: list[str], timeout: int = 180) -> tuple[int, str]:
     """Run pytest against specific node ids using the v7 venv; return (rc, tail)."""
+    if not _V7_VENV_PRESENT:
+        raise _SkipCheck(".venv-v7 absent (CI) — run locally for full verification")
     cmd = [str(PY), "-m", "pytest", *node_ids, "-q", "--tb=line", "--no-header"]
     proc = subprocess.run(
         cmd, capture_output=True, text=True, timeout=timeout, cwd=str(ROOT)
