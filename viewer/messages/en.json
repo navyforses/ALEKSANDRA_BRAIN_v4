@@ -18,9 +18,18 @@
     "toggleLayers": "Toggle Layers",
     "viewerLabel": "3D Viewer",
     "inDevelopment": "In development",
-    "dropMriHint": "Drop an MRI file (.nii or .nii.gz) here to render Aleksandra's brain in three dimensions. Mount point is wired; the viewer is under construction.",
+    "dropMriHint": "Open a local MRI volume (.nii or .nii.gz) — drag it here or use the button above. The file is read in your browser and never uploaded.",
     "legendDamaged": "Damaged (HIE)",
-    "legendPreserved": "Preserved"
+    "legendPreserved": "Preserved",
+    "loadFile": "Open MRI file",
+    "loadedFile": "Opened: {name}",
+    "privacyNote": "This file is read only in your browser — it is never uploaded or sent anywhere.",
+    "openError": "Could not open this file. Use a .nii or .nii.gz volume.",
+    "webglError": "The 3D viewer could not start — WebGL is unavailable in this browser.",
+    "loading": "Loading the 3D viewer…",
+    "canvasEmpty": "MRI viewer, no file loaded",
+    "canvasLoaded": "MRI viewer, showing {name}",
+    "canvasControlsHint": "Once a volume is loaded, drag to rotate and scroll to zoom."
   },
   "Common": {
     "cancel": "Cancel",

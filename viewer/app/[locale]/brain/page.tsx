@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { setRequestLocale } from "next-intl/server";
 import { PortalTopicPage } from "@/components/portal/PortalContent";
 import { buildPageMetadata, type Locale } from "@/lib/seo";
+import MriViewer from "./MriViewer";
 
 export async function generateMetadata({
   params,
@@ -20,5 +21,5 @@ export default async function PortalRoutePage({
   const { locale } = await params;
   setRequestLocale(locale);
 
-  return <PortalTopicPage locale={locale} pageKey="brain" />;
+  return <PortalTopicPage locale={locale} pageKey="brain" extra={<MriViewer />} />;
 }

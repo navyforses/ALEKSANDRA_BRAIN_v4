@@ -147,8 +147,10 @@ strict tool_use) წერს **ორენოვან {en, ka}** ტექს
 `knowledge` (ცოდნა) · `evidence-map` (მტკიცებულების რუკა) · `cohorts` (კოჰორტები)
 
 ### 🧬 სამედიცინო 3D
-`brain` — **NiiVue MRI viewer + React Three Fiber** 3D ანატომიური shells
-> 🔒 **MRI მხოლოდ ბრაუზერში — არასოდეს სერვერზე**
+`brain` — ✅ **NiiVue MRI viewer ცოცხალია** (Phase 11): client-side `.nii`/`.nii.gz`
+loader `@niivue/niivue` 0.69-ით + drag-drop + ორენოვანი UI; brain_regions ცხრილი კონტექსტად.
+React Three Fiber ანატომიური shells — 🔴 ჯერ არ არის (მომავალი).
+> 🔒 **MRI მხოლოდ ბრაუზერში — არასოდეს სერვერზე** (loadFromFile, ატვირთვა არ ხდება; `check-no-remote-fetch` GREEN)
 
 ### 🛠 ოპერაცია & დაცვა
 `alerts` (გაფრთხილებები) · `audit` (აუდიტის ჟურნალი) · `data-integrations` ·

@@ -367,19 +367,25 @@ class _Handler(BaseHTTPRequestHandler):
                 },
             )
             return
-        # WeeklyDigestResult is a dataclass; coerce to dict for JSON.
+        # WeeklyDigestResult is a dataclass; coerce to dict for JSON. The field
+        # names below must match the dataclass exactly — an earlier list read
+        # "draft_id"/"skipped"/"skip_reason", none of which exist on the result,
+        # so the response always reported draft_id=None even on success.
         payload: dict[str, Any] = {}
         for field_name in (
             "week_start",
             "subject",
             "recipient",
-            "draft_id",
+            "gmail_draft_id",
             "outreach_log_id",
-            "skipped",
-            "skip_reason",
+            "blocked",
+            "block_reason",
+            "dry_run",
         ):
             val = getattr(result, field_name, None)
             payload[field_name] = val.isoformat() if hasattr(val, "isoformat") else val
+        # Back-compat alias for any consumer that read the old key.
+        payload["draft_id"] = payload.get("gmail_draft_id")
         _json_response(self, 200, payload)
 
     def _handle_voice_transcribe(self) -> None:

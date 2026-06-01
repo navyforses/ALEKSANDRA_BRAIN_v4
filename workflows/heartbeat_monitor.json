@@ -1,0 +1,125 @@
+{
+  "name": "heartbeat-monitor",
+  "active": false,
+  "_phase_7_note": "Phase 7 dead-man-switch — pure n8n (no Railway worker dependency, so the monitor survives even if the worker dies). Every 2h it reads the last 50 runs from Supabase, finds the most-recent perception_tick + weekly_brief, and Telegram-alerts ONLY when something is silent: perception_tick older than 8h (cron is 6h, so one skipped tick + buffer), or weekly_brief older than 8 days. Always appends a heartbeat_check runs row (exit_status ok|alert) so the monitor itself is observable. Mirrors the daily_spend_report.json node pattern (scheduleTrigger 1.1 + httpRequest 4.2 + code 2).",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            { "field": "cronExpression", "expression": "0 */2 * * *" }
+          ]
+        }
+      },
+      "name": "Every 2h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [200, 300],
+      "id": "trigger-2h"
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/runs",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "select", "value": "kind,start_time,exit_status" },
+            { "name": "order", "value": "start_time.desc" },
+            { "name": "limit", "value": "50" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" }
+          ]
+        },
+        "options": { "timeout": 30000 }
+      },
+      "name": "Fetch recent runs",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [420, 300],
+      "id": "fetch-runs"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Dead-man-switch: find the freshest perception_tick + weekly_brief and\n// decide whether the worker has gone silent. Thresholds chosen vs the 6h\n// perception cron + weekly brief cadence, with buffer.\nconst rows = $input.first().json || [];\nconst arr = Array.isArray(rows) ? rows : [];\nconst now = Date.now();\n\nfunction latestMs(kind) {\n  const ts = arr\n    .filter((r) => r.kind === kind && r.start_time)\n    .map((r) => new Date(r.start_time).getTime())\n    .filter((t) => !Number.isNaN(t))\n    .sort((a, b) => b - a);\n  return ts.length ? ts[0] : null;\n}\n\nconst TICK_MAX_H = 8;\nconst BRIEF_MAX_D = 8;\nconst tick = latestMs('perception_tick');\nconst brief = latestMs('weekly_brief');\nconst tickAgeH = tick === null ? null : (now - tick) / 3.6e6;\nconst briefAgeD = brief === null ? null : (now - brief) / 8.64e7;\n\nconst problems = [];\nif (tick === null) problems.push('perception_tick: \\u10d0\\u10e0\\u10d0\\u10e1\\u10d3\\u10d4\\u10e1 (\\u10d0\\u10e0\\u10d0\\u10e1\\u10dd\\u10d3\\u10d4\\u10e1)');\nelse if (tickAgeH > TICK_MAX_H) problems.push('perception_tick: ' + tickAgeH.toFixed(1) + '\\u10e1\\u10d7 \\u10ec\\u10d8\\u10dc (> ' + TICK_MAX_H + '\\u10e1\\u10d7)');\nif (brief === null) problems.push('weekly_brief: \\u10d0\\u10e0\\u10d0\\u10e1\\u10d3\\u10d4\\u10e1');\nelse if (briefAgeD > BRIEF_MAX_D) problems.push('weekly_brief: ' + briefAgeD.toFixed(1) + ' \\u10d3\\u10e6\\u10d4 \\u10ec\\u10d8\\u10dc (> ' + BRIEF_MAX_D + ')');\n\nconst stale = problems.length > 0;\nconst text = stale\n  ? '\\u26A0\\uFE0F ALEKSANDRA_BRAIN \\u2014 worker \\u10d2\\u10d0\\u10e9\\u10e3\\u10db\\u10d3\\u10d0\\n' + problems.join('\\n')\n  : '';\nconst auditReason =\n  'tick=' + (tickAgeH === null ? 'none' : tickAgeH.toFixed(1) + 'h') +\n  ' brief=' + (briefAgeD === null ? 'none' : briefAgeD.toFixed(1) + 'd') +\n  ' stale=' + stale;\nreturn [{ json: { stale, text, auditReason, summary: { tick_age_h: tickAgeH, brief_age_d: briefAgeD, problems, stale } } }];"
+      },
+      "name": "Assess freshness",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [640, 300],
+      "id": "assess"
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/runs",
+        "method": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_ROLE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"kind\":\"heartbeat_check\",\"agent_id\":\"heartbeat-monitor\",\"start_time\":\"{{ $now.toISO() }}\",\"end_time\":\"{{ $now.toISO() }}\",\"token_cost\":0,\"tokens_input\":0,\"tokens_output\":0,\"exit_status\":\"{{ $json.stale ? 'alert' : 'ok' }}\",\"exit_reason\":{{ JSON.stringify($json.auditReason) }}}",
+        "options": {}
+      },
+      "name": "Append heartbeat row",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [860, 200],
+      "id": "append-heartbeat"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Gate: only let the Telegram alert fire when stale. Returning [] when\n// healthy stops the downstream Telegram node from executing — no spam.\nconst j = $input.first().json;\nreturn j.stale ? [{ json: j }] : [];"
+      },
+      "name": "Only if stale",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [860, 400],
+      "id": "gate-stale"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/sendMessage",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"chat_id\": \"{{ $env.TELEGRAM_CHAT_ID }}\", \"text\": {{ JSON.stringify($json.text) }}, \"disable_web_page_preview\": true}",
+        "options": {}
+      },
+      "name": "Telegram alert",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1080, 400],
+      "id": "telegram-alert"
+    }
+  ],
+  "connections": {
+    "Every 2h": {
+      "main": [[{ "node": "Fetch recent runs", "type": "main", "index": 0 }]]
+    },
+    "Fetch recent runs": {
+      "main": [[{ "node": "Assess freshness", "type": "main", "index": 0 }]]
+    },
+    "Assess freshness": {
+      "main": [
+        [
+          { "node": "Append heartbeat row", "type": "main", "index": 0 },
+          { "node": "Only if stale", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Only if stale": {
+      "main": [[{ "node": "Telegram alert", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" }
+}

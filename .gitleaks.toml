@@ -54,4 +54,5 @@ regexes = [
   '''eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\.\.\.''',  # truncated example JWT in docs
   '''sk-ant-api03-''',                                # bare prefix in .env.example
   '''xxxx''',                                         # generic placeholder
+  '''aleksandra-hie-synthetic-2026''',                # benign TVB synthetic-mask seed label (brain/sim/tvb_adapter.py); not a credential
 ]

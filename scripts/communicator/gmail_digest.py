@@ -211,9 +211,13 @@ def render_body(
 def _find_existing_weekly_digest(week_start: date) -> str | None:
     """Return outreach_log.id for an existing digest for `week_start`, or None.
 
-    Idempotency: weekly digest is keyed by (trigger_kind='weekly_digest',
-    drafted_at::date matches week_start). Re-running on the same week
-    returns the existing draft id.
+    Idempotency: a weekly digest is keyed by trigger_kind='weekly_digest'
+    and the WEEK it belongs to — any row drafted within
+    [week_start, week_start + 7 days). The earlier form compared
+    drafted_at::date = week_start, which only matched when the render ran on
+    the exact Sunday in UTC; an off-Sunday or post-midnight-UTC render slipped
+    past it and created a duplicate draft. The range check is robust to the
+    time of day the render fires.
     """
     load_env()
     conn = psycopg2.connect(os.environ["SUPABASE_DB_URL"], sslmode="require")
@@ -223,11 +227,12 @@ def _find_existing_weekly_digest(week_start: date) -> str | None:
                 """
                 SELECT id FROM outreach_log
                 WHERE trigger_kind = 'weekly_digest'
-                  AND drafted_at::date = %s
+                  AND drafted_at >= %s
+                  AND drafted_at < (%s::date + INTERVAL '7 days')
                 ORDER BY drafted_at DESC
                 LIMIT 1
                 """,
-                (week_start,),
+                (week_start, week_start),
             )
             row = cur.fetchone()
             return str(row[0]) if row else None
@@ -359,6 +364,22 @@ def stage_weekly_digest(
                 block_reason=f"daily_cap_reached({count}/{MAX_DAILY_DRAFTS})",
                 rendered_at=rendered_at,
             )
+
+    # 2b. Fail BEFORE creating any Gmail draft when the family-self recipient
+    # contact isn't provisioned. The outreach_log insert (step 8) needs
+    # FAMILY_CONTACT_ID; checking it here — rather than only inside
+    # _insert_weekly_digest_row after step 7 — prevents an orphan duplicate
+    # draft from being created on every failed render.
+    if not dry_run and not os.environ.get("FAMILY_CONTACT_ID", "").strip():
+        return WeeklyDigestResult(
+            week_start=week_start,
+            subject=render_subject(week_start),
+            body="",
+            recipient=_family_recipient(),
+            blocked=True,
+            block_reason="family_contact_unset: set FAMILY_CONTACT_ID",
+            rendered_at=rendered_at,
+        )
 
     # 3. Recipient
     recipient = _family_recipient()

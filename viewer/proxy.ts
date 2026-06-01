@@ -30,15 +30,27 @@ import {NextRequest, NextResponse} from 'next/server';
 import {routing} from './i18n/routing';
 
 // ---------------------------------------------------------------------------
-// CSP — strict baseline. Phase 7.6 frontend may relax script-src once a
-// nonce-based policy is wired (NiiVue + R3F bundles).
+// CSP — strict baseline.
+//
+// Phase 11 (NiiVue MRI viewer) additions, all in-browser-only schemes — they
+// add NO new remote origin, so the client-side-only MRI guarantee (Rule #1)
+// is preserved (the volume still cannot egress):
+//   - worker-src 'self' blob:    → NiiVue spins WebGL helper Web Workers,
+//                                   some bootstrapped from blob: URLs.
+//   - connect-src ... blob: data: → in-browser reads of object/data URLs.
+//   - script-src ... 'wasm-unsafe-eval' blob: → WASM (.nii.gz decompress) +
+//                                   blob: worker bootstrap scripts.
+// 'unsafe-eval' is deliberately NOT added — 'wasm-unsafe-eval' is the narrow
+// WASM-only grant NiiVue needs. ('unsafe-inline' in script-src is a pre-
+// existing baseline weakness, future nonce-migration target — not NiiVue's.)
 // ---------------------------------------------------------------------------
 const CSP_HEADER_VALUE = [
-  "connect-src 'self' https://*.supabase.co https://api.anthropic.com",
+  "connect-src 'self' https://*.supabase.co https://api.anthropic.com blob: data:",
   "img-src 'self' blob: data:",
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline'",
+  "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' blob:",
   "style-src 'self' 'unsafe-inline'",
+  "worker-src 'self' blob:",
 ].join('; ');
 
 // ---------------------------------------------------------------------------
