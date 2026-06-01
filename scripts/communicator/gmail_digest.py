@@ -211,9 +211,13 @@ def render_body(
 def _find_existing_weekly_digest(week_start: date) -> str | None:
     """Return outreach_log.id for an existing digest for `week_start`, or None.
 
-    Idempotency: weekly digest is keyed by (trigger_kind='weekly_digest',
-    drafted_at::date matches week_start). Re-running on the same week
-    returns the existing draft id.
+    Idempotency: a weekly digest is keyed by trigger_kind='weekly_digest'
+    and the WEEK it belongs to — any row drafted within
+    [week_start, week_start + 7 days). The earlier form compared
+    drafted_at::date = week_start, which only matched when the render ran on
+    the exact Sunday in UTC; an off-Sunday or post-midnight-UTC render slipped
+    past it and created a duplicate draft. The range check is robust to the
+    time of day the render fires.
     """
     load_env()
     conn = psycopg2.connect(os.environ["SUPABASE_DB_URL"], sslmode="require")
@@ -223,11 +227,12 @@ def _find_existing_weekly_digest(week_start: date) -> str | None:
                 """
                 SELECT id FROM outreach_log
                 WHERE trigger_kind = 'weekly_digest'
-                  AND drafted_at::date = %s
+                  AND drafted_at >= %s
+                  AND drafted_at < (%s::date + INTERVAL '7 days')
                 ORDER BY drafted_at DESC
                 LIMIT 1
                 """,
-                (week_start,),
+                (week_start, week_start),
             )
             row = cur.fetchone()
             return str(row[0]) if row else None

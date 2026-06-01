@@ -23,13 +23,14 @@ SUBJECT_PREFIX = "ALEKSANDRA_BRAIN Weekly Brief"
 
 def main(argv: list[str]) -> int:
     apply = "--apply" in argv
+    keep_latest = "--keep-latest" in argv
     from scripts.communicator.outreach_drafter import _gmail_service
 
     service = _gmail_service()
     drafts_api = service.users().drafts()
 
-    # Page through all drafts; read each draft's Subject header.
-    matched: list[str] = []
+    # Page through all drafts; read each draft's Subject header + internalDate.
+    matched: list[tuple[int, str]] = []  # (internalDate_ms, draft_id)
     page_token = None
     while True:
         resp = drafts_api.list(
@@ -38,24 +39,34 @@ def main(argv: list[str]) -> int:
         for d in resp.get("drafts", []):
             did = d["id"]
             meta = drafts_api.get(userId="me", id=did, format="metadata").execute()
-            headers = meta.get("message", {}).get("payload", {}).get("headers", [])
+            msg = meta.get("message", {})
+            headers = msg.get("payload", {}).get("headers", [])
             subject = next(
                 (h["value"] for h in headers if h.get("name", "").lower() == "subject"),
                 "",
             )
             if subject.startswith(SUBJECT_PREFIX):
-                matched.append(did)
+                matched.append((int(msg.get("internalDate", "0")), did))
         page_token = resp.get("nextPageToken")
         if not page_token:
             break
 
     print(f"weekly-brief drafts found: {len(matched)}")
+
+    # --keep-latest: delete every match EXCEPT the most recently created one.
+    targets = matched
+    if keep_latest and matched:
+        matched.sort(reverse=True)  # newest internalDate first
+        kept = matched[0][1]
+        targets = matched[1:]
+        print(f"keeping newest draft {kept}; candidates to delete: {len(targets)}")
+
     if not apply:
-        print("DRY-RUN — pass --apply to delete them.")
+        print("DRY-RUN — pass --apply to delete.")
         return 0
 
     deleted = 0
-    for did in matched:
+    for _, did in targets:
         drafts_api.delete(userId="me", id=did).execute()
         deleted += 1
     print(f"deleted: {deleted}")
