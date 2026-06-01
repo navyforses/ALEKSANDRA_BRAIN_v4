@@ -18,14 +18,36 @@ Run LOCALLY (PowerShell, repo root):
 
 from __future__ import annotations
 
+import json
 import os
 import sys
-
-import psycopg2
+import urllib.parse
+import urllib.request
 
 from scripts.ledger import load_env
 
 OUT_PATH = ".secrets/family_contact_id.txt"
+
+
+def _rest(
+    method: str, path: str, base: str, key: str, body: dict | None = None
+) -> list:
+    """Minimal Supabase PostgREST call (IPv4; service-role bypasses RLS).
+
+    Used instead of a direct psycopg2 connection because the Supavisor pooler
+    password can drift in local .env, whereas the REST endpoint authenticates
+    with the service-role key we already hold.
+    """
+    url = base.rstrip("/") + "/rest/v1/" + path
+    data = json.dumps(body).encode() if body is not None else None
+    req = urllib.request.Request(url, data=data, method=method)
+    req.add_header("apikey", key)
+    req.add_header("Authorization", f"Bearer {key}")
+    req.add_header("Content-Type", "application/json")
+    req.add_header("Prefer", "return=representation")
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        raw = resp.read().decode()
+    return json.loads(raw) if raw else []
 
 
 def main() -> int:
@@ -35,55 +57,53 @@ def main() -> int:
         print("ERROR: FAMILY_GMAIL_ADDRESS not set in .env", file=sys.stderr)
         return 2
 
-    db = os.environ.get("SUPABASE_DB_URL", "").strip()
-    if not db:
-        print("ERROR: SUPABASE_DB_URL not set in .env", file=sys.stderr)
+    base = os.environ.get("SUPABASE_URL", "").strip()
+    key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "").strip()
+    if not base or not key:
+        print(
+            "ERROR: SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY not set", file=sys.stderr
+        )
         return 2
 
-    conn = psycopg2.connect(db, sslmode="require")
-    try:
-        with conn.cursor() as cur:
-            # Find an existing contact by email (case-insensitive).
-            cur.execute(
-                "SELECT id, consent_full_name FROM contacts WHERE email ILIKE %s "
-                "ORDER BY consent_full_name DESC NULLS LAST LIMIT 1",
-                (email,),
+    enc = urllib.parse.quote(email)
+    found = _rest(
+        "GET",
+        f"contacts?email=ilike.{enc}&select=id,consent_full_name"
+        "&order=consent_full_name.desc&limit=1",
+        base,
+        key,
+    )
+    if found:
+        contact_id = str(found[0]["id"])
+        if not found[0].get("consent_full_name"):
+            _rest(
+                "PATCH",
+                f"contacts?id=eq.{contact_id}",
+                base,
+                key,
+                {"consent_full_name": True},
             )
-            row = cur.fetchone()
-            if row:
-                contact_id, consent = str(row[0]), bool(row[1])
-                if not consent:
-                    cur.execute(
-                        "UPDATE contacts SET consent_full_name = TRUE, "
-                        "updated_at = NOW() WHERE id = %s",
-                        (contact_id,),
-                    )
-                    print("reused existing contact; set consent_full_name=TRUE")
-                else:
-                    print("reused existing contact (consent already TRUE)")
-            else:
-                cur.execute(
-                    """
-                    INSERT INTO contacts (
-                      full_name, email, contact_type, relationship_status,
-                      consent_full_name, outreach_language, aleksandra_relevance
-                    ) VALUES (
-                      %s, %s, 'family_support', 'active',
-                      TRUE, 'en', %s
-                    )
-                    RETURNING id
-                    """,
-                    (
-                        "Family (self) — weekly digest recipient",
-                        email,
-                        "The family's own inbox; weekly brief is delivered here.",
-                    ),
-                )
-                contact_id = str(cur.fetchone()[0])
-                print("created new family-self contact")
-        conn.commit()
-    finally:
-        conn.close()
+            print("reused existing contact; set consent_full_name=TRUE")
+        else:
+            print("reused existing contact (consent already TRUE)")
+    else:
+        created = _rest(
+            "POST",
+            "contacts?select=id",
+            base,
+            key,
+            {
+                "full_name": "Family (self) — weekly digest recipient",
+                "email": email,
+                "contact_type": "family_support",
+                "relationship_status": "active",
+                "consent_full_name": True,
+                "outreach_language": "en",
+                "aleksandra_relevance": "The family's own inbox; weekly brief is delivered here.",
+            },
+        )
+        contact_id = str(created[0]["id"])
+        print("created new family-self contact")
 
     with open(OUT_PATH, "w", encoding="utf-8") as fh:
         fh.write(contact_id)

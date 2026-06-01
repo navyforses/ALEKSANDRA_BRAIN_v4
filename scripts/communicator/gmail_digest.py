@@ -360,6 +360,22 @@ def stage_weekly_digest(
                 rendered_at=rendered_at,
             )
 
+    # 2b. Fail BEFORE creating any Gmail draft when the family-self recipient
+    # contact isn't provisioned. The outreach_log insert (step 8) needs
+    # FAMILY_CONTACT_ID; checking it here — rather than only inside
+    # _insert_weekly_digest_row after step 7 — prevents an orphan duplicate
+    # draft from being created on every failed render.
+    if not dry_run and not os.environ.get("FAMILY_CONTACT_ID", "").strip():
+        return WeeklyDigestResult(
+            week_start=week_start,
+            subject=render_subject(week_start),
+            body="",
+            recipient=_family_recipient(),
+            blocked=True,
+            block_reason="family_contact_unset: set FAMILY_CONTACT_ID",
+            rendered_at=rendered_at,
+        )
+
     # 3. Recipient
     recipient = _family_recipient()
 
