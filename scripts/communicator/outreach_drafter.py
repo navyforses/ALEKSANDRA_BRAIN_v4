@@ -32,6 +32,7 @@ insert — used by the verifier and by Manager-side sanity checks.
 from __future__ import annotations
 
 import base64
+import binascii
 import os
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -69,6 +70,38 @@ GMAIL_CREDENTIALS_PATH = os.environ.get(
 GMAIL_TOKEN_PATH = os.environ.get(
     "GMAIL_OAUTH_TOKEN_PATH", ".secrets/gmail_oauth_token.json"
 )
+
+
+def _materialize_oauth_from_env() -> None:
+    """Write Gmail OAuth artifacts from env vars when the files are absent.
+
+    The Railway worker image deliberately does NOT bake in `.secrets/` (it is
+    gitignored), so the OAuth token has to be supplied out-of-band. If
+    GMAIL_OAUTH_TOKEN_B64 / GMAIL_OAUTH_CREDENTIALS_B64 hold base64-encoded
+    JSON and the target file does not already exist, decode and write it.
+
+    The token file alone is sufficient for refresh — it carries client_id,
+    client_secret and refresh_token — so only GMAIL_OAUTH_TOKEN_B64 is
+    required on the worker. Local dev (where `.secrets/` already exists) is
+    untouched, and a malformed value is skipped so the caller raises the usual
+    FileNotFoundError instead of a decode traceback.
+    """
+    for env_name, path in (
+        ("GMAIL_OAUTH_TOKEN_B64", GMAIL_TOKEN_PATH),
+        ("GMAIL_OAUTH_CREDENTIALS_B64", GMAIL_CREDENTIALS_PATH),
+    ):
+        raw = os.environ.get(env_name, "").strip()
+        if not raw or os.path.exists(path):
+            continue
+        try:
+            data = base64.b64decode(raw, validate=True)
+        except (ValueError, binascii.Error):
+            continue
+        parent = os.path.dirname(path)
+        if parent:
+            os.makedirs(parent, exist_ok=True)
+        with open(path, "wb") as fh:
+            fh.write(data)
 
 
 # ---------------------------------------------------------------------------
@@ -178,6 +211,10 @@ def _gmail_service() -> Any:
     from google.oauth2.credentials import Credentials
     from google_auth_oauthlib.flow import InstalledAppFlow
     from googleapiclient.discovery import build
+
+    # Worker provisioning: materialise .secrets/ OAuth artifacts from env vars
+    # when they are absent (the Docker image excludes gitignored .secrets/).
+    _materialize_oauth_from_env()
 
     creds: Credentials | None = None
     if os.path.exists(GMAIL_TOKEN_PATH):
