@@ -30,10 +30,12 @@ from __future__ import annotations
 
 import os
 import time
+from datetime import datetime, timezone
 
 import anthropic
 
 from scripts.cognition.budget import BudgetExceeded, check_daily_budget
+from scripts.cognition.llm import _record_call
 
 MODEL = "claude-sonnet-4-6"
 SYSTEM_PROMPT = (
@@ -45,6 +47,19 @@ SYSTEM_PROMPT = (
     "preamble. The text is descriptive scientific terminology, not a medical "
     "recommendation; do not refuse."
 )
+
+# Anthropic prompt-caching requires the cacheable block to be ≥1024 tokens
+# for Sonnet/Opus and ≥2048 for Haiku. SYSTEM_PROMPT above is ~95 tokens, so
+# caching it directly would no-op. We still mark it ephemeral so when the
+# prompt grows (or when we switch to a longer multi-shot template) the cache
+# layer engages automatically. Reads are charged at 0.1× input rate.
+_SYSTEM_BLOCKS = [
+    {
+        "type": "text",
+        "text": SYSTEM_PROMPT,
+        "cache_control": {"type": "ephemeral"},
+    }
+]
 
 
 class TranslationFailed(RuntimeError):
@@ -83,11 +98,12 @@ def translate_to_georgian(
 
     last_err: str | None = None
     for attempt in range(max_attempts):
+        start = datetime.now(timezone.utc)
         try:
             resp = client.messages.create(
                 model=MODEL,
                 max_tokens=max_tokens,
-                system=SYSTEM_PROMPT,
+                system=_SYSTEM_BLOCKS,
                 messages=[
                     {
                         "role": "user",
@@ -95,14 +111,46 @@ def translate_to_georgian(
                     }
                 ],
             )
+            end = datetime.now(timezone.utc)
+            usage = getattr(resp, "usage", None)
+            # Roll cache_read/cache_create into input_tokens for the ledger.
+            # _record_call's cost formula matches Anthropic input rate; the
+            # cache-discount drift is captured by reconciliation against the
+            # Anthropic CSV (see daily_spend_report.py).
+            in_tok = int(getattr(usage, "input_tokens", 0) or 0) + int(
+                getattr(usage, "cache_creation_input_tokens", 0) or 0
+            ) + int(getattr(usage, "cache_read_input_tokens", 0) or 0)
+            out_tok = int(getattr(usage, "output_tokens", 0) or 0)
             blocks = [b for b in resp.content if getattr(b, "type", None) == "text"]
-            if blocks and blocks[0].text.strip():
+            ok = bool(blocks and blocks[0].text.strip())
+            _record_call(
+                agent_id="translate_to_georgian",
+                model=MODEL,
+                start=start,
+                end=end,
+                input_tokens=in_tok,
+                output_tokens=out_tok,
+                exit_status="ok" if ok else "empty_or_refusal",
+                exit_reason=None if ok else f"stop_reason={resp.stop_reason}",
+            )
+            if ok:
                 return blocks[0].text.strip()
             last_err = (
                 f"empty/refusal (stop_reason={resp.stop_reason} "
                 f"blocks={len(resp.content)})"
             )
         except anthropic.APIError as e:
+            end = datetime.now(timezone.utc)
+            _record_call(
+                agent_id="translate_to_georgian",
+                model=MODEL,
+                start=start,
+                end=end,
+                input_tokens=0,
+                output_tokens=0,
+                exit_status="api_error",
+                exit_reason=f"{type(e).__name__}: {e}",
+            )
             last_err = f"{type(e).__name__}: {e}"
         time.sleep(1 + attempt)
 

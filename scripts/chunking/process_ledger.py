@@ -214,14 +214,21 @@ _LEDGER_TO_PAPERS_SOURCE = {
 }
 
 
-def _build_papers_row(ledger_row: dict) -> dict | None:
+def _ledger_row_identity(
+    ledger_row: dict,
+) -> tuple[str, str, dict, dict] | None:
     """
-    Map a ledger row to a papers INSERT body. Returns None if no title
-    OR if source_type doesn't represent a distinct paper (crawl4ai/firecrawl).
+    Cheap pre-translation key derivation.
 
-    PostgREST batch insert requires every row in the array to have the
-    SAME key set, so we always emit the full key list with None for
-    columns that don't apply to a given source_type.
+    Returns (papers_source, identifier, meta, ids) when the ledger row is a
+    distinct paper, else None. `ids` carries pmid/ct_id/doi/pmc_id so the
+    caller can pass it straight into `_build_papers_row` without re-deriving.
+
+    Split out so `populate_papers_from_ledger` can dedup BEFORE invoking
+    `build_bilingual()` (which is a paid Anthropic call). Earlier shape
+    issued 2× Sonnet 4-6 translate per ledger row regardless of whether
+    the paper already existed — see the dedup-after-translate bug fixed
+    in 2026-06-02.
     """
     meta = ledger_row.get("payload_metadata") or {}
     title = meta.get("title") or meta.get("official_title")
@@ -231,11 +238,9 @@ def _build_papers_row(ledger_row: dict) -> dict | None:
     source_type = ledger_row["source_type"]
     papers_source = _LEDGER_TO_PAPERS_SOURCE.get(source_type)
     if papers_source is None:
-        # crawl4ai / firecrawl — full-text supplements, not standalone papers
         return None
 
     source_id = ledger_row["source_id"]
-
     pmid = source_id if source_type == "pubmed" else None
     ct_id = source_id if source_type == "ctgov" else None
     doi = (
@@ -246,6 +251,39 @@ def _build_papers_row(ledger_row: dict) -> dict | None:
         else None
     )
     pmc_id = meta.get("pmc_id") if source_type == "pubmed" else None
+
+    identifier = pmid or doi or ct_id
+    if not identifier:
+        return None
+
+    ids = {"pmid": pmid, "ct_id": ct_id, "doi": doi, "pmc_id": pmc_id}
+    return papers_source, identifier, meta, ids
+
+
+def _build_papers_row(ledger_row: dict) -> dict | None:
+    """
+    Map a ledger row to a papers INSERT body. Returns None if no title
+    OR if source_type doesn't represent a distinct paper (crawl4ai/firecrawl).
+
+    PostgREST batch insert requires every row in the array to have the
+    SAME key set, so we always emit the full key list with None for
+    columns that don't apply to a given source_type.
+
+    WARNING: this function calls `build_bilingual()` twice (title +
+    abstract), each of which issues a paid Anthropic translate call.
+    Callers MUST dedup against `_existing_papers_keys()` BEFORE invoking
+    this — see `populate_papers_from_ledger` for the canonical pattern.
+    """
+    identity = _ledger_row_identity(ledger_row)
+    if identity is None:
+        return None
+    papers_source, _identifier, meta, ids = identity
+    title = meta.get("title") or meta.get("official_title")
+
+    pmid = ids["pmid"]
+    ct_id = ids["ct_id"]
+    doi = ids["doi"]
+    pmc_id = ids["pmc_id"]
 
     publication_year: int | None = None
     if meta.get("publication_year"):
@@ -287,7 +325,14 @@ def _existing_papers_keys() -> set[tuple[str, str]]:
 
 
 def populate_papers_from_ledger() -> dict:
-    """INSERT one papers row per unique (source, identifier) in ledger."""
+    """INSERT one papers row per unique (source, identifier) in ledger.
+
+    Dedup MUST precede `_build_papers_row()` because the latter invokes
+    `build_bilingual()` twice per row — each a paid Anthropic Sonnet 4-6
+    call. Earlier ordering issued ~2N wasted translates per tick when N
+    ledger rows were already in `papers`; on a 30-min cron that produced
+    ~30K wasted calls/day. Fixed 2026-06-02.
+    """
     counters = {"inserted": 0, "skipped_existing": 0, "skipped_no_title": 0}
 
     ledger = _supabase_get(
@@ -300,14 +345,19 @@ def populate_papers_from_ledger() -> dict:
     to_insert: list[dict] = []
 
     for row in ledger:
-        body = _build_papers_row(row)
-        if body is None:
+        identity = _ledger_row_identity(row)
+        if identity is None:
             counters["skipped_no_title"] += 1
             continue
-        identifier = body["pmid"] or body["doi"] or body["ct_id"]
-        key = (body["source"], identifier)
+        papers_source, identifier, _meta, _ids = identity
+        key = (papers_source, identifier)
         if key in existing or key in seen:
             counters["skipped_existing"] += 1
+            continue
+        # Only NOW invoke build_bilingual (2× Sonnet 4-6 calls per row).
+        body = _build_papers_row(row)
+        if body is None:  # defensive — identity-pass implies build-pass
+            counters["skipped_no_title"] += 1
             continue
         to_insert.append(body)
         seen.add(key)
