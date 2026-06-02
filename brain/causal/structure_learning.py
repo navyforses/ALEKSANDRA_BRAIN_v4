@@ -342,7 +342,7 @@ def _sanitize_column_name(name: str) -> str:
     return out
 
 
-def learn_from_synthetic_reference(n: int = 1000) -> LearnedStructureReport:
+def learn_from_synthetic_reference(n: int = 2000) -> LearnedStructureReport:
     """Learn the reference SCM (Vigabatrin -> Seizure) from synthetic data.
 
     Generates ``n`` rows via
