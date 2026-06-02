@@ -186,19 +186,22 @@ def test_learn_from_synthetic_reference_f1_above_threshold() -> None:
     """Reference SCM learn-back yields F1 >= 0.3 (BIC sanity baseline).
 
     BIC on small samples is noisy; we set a permissive floor at 0.3.
-    Default ``n`` raised 1000 → 2000 on 2026-06-02 after CI flake
-    (F1=0.17 < 0.3 on PR #9 run); reference SCM mixes binary and
-    continuous variables, and BIC variance shrinks roughly as 1/sqrt(n)
-    so doubling halves the sampling spread. Reference SCM has 6 directed
-    edges over 5 nodes. If this test ever repeatedly fails on the
-    current synthetic generator, raise n further (4000) — do NOT relax
+    Default ``n`` raised over time as the library landscape shifted:
+    500 → 1000 (Day 11) → 2000 (2026-06-02 first attempt, F1=0.20) →
+    5000 (2026-06-02 second attempt) after PR #9 CI showed BIC recall
+    stuck at 0.17 on pgmpy 1.1.2 / numpy 2.4. Reference SCM has 6
+    directed edges over 5 nodes; recall is the bottleneck (only 1/6
+    found at lower n). BIC variance shrinks as 1/sqrt(n) but recall on
+    mixed binary/continuous parents needs the larger asymptotic regime.
+    If this still fails, the next step is library drift investigation
+    (pgmpy hill_climb_bic scoring on continuous parents) — do NOT relax
     the threshold below 0.3.
     """
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", category=FutureWarning)
         report = learn_from_synthetic_reference()
     assert isinstance(report, LearnedStructureReport)
-    assert report.n_samples == 2000
+    assert report.n_samples == 5000
     assert len(report.reference_edges) == 6  # reference SCM has 6 edges
     assert report.f1 >= 0.3, (
         f"BIC F1 dropped below 0.3 on synthetic-reference: "
