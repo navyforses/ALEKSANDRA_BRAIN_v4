@@ -37,7 +37,7 @@ import os
 TIER_MODEL: dict[str, str] = {
     "worker": os.environ.get("WORKER_MODEL", "deepseek/deepseek-chat"),
     "thinker": os.environ.get("THINKER_MODEL", "anthropic/claude-opus-4-8"),
-    "writer": os.environ.get("WRITER_MODEL", "google/gemini-2.5-flash"),
+    "writer": os.environ.get("WRITER_MODEL", "google/gemini-3.5-flash"),
 }
 
 # Rollback lineup: MODEL_PROVIDER=anthropic resolves tiers to native ids that
@@ -87,6 +87,7 @@ THINKER_COMPLEXITY_MIN = int(os.environ.get("THINKER_COMPLEXITY_MIN", "1200"))
 PRICING_USD_PER_M: dict[str, tuple[float, float]] = {
     # OpenRouter slugs
     "deepseek/deepseek-chat": (0.27, 1.10),
+    "google/gemini-3.5-flash": (1.50, 9.00),
     "google/gemini-2.5-flash": (0.30, 2.50),
     "google/gemini-2.5-pro": (1.25, 10.00),
     "anthropic/claude-opus-4-8": (15.00, 75.00),
