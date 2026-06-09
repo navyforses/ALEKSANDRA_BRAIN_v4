@@ -35,7 +35,8 @@ import os
 # Env-overridable so a wrong slug is fixable from Railway without a deploy.
 # ---------------------------------------------------------------------------
 TIER_MODEL: dict[str, str] = {
-    "worker": os.environ.get("WORKER_MODEL", "deepseek/deepseek-chat"),
+    "worker": os.environ.get("WORKER_MODEL", "deepseek/deepseek-v4-flash"),
+    "thinker_light": os.environ.get("THINKER_LIGHT_MODEL", "deepseek/deepseek-v4-pro"),
     "thinker": os.environ.get("THINKER_MODEL", "anthropic/claude-opus-4-8"),
     "writer": os.environ.get("WRITER_MODEL", "google/gemini-3.5-flash"),
 }
@@ -44,6 +45,7 @@ TIER_MODEL: dict[str, str] = {
 # scripts.cognition.llm routes to the Anthropic SDK directly.
 TIER_MODEL_ANTHROPIC: dict[str, str] = {
     "worker": "claude-haiku-4-5-20251001",
+    "thinker_light": "claude-sonnet-4-5",
     "thinker": "claude-opus-4-8",
     "writer": "claude-sonnet-4-5",
 }
@@ -74,9 +76,9 @@ DEFAULT_TIER = "worker"
 
 # Thinker gating: a thinker-tier call whose caller-supplied `complexity` proxy
 # (currently the user-prompt length in characters) is BELOW this threshold is
-# downgraded to the cheap worker model. This is the "Opus only for hard cases"
-# policy the user chose — short/simple reasoning runs on DeepSeek, long/complex
-# reasoning escalates to Opus 4.8. Tune from Railway without a deploy.
+# downgraded to the `thinker_light` model (DeepSeek V4 Pro). This is the "Opus
+# only for hard cases" policy — short/simple reasoning runs on V4 Pro,
+# long/complex reasoning escalates to Opus 4.8. Tune from Railway without a deploy.
 THINKER_COMPLEXITY_MIN = int(os.environ.get("THINKER_COMPLEXITY_MIN", "1200"))
 
 # ---------------------------------------------------------------------------
@@ -86,6 +88,11 @@ THINKER_COMPLEXITY_MIN = int(os.environ.get("THINKER_COMPLEXITY_MIN", "1200"))
 # ---------------------------------------------------------------------------
 PRICING_USD_PER_M: dict[str, tuple[float, float]] = {
     # OpenRouter slugs
+    "deepseek/deepseek-v4-flash": (0.10, 0.20),
+    # V4 Pro: conservative standard estimate. OpenRouter listed an effective
+    # promo rate ~$0.44/$0.87 (ended 2026-05-31); we over-report rather than
+    # under-report spend. Verify + tighten if needed — env-overridable.
+    "deepseek/deepseek-v4-pro": (1.74, 3.48),
     "deepseek/deepseek-chat": (0.27, 1.10),
     "google/gemini-3.5-flash": (1.50, 9.00),
     "google/gemini-2.5-flash": (0.30, 2.50),
@@ -116,9 +123,10 @@ def model_for(task: str, *, complexity: int | None = None) -> str:
     """Resolve a task to a concrete model slug, honouring MODEL_PROVIDER.
 
     When ``complexity`` is supplied for a thinker-tier task and falls below
-    ``THINKER_COMPLEXITY_MIN``, the call is downgraded to the worker model
-    (gated Opus policy). Callers that omit ``complexity`` always get the full
-    tier model — quality-safe default.
+    ``THINKER_COMPLEXITY_MIN``, the call is downgraded to ``thinker_light``
+    (DeepSeek V4 Pro) — strong reasoning at a fraction of Opus cost. The hardest
+    cases (complexity above the gate, or no ``complexity`` hint) get the full
+    ``thinker`` model (Opus 4.8) — quality-safe default.
     """
     tier = tier_for(task)
     table = TIER_MODEL_ANTHROPIC if provider() == "anthropic" else TIER_MODEL
@@ -127,7 +135,7 @@ def model_for(task: str, *, complexity: int | None = None) -> str:
         and complexity is not None
         and complexity < THINKER_COMPLEXITY_MIN
     ):
-        return table["worker"]
+        return table["thinker_light"]
     return table[tier]
 
 

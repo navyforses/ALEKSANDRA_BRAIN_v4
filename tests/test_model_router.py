@@ -27,7 +27,7 @@ def test_task_to_tier_mapping():
 
 
 def test_model_for_default_openrouter():
-    assert models.model_for("extraction") == "deepseek/deepseek-chat"
+    assert models.model_for("extraction") == "deepseek/deepseek-v4-flash"
     assert models.model_for("got") == "anthropic/claude-opus-4-8"
     assert models.model_for("translate") == "google/gemini-3.5-flash"
 
@@ -56,18 +56,18 @@ def test_is_openrouter_model():
 def test_thinker_gating_by_complexity():
     lo = models.THINKER_COMPLEXITY_MIN - 1
     hi = models.THINKER_COMPLEXITY_MIN + 1
-    # short/simple reasoning runs on the cheap worker model
-    assert models.model_for("got", complexity=lo) == "deepseek/deepseek-chat"
+    # short/simple reasoning runs on thinker_light (DeepSeek V4 Pro)
+    assert models.model_for("got", complexity=lo) == "deepseek/deepseek-v4-pro"
     # long/complex reasoning escalates to Opus
     assert models.model_for("got", complexity=hi) == "anthropic/claude-opus-4-8"
     # no complexity hint → full tier model (quality-safe default)
     assert models.model_for("got") == "anthropic/claude-opus-4-8"
-    # gating never downgrades a worker task upward
-    assert models.model_for("extraction", complexity=hi) == "deepseek/deepseek-chat"
+    # gating never touches a worker task
+    assert models.model_for("extraction", complexity=hi) == "deepseek/deepseek-v4-flash"
 
 
 def test_crew_llm_prefix_and_rollback(monkeypatch):
-    assert models.crew_llm("worker") == "openrouter/deepseek/deepseek-chat"
+    assert models.crew_llm("worker") == "openrouter/deepseek/deepseek-v4-flash"
     assert models.crew_llm("thinker") == "openrouter/anthropic/claude-opus-4-8"
     assert models.crew_llm("writer") == "openrouter/google/gemini-3.5-flash"
     monkeypatch.setenv("MODEL_PROVIDER", "anthropic")
@@ -98,12 +98,12 @@ def test_call_llm_task_routes_to_openrouter(llm, monkeypatch):
 
     assert out == "hello from deepseek"
     # correct model slug was sent
-    assert fake.call_args.kwargs["model"] == "deepseek/deepseek-chat"
+    assert fake.call_args.kwargs["model"] == "deepseek/deepseek-v4-flash"
     # a completed runs row was recorded with the real token counts
     rec = llm._record_call.call_args.kwargs
     assert rec["exit_status"] == "completed"
     assert rec["input_tokens"] == 12 and rec["output_tokens"] == 7
-    assert rec["model"] == "deepseek/deepseek-chat"
+    assert rec["model"] == "deepseek/deepseek-v4-flash"
 
 
 def test_call_llm_native_id_routes_to_anthropic(llm, monkeypatch):
