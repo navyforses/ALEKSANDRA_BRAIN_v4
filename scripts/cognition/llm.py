@@ -43,8 +43,13 @@ from typing import Any
 
 import httpx
 
+from scripts.cognition import models
 from scripts.cognition.budget import check_daily_budget
 from scripts.ledger import _supabase_creds, _supabase_headers, load_env
+
+OPENROUTER_BASE_URL = os.environ.get(
+    "OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1"
+)
 
 
 # ---------------------------------------------------------------------------
@@ -69,11 +74,14 @@ _FALLBACK_RATE_USD_PER_M = (3.00, 15.00)  # Sonnet — conservative for unknown 
 
 
 def _compute_cost_usd(model: str, input_tokens: int, output_tokens: int) -> float:
-    """Resolve $/1M rates by model-prefix and return cost in USD."""
-    for prefix, (in_rate, out_rate) in _PRICING_USD_PER_M_TOKENS:
-        if model.startswith(prefix):
-            return (input_tokens * in_rate + output_tokens * out_rate) / 1_000_000
-    in_rate, out_rate = _FALLBACK_RATE_USD_PER_M
+    """Resolve $/1M rates via the shared model registry and return cost in USD.
+
+    Pricing lives in ``scripts.cognition.models`` so the worker/thinker/writer
+    slugs and the legacy Anthropic ids share one table. The local
+    ``_PRICING_USD_PER_M_TOKENS`` constant above is retained only for backward
+    import compatibility and is no longer the source of truth.
+    """
+    in_rate, out_rate = models.price_for(model)
     return (input_tokens * in_rate + output_tokens * out_rate) / 1_000_000
 
 
@@ -134,41 +142,138 @@ def _record_call(
 
 
 # ---------------------------------------------------------------------------
-# Synchronous wrapper — used by got_pipeline + extract_candidates + pubmed_validation
+# OpenRouter (OpenAI-compatible) path — the default gateway for all tiers.
 # ---------------------------------------------------------------------------
-def call_claude(
+class LLMRefusal(RuntimeError):
+    """Provider returned an empty/refused completion (no usable text)."""
+
+
+def _openrouter_key() -> str:
+    load_env()
+    k = os.environ.get("OPENROUTER_API_KEY", "").strip()
+    if not k:
+        raise RuntimeError("OPENROUTER_API_KEY missing from environment")
+    return k
+
+
+def _openrouter_complete(
+    *,
+    model: str,
+    messages: list[dict[str, str]],
+    max_tokens: int,
+    temperature: float,
+    api_key: str,
+) -> tuple[str, int, int]:
+    """POST one chat-completion to OpenRouter. Returns (text, in_tok, out_tok).
+
+    Raises:
+        LLMRefusal: empty `choices` or empty `content` (refusal / safety stop).
+        httpx.HTTPStatusError: non-2xx from the gateway.
+    """
+    r = httpx.post(
+        f"{OPENROUTER_BASE_URL}/chat/completions",
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+            "HTTP-Referer": "https://github.com/navyforses/ALEKSANDRA_BRAIN_v4",
+            "X-Title": "ALEKSANDRA_BRAIN",
+        },
+        json={
+            "model": model,
+            "messages": messages,
+            "max_tokens": max_tokens,
+            "temperature": temperature,
+        },
+        timeout=180,
+    )
+    r.raise_for_status()
+    data = r.json()
+    choices = data.get("choices") or []
+    if not choices:
+        raise LLMRefusal(f"empty choices (model={model})")
+    message = choices[0].get("message") or {}
+    text = message.get("content")
+    if not text:
+        # Defensive: OpenAI-shape refusals return empty/None content with a
+        # finish_reason rather than an exception (mirrors the Phase 6.1 Anthropic
+        # content==[] lesson). Surface it as a typed error the caller can retry.
+        raise LLMRefusal(
+            f"empty content (model={model}, "
+            f"finish_reason={choices[0].get('finish_reason')})"
+        )
+    usage = data.get("usage") or {}
+    return (
+        text,
+        int(usage.get("prompt_tokens") or 0),
+        int(usage.get("completion_tokens") or 0),
+    )
+
+
+def _run_openrouter(
     *,
     prompt: str,
     agent_id: str,
-    model: str = "claude-sonnet-4-5",
-    system: str | None = None,
-    max_tokens: int = 4096,
-    temperature: float = 0.2,
+    model: str,
+    system: str | None,
+    max_tokens: int,
+    temperature: float,
 ) -> str:
-    """
-    Send one user message to Claude, append a runs row, return the text reply.
+    api_key = _openrouter_key()
+    messages: list[dict[str, str]] = []
+    if system is not None:
+        messages.append({"role": "system", "content": system})
+    messages.append({"role": "user", "content": prompt})
 
-    Args:
-        prompt: User message content.
-        agent_id: Which agent is calling (spider | analyzer | hypothesis |
-                  repurposing | communicator | <subtask qualifier>). Goes into
-                  runs.agent_id.
-        model: Anthropic model ID. Pricing resolved by prefix match.
-        system: Optional system prompt.
-        max_tokens: Max output tokens.
-        temperature: Sampling temperature.
+    start = datetime.now(timezone.utc)
+    try:
+        text, in_t, out_t = _openrouter_complete(
+            model=model,
+            messages=messages,
+            max_tokens=max_tokens,
+            temperature=temperature,
+            api_key=api_key,
+        )
+    except Exception as e:
+        end = datetime.now(timezone.utc)
+        _record_call(
+            agent_id=agent_id,
+            model=model,
+            start=start,
+            end=end,
+            input_tokens=0,
+            output_tokens=0,
+            exit_status="failed",
+            exit_reason=f"{type(e).__name__}: {str(e)[:600]}",
+        )
+        raise
 
-    Returns:
-        Concatenated text content from the response (all `text` blocks joined).
+    end = datetime.now(timezone.utc)
+    _record_call(
+        agent_id=agent_id,
+        model=model,
+        start=start,
+        end=end,
+        input_tokens=in_t,
+        output_tokens=out_t,
+        exit_status="completed",
+    )
+    return text
 
-    Raises:
-        RuntimeError: ANTHROPIC_API_KEY missing.
-        anthropic.APIError (and subclasses): on API errors — a failed runs row
-            is still written first with exit_reason set.
-    """
-    import anthropic  # deferred — keeps import cheap when llm.py is only re-exporting
 
-    load_env()
+# ---------------------------------------------------------------------------
+# Anthropic SDK path — native 'claude-*' ids (legacy / MODEL_PROVIDER=anthropic).
+# ---------------------------------------------------------------------------
+def _run_anthropic(
+    *,
+    prompt: str,
+    agent_id: str,
+    model: str,
+    system: str | None,
+    max_tokens: int,
+    temperature: float,
+) -> str:
+    import anthropic  # deferred — keeps import cheap when llm.py only re-exports
+
     api_key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
     if not api_key:
         raise RuntimeError("ANTHROPIC_API_KEY missing from environment")
@@ -181,11 +286,6 @@ def call_claude(
     }
     if system is not None:
         kwargs["system"] = system
-
-    # Daily-budget gate — defence-in-depth alongside the n8n cron gate.
-    # Raises BudgetExceeded if today's runs.token_cost sum is over the cap;
-    # the SDK call never fires when over budget.
-    check_daily_budget(raise_on_over=True)
 
     client = anthropic.Anthropic(api_key=api_key)
     start = datetime.now(timezone.utc)
@@ -219,6 +319,88 @@ def call_claude(
         exit_status="completed",
     )
     return "".join(b.text for b in resp.content if getattr(b, "type", "") == "text")
+
+
+# ---------------------------------------------------------------------------
+# Provider-routed synchronous entry point.
+# ---------------------------------------------------------------------------
+def call_llm(
+    *,
+    prompt: str,
+    agent_id: str,
+    task: str | None = None,
+    model: str | None = None,
+    system: str | None = None,
+    max_tokens: int = 4096,
+    temperature: float = 0.2,
+) -> str:
+    """
+    Send one user message and return the text reply, appending a runs row.
+
+    Model resolution (first wins):
+      1. explicit ``model`` argument,
+      2. ``models.model_for(task)`` when ``task`` is given,
+      3. legacy Sonnet default.
+
+    OpenRouter slugs ('provider/model') route through the OpenRouter gateway;
+    native 'claude-*' ids go straight to the Anthropic SDK. Both paths share the
+    same daily-budget gate and runs instrumentation.
+
+    Raises:
+        RuntimeError: required API key missing.
+        BudgetExceeded: today's runs.token_cost sum is over the cap.
+        LLMRefusal / anthropic.APIError: provider errors — a failed runs row is
+            written first with exit_reason set.
+    """
+    load_env()
+    resolved = model or (models.model_for(task) if task else "claude-sonnet-4-5")
+
+    # Daily-budget gate — defence-in-depth alongside the n8n cron gate. Raises
+    # BudgetExceeded before any provider call when today's spend is over the cap.
+    check_daily_budget(raise_on_over=True)
+
+    if models.is_openrouter_model(resolved):
+        return _run_openrouter(
+            prompt=prompt,
+            agent_id=agent_id,
+            model=resolved,
+            system=system,
+            max_tokens=max_tokens,
+            temperature=temperature,
+        )
+    return _run_anthropic(
+        prompt=prompt,
+        agent_id=agent_id,
+        model=resolved,
+        system=system,
+        max_tokens=max_tokens,
+        temperature=temperature,
+    )
+
+
+def call_claude(
+    *,
+    prompt: str,
+    agent_id: str,
+    model: str = "claude-sonnet-4-5",
+    system: str | None = None,
+    max_tokens: int = 4096,
+    temperature: float = 0.2,
+) -> str:
+    """Back-compat shim. Prefer ``call_llm(task=...)``.
+
+    Existing call sites that pass a concrete ``model=`` keep working: a native
+    'claude-*' id routes to Anthropic, an OpenRouter slug routes to OpenRouter.
+    New code should pass ``task=`` and let the registry pick the model.
+    """
+    return call_llm(
+        prompt=prompt,
+        agent_id=agent_id,
+        model=model,
+        system=system,
+        max_tokens=max_tokens,
+        temperature=temperature,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -311,6 +493,8 @@ def make_instrumented_async_anthropic(
 
 
 __all__ = [
+    "LLMRefusal",
     "call_claude",
+    "call_llm",
     "make_instrumented_async_anthropic",
 ]
