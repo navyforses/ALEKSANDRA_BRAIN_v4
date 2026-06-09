@@ -3,8 +3,9 @@ graphiti_client.py — Phase 2 sub-phase 2B.
 
 Singleton Graphiti instance configured for the project:
   - Neo4j connection from .env (NEO4J_URI, NEO4J_USERNAME, NEO4J_PASSWORD)
-  - LLM: Claude Haiku 4.5 ('claude-haiku-4-5-20251001'), temperature=0.2
-  - Embedder: fastembed BAAI/bge-small-en-v1.5 (reuses Phase 0 model)
+  - LLM (worker tier): DeepSeek-V3 via OpenRouter by default; native Claude
+    Haiku 4.5 when MODEL_PROVIDER=anthropic (rollback). See scripts.cognition.models.
+  - Embedder: fastembed BAAI/bge-small-en-v1.5 (reuses Phase 0 model, local)
   - group_id: 'hie_research' for all Phase 2 episodes
 
 build_indices_and_constraints() must be called ONCE per fresh Neo4j
@@ -29,7 +30,12 @@ from graphiti_core.embedder.client import EmbedderClient
 from graphiti_core.llm_client.anthropic_client import AnthropicClient
 from graphiti_core.llm_client.config import LLMConfig
 
-from scripts.cognition.llm import make_instrumented_async_anthropic
+from scripts.cognition import models
+from scripts.cognition.llm import (
+    OPENROUTER_BASE_URL,
+    make_instrumented_async_anthropic,
+    make_instrumented_async_openai,
+)
 from scripts.ledger import load_env
 
 GROUP_ID = "hie_research"
@@ -100,6 +106,49 @@ def _build_anthropic_client() -> AnthropicClient:
     return AnthropicClient(config=config, cache=False, client=instrumented)
 
 
+def _build_openrouter_client():
+    """Worker-tier LLM via OpenRouter (DeepSeek-V3 by default).
+
+    Graphiti's OpenAIClient speaks the OpenAI chat-completions shape, which
+    OpenRouter exposes for every model. The instrumented AsyncOpenAI records one
+    `runs` row (agent_id='analyzer_graphiti') per internal extraction/dedup call,
+    so the budget gate + daily digest see DeepSeek spend exactly as they saw
+    Anthropic spend before. Model slug is WORKER_MODEL-overridable.
+    """
+    from graphiti_core.llm_client.openai_client import OpenAIClient  # noqa: PLC0415
+
+    load_env()
+    api_key = os.environ.get("OPENROUTER_API_KEY", "").strip()
+    if not api_key:
+        raise RuntimeError("OPENROUTER_API_KEY missing in .env")
+    model = models.TIER_MODEL["worker"]
+    config = LLMConfig(
+        api_key=api_key,
+        model=model,
+        small_model=model,
+        base_url=OPENROUTER_BASE_URL,
+        temperature=DEFAULT_TEMPERATURE,
+        max_tokens=DEFAULT_MAX_TOKENS,
+    )
+    instrumented = make_instrumented_async_openai(
+        api_key=api_key,
+        base_url=OPENROUTER_BASE_URL,
+        agent_id="analyzer_graphiti",
+    )
+    return OpenAIClient(config=config, cache=False, client=instrumented)
+
+
+def _build_llm_client():
+    """Worker-tier LLM for Graphiti extraction.
+
+    OpenRouter/DeepSeek by default; native Anthropic/Haiku when
+    MODEL_PROVIDER=anthropic (one-env-var rollback).
+    """
+    if models.provider() == "anthropic":
+        return _build_anthropic_client()
+    return _build_openrouter_client()
+
+
 def get_graphiti() -> Graphiti:
     """Lazy singleton. First call wires up Neo4j + Anthropic + fastembed."""
     global _graphiti
@@ -117,7 +166,7 @@ def get_graphiti() -> Graphiti:
         uri=uri,
         user=user,
         password=password,
-        llm_client=_build_anthropic_client(),
+        llm_client=_build_llm_client(),
         embedder=_FastEmbedAdapter(),
     )
     return _graphiti

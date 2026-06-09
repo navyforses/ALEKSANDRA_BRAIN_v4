@@ -139,6 +139,21 @@ async def run_batch(*, force: bool, limit: int | None) -> dict:
         0, grand["entities_after"] - grand["entities_before"]
     )
 
+    # Honesty log — which worker model ran, and how many entities it actually
+    # produced. The user opted out of a pre-cutover A/B; this is the zero-cost
+    # net that surfaces a recall regression (e.g. DeepSeek extracting far fewer
+    # entities than Haiku) the moment it happens. Baseline at cutover: 568.
+    from scripts.cognition import models  # noqa: PLC0415
+
+    grand["provider"] = models.provider()
+    grand["worker_model"] = models.model_for("extraction")
+    print(
+        f"[batch] provider={grand['provider']} model={grand['worker_model']} "
+        f"entities {grand['entities_before']} -> {grand['entities_after']} "
+        f"(+{grand['entities_added']}) over {grand['papers_processed']} papers, "
+        f"{grand['errors']} errors"
+    )
+
     await close_graphiti()
     grand["elapsed_total_s"] = round(time.time() - t_start, 1)
     return grand

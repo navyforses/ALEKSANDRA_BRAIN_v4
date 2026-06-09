@@ -40,9 +40,11 @@ from typing import Any
 
 import httpx
 
-from scripts.cognition.llm import call_claude
+from scripts.cognition.llm import call_llm
 from scripts.ledger import _supabase_creds, _supabase_headers, load_env
 
+# MODEL is legacy/reference only — the model is now picked by the worker tier
+# in scripts.cognition.models (task="relevance"). Kept for documentation.
 MODEL = "claude-haiku-4-5-20251001"
 TEMPERATURE = 0.1
 MAX_TOKENS = 400
@@ -123,16 +125,16 @@ def score(title: str, abstract: str) -> RelevanceResult:
     prompt = f"## Title\n{title}\n\n## Abstract\n{abstract or '(no abstract available)'}\n\nReturn the JSON."
 
     try:
-        raw = call_claude(
+        raw = call_llm(
             prompt=prompt,
             agent_id=AGENT_ID,
-            model=MODEL,
+            task="relevance",  # 🔧 worker tier (DeepSeek via OpenRouter)
             system=SYSTEM_PROMPT,
             max_tokens=MAX_TOKENS,
             temperature=TEMPERATURE,
         )
     except Exception as e:
-        # call_claude already wrote a failed-status `runs` row before re-raising.
+        # call_llm already wrote a failed-status `runs` row before re-raising.
         # Caller persists relevance_score = NULL and ingest continues.
         return RelevanceResult(
             score=None,
