@@ -119,13 +119,27 @@ def _collect_window(conn: psycopg2.extensions.connection) -> SpendSummary:
 # ---------------------------------------------------------------------------
 # Message formatting
 # ---------------------------------------------------------------------------
+# Health-check threshold: many recorded LLM calls but exactly $0 spend means
+# every call FAILED (a failed call records token_cost=0). This is the precise
+# signature of the 2026-06-09 outage ("LLM: 1000 ცდა · $0.0000"). Surfaced as a
+# loud line so a provider auth/billing failure can never hide as "all green".
+_HEALTH_MIN_CALLS_FOR_ZERO_SPEND = 50
+
+
 def _format_message(s: SpendSummary) -> str:
-    """Compose the three-line Georgian Telegram message."""
+    """Compose the Georgian Telegram message (+ a health line on total failure)."""
     warn = "⚠️ " if s.over_cap else ""
     llm_line = (
         f"{warn}LLM: {s.llm_calls} ცდა · ${s.llm_spend_usd:.4f} "
         f"(ბიუჯეტი {s.pct_of_cap:.1f}%)"
     )
+    if (
+        s.llm_calls >= _HEALTH_MIN_CALLS_FOR_ZERO_SPEND
+        and s.llm_spend_usd == 0.0
+    ):
+        llm_line += (
+            "\n🔴 ALL LLM CALLS FAILING — check OPENROUTER_API_KEY / billing"
+        )
 
     # Cron summary: only show kinds that fired ≥1 time, with friendly labels
     label_map = {

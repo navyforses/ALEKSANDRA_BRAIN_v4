@@ -43,7 +43,7 @@ from datetime import datetime, timezone
 import httpx
 from neo4j import GraphDatabase
 
-from scripts.cognition.llm import call_claude
+from scripts.cognition.llm import call_llm
 from scripts.ledger import _supabase_creds, _supabase_headers, load_env
 from scripts.rag.retrieve import retrieve
 
@@ -215,12 +215,15 @@ prompt. No prose outside the JSON.
 # Step 3: run the LLM + parse
 # ------------------------------------------------------------------
 def _call_claude(system: str, user: str) -> str:
-    # call_claude() writes one `runs` row (kind='llm_call', agent_id='hypothesis')
+    # call_llm() writes one `runs` row (kind='llm_call', agent_id='hypothesis')
     # per request, capturing tokens + USD cost. See scripts.cognition.llm.
-    return call_claude(
+    # 🧠 thinker tier — Opus 4.8, gated: short reasoning prompts run on the
+    # cheap worker model, long/complex ones escalate (THINKER_COMPLEXITY_MIN).
+    return call_llm(
         prompt=user,
         agent_id="hypothesis",
-        model=MODEL,
+        task="got",
+        complexity=len(user),
         system=system,
         max_tokens=MAX_TOKENS,
         temperature=TEMPERATURE,

@@ -33,9 +33,16 @@ import time
 from datetime import datetime, timezone
 
 import anthropic
+import httpx
 
+from scripts.cognition import models
 from scripts.cognition.budget import BudgetExceeded, check_daily_budget
-from scripts.cognition.llm import _record_call
+from scripts.cognition.llm import (
+    LLMRefusal,
+    _openrouter_complete,
+    _openrouter_key,
+    _record_call,
+)
 
 MODEL = "claude-sonnet-4-6"
 SYSTEM_PROMPT = (
@@ -76,6 +83,10 @@ def translate_to_georgian(
 ) -> str:
     """Translate English `text` to Georgian (Mkhedruli).
 
+    Writer tier: Gemini via OpenRouter by default. An injected Anthropic
+    `client` or MODEL_PROVIDER=anthropic uses the legacy Sonnet strict path
+    (rollback / tests).
+
     Empty or whitespace-only input returns "" without an API call (cheap path
     for papers that legitimately have no abstract).
 
@@ -91,6 +102,23 @@ def translate_to_georgian(
         if over:
             raise BudgetExceeded(_spend, 0.0)
 
+    if client is not None or models.provider() == "anthropic":
+        return _translate_anthropic(
+            text, client=client, max_attempts=max_attempts, max_tokens=max_tokens
+        )
+    return _translate_openrouter(
+        text, max_attempts=max_attempts, max_tokens=max_tokens
+    )
+
+
+def _translate_anthropic(
+    text: str,
+    *,
+    client: anthropic.Anthropic | None,
+    max_attempts: int,
+    max_tokens: int,
+) -> str:
+    """Legacy Sonnet path — rollback (MODEL_PROVIDER=anthropic) or injected client."""
     if client is None:
         if not os.environ.get("ANTHROPIC_API_KEY", "").strip():
             raise TranslationFailed("ANTHROPIC_API_KEY not set")
@@ -114,9 +142,6 @@ def translate_to_georgian(
             end = datetime.now(timezone.utc)
             usage = getattr(resp, "usage", None)
             # Roll cache_read/cache_create into input_tokens for the ledger.
-            # _record_call's cost formula matches Anthropic input rate; the
-            # cache-discount drift is captured by reconciliation against the
-            # Anthropic CSV (see daily_spend_report.py).
             in_tok = int(getattr(usage, "input_tokens", 0) or 0) + int(
                 getattr(usage, "cache_creation_input_tokens", 0) or 0
             ) + int(getattr(usage, "cache_read_input_tokens", 0) or 0)
@@ -150,6 +175,75 @@ def translate_to_georgian(
                 output_tokens=0,
                 exit_status="api_error",
                 exit_reason=f"{type(e).__name__}: {e}",
+            )
+            last_err = f"{type(e).__name__}: {e}"
+        time.sleep(1 + attempt)
+
+    raise TranslationFailed(
+        f"translate failed after {max_attempts} attempts: {last_err}"
+    )
+
+
+def _translate_openrouter(text: str, *, max_attempts: int, max_tokens: int) -> str:
+    """Writer-tier path — Gemini via OpenRouter (default)."""
+    api_key = _openrouter_key()  # raises RuntimeError if OPENROUTER_API_KEY unset
+    model = models.TIER_MODEL["writer"]
+    messages = [
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {
+            "role": "user",
+            "content": f"Translate to Georgian (Mkhedruli):\n\n{text}",
+        },
+    ]
+
+    last_err: str | None = None
+    for attempt in range(max_attempts):
+        start = datetime.now(timezone.utc)
+        try:
+            out, in_tok, out_tok = _openrouter_complete(
+                model=model,
+                messages=messages,
+                max_tokens=max_tokens,
+                temperature=0.0,
+                api_key=api_key,
+            )
+            end = datetime.now(timezone.utc)
+            _record_call(
+                agent_id="translate_to_georgian",
+                model=model,
+                start=start,
+                end=end,
+                input_tokens=in_tok,
+                output_tokens=out_tok,
+                exit_status="ok",
+            )
+            if out and out.strip():
+                return out.strip()
+            last_err = "empty response"
+        except LLMRefusal as e:
+            end = datetime.now(timezone.utc)
+            _record_call(
+                agent_id="translate_to_georgian",
+                model=model,
+                start=start,
+                end=end,
+                input_tokens=0,
+                output_tokens=0,
+                exit_status="empty_or_refusal",
+                exit_reason=str(e)[:300],
+            )
+            last_err = str(e)
+        except httpx.HTTPStatusError as e:
+            end = datetime.now(timezone.utc)
+            _record_call(
+                agent_id="translate_to_georgian",
+                model=model,
+                start=start,
+                end=end,
+                input_tokens=0,
+                output_tokens=0,
+                exit_status="api_error",
+                exit_reason=f"{type(e).__name__}: {e}"[:300],
             )
             last_err = f"{type(e).__name__}: {e}"
         time.sleep(1 + attempt)

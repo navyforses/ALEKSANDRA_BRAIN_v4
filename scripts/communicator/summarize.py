@@ -30,7 +30,7 @@ import re
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 
-from scripts.cognition.llm import call_claude
+from scripts.cognition.llm import call_llm
 from scripts.communicator.banned_phrases import BannedPhraseResult
 from scripts.communicator.banned_phrases import check as banned_check
 from scripts.communicator.confidence_classifier import ConfidenceInput, score
@@ -243,12 +243,12 @@ def generate_summary(
             generated_at=datetime.utcnow().isoformat(),
         )
 
-    # 2. Sonnet 4.5 call via the ledger-aware wrapper (writes runs.kind='llm_call').
+    # 2. Writer-tier call (Gemini via OpenRouter) via the ledger-aware wrapper.
     user = _build_user_prompt(query, evidence_block, audience, language)
-    raw = call_claude(
+    raw = call_llm(
         prompt=user,
         agent_id="communicator",
-        model="claude-sonnet-4-5",
+        task="summarize",  # ✍️ writer tier
         system=_SYSTEM_PROMPT,
         max_tokens=max_tokens,
         temperature=0.2,

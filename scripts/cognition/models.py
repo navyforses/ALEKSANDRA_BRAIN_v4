@@ -72,6 +72,13 @@ TASK_TIER: dict[str, str] = {
 
 DEFAULT_TIER = "worker"
 
+# Thinker gating: a thinker-tier call whose caller-supplied `complexity` proxy
+# (currently the user-prompt length in characters) is BELOW this threshold is
+# downgraded to the cheap worker model. This is the "Opus only for hard cases"
+# policy the user chose — short/simple reasoning runs on DeepSeek, long/complex
+# reasoning escalates to Opus 4.8. Tune from Railway without a deploy.
+THINKER_COMPLEXITY_MIN = int(os.environ.get("THINKER_COMPLEXITY_MIN", "1200"))
+
 # ---------------------------------------------------------------------------
 # Pricing — $/1M tokens (input, output). Verified 2026-06 (OpenRouter +
 # Anthropic published rates). Resolved by exact match first, then by prefix so
@@ -104,10 +111,22 @@ def tier_for(task: str) -> str:
     return TASK_TIER.get(task, DEFAULT_TIER)
 
 
-def model_for(task: str) -> str:
-    """Resolve a task to a concrete model slug, honouring MODEL_PROVIDER."""
+def model_for(task: str, *, complexity: int | None = None) -> str:
+    """Resolve a task to a concrete model slug, honouring MODEL_PROVIDER.
+
+    When ``complexity`` is supplied for a thinker-tier task and falls below
+    ``THINKER_COMPLEXITY_MIN``, the call is downgraded to the worker model
+    (gated Opus policy). Callers that omit ``complexity`` always get the full
+    tier model — quality-safe default.
+    """
     tier = tier_for(task)
     table = TIER_MODEL_ANTHROPIC if provider() == "anthropic" else TIER_MODEL
+    if (
+        tier == "thinker"
+        and complexity is not None
+        and complexity < THINKER_COMPLEXITY_MIN
+    ):
+        return table["worker"]
     return table[tier]
 
 
@@ -126,6 +145,19 @@ def is_openrouter_model(model: str) -> bool:
     return "/" in model
 
 
+def crew_llm(tier: str) -> str:
+    """LiteLLM model string for CrewAI agents.
+
+    CrewAI resolves models through LiteLLM, which needs an explicit
+    ``openrouter/`` provider prefix to reach the gateway (and ``OPENROUTER_API_KEY``
+    in env). Under MODEL_PROVIDER=anthropic this returns the native Claude id,
+    which LiteLLM routes to Anthropic directly (rollback).
+    """
+    if provider() == "anthropic":
+        return TIER_MODEL_ANTHROPIC[tier]
+    return f"openrouter/{TIER_MODEL[tier]}"
+
+
 __all__ = [
     "TIER_MODEL",
     "TIER_MODEL_ANTHROPIC",
@@ -137,4 +169,6 @@ __all__ = [
     "model_for",
     "price_for",
     "is_openrouter_model",
+    "crew_llm",
+    "THINKER_COMPLEXITY_MIN",
 ]

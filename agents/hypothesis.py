@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from crewai import Agent
 
+from scripts.cognition import models
 from agents.tools.hypothesis_tools import (
     run_hypothesis_generation,
     validate_hypothesis,
@@ -35,7 +36,8 @@ You rank by novelty, but you never sacrifice rigor for novelty.
 """.strip()
 
 
-def build_hypothesis(llm_model: str = "claude-sonnet-4-5") -> Agent:
+def build_hypothesis(llm_model: str | None = None) -> Agent:
+    llm_model = llm_model or models.crew_llm("thinker")  # 🧠 thinker tier (Opus)
     return Agent(
         role="Cross-Disease Pattern Finder",
         goal=(

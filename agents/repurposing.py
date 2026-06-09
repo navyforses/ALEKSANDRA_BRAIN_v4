@@ -12,6 +12,8 @@ from __future__ import annotations
 
 from crewai import Agent
 
+from scripts.cognition import models
+
 TOOLS: list = []
 
 BACKSTORY = """
@@ -29,7 +31,8 @@ You output ranked, sourced, and clearly-flagged candidates — never a black box
 """.strip()
 
 
-def build_repurposing(llm_model: str = "claude-sonnet-4-5") -> Agent:
+def build_repurposing(llm_model: str | None = None) -> Agent:
+    llm_model = llm_model or models.crew_llm("thinker")  # 🧠 thinker tier (Opus)
     return Agent(
         role="Drug Repurposing Specialist",
         goal=(

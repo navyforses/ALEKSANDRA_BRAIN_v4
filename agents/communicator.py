@@ -43,6 +43,7 @@ import psycopg2.extras
 
 from crewai import Agent
 
+from scripts.cognition import models
 from scripts.communicator.banned_phrases import check as banned_phrase_check
 from scripts.communicator.bilingual import compose_bilingual
 from scripts.communicator.language import detect as detect_language
@@ -97,7 +98,8 @@ persist if either half is blocked.
 """.strip()
 
 
-def build_communicator(llm_model: str = "claude-sonnet-4-5") -> Agent:
+def build_communicator(llm_model: str | None = None) -> Agent:
+    llm_model = llm_model or models.crew_llm("writer")  # ✍️ writer tier (Gemini)
     return Agent(
         role="Family Liaison",
         goal=(

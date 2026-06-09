@@ -4,19 +4,24 @@
 > **Branch:** `claude/status-check-1ZMxG` · **PR:** #10
 > **Resume point:** Section 12 ("Where to resume").
 >
-> **Progress (2026-06-09):**
-> - ✅ **Phase A done** — `scripts/cognition/models.py` registry + `llm.py` router
->   (`call_llm(task=...)`, OpenRouter path, MODEL_PROVIDER rollback). 10 unit tests.
-> - ✅ **Phase B done (loop-critical)** — `graphiti_client.py` provider-aware
->   (DeepSeek via OpenRouter + instrumented AsyncOpenAI), `relevance.py` →
->   `task="relevance"`, `batch_ingest.py` honesty-log. 12 tests total green.
->   ⚠️ Graphiti+DeepSeek structured-extraction compatibility is UNVERIFIED here
->   (no Neo4j/graphiti in CI container) — needs the live curl in §7. Honesty-log
->   will surface a recall regression.
->   ↪️ `refactor/classify_edges.py` (worker tier) deferred — NOT in the live
->   30-min tick (manual migration utility); convert in a follow-up.
-> - ⏭️ **Next:** Phase C (writer→Gemini), Phase D (thinker→Opus, gated), Phase E
->   (budget cap $5 + digest health-check + verifier sweep).
+> **Progress (2026-06-09) — ALL 5 PHASES CODE-COMPLETE (27 unit tests green):**
+> - ✅ **Phase A** — `models.py` registry + `llm.py` router (`call_llm(task=...)`,
+>   OpenRouter path, MODEL_PROVIDER rollback).
+> - ✅ **Phase B** — `graphiti_client.py` (DeepSeek + instrumented AsyncOpenAI),
+>   `relevance.py`, `batch_ingest.py` honesty-log. Closes the outage path.
+> - ✅ **Phase C** — `translate.py` + `bilingual.py` (Gemini JSON mode) +
+>   `summarize.py` → writer tier; `_openrouter_complete` gains `response_format`.
+> - ✅ **Phase D** — `got_pipeline`/`extract_candidates`/`pubmed_validation` →
+>   thinker tier (gated by `complexity`); `models.crew_llm()` + 5 CrewAI agents.
+> - ✅ **Phase E** — budget cap 1.50→5.00 (`budget.py` + `daily-budget-gate.json`);
+>   digest health-check (`daily_spend_report.py` + n8n mirror) flags the
+>   "many calls / $0 spend" outage signature.
+>
+> **Still UNVERIFIED live (needs OPENROUTER_API_KEY on Railway + the §7 curl):**
+> Graphiti+DeepSeek structured extraction; Gemini Georgian output/refusals.
+> Honesty-log + digest health-check will surface regressions.
+> **Deferred (non-loop):** `refactor/classify_edges.py` worker-tier convert;
+> cache-aware pricing half of todo `2026-06-02-raise-budget-cap-and-cache-pricing.md`.
 
 ---
 

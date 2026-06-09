@@ -31,7 +31,7 @@ from datetime import datetime, timezone
 
 import httpx
 
-from scripts.cognition.llm import call_claude
+from scripts.cognition.llm import call_llm
 from scripts.fetch_pubmed import (
     _efetch_xml,
     _esearch_pmids,
@@ -133,12 +133,14 @@ def _llm_dossier(name: str, signals: dict, hyp_context: str) -> str:
         f"## PubMed signals\n{json.dumps(signals, indent=2)}\n\n"
         "Write the dossier paragraph."
     )
-    # call_claude() appends one runs row (kind='llm_call',
+    # call_llm() appends one runs row (kind='llm_call',
     # agent_id='repurposing_dossier') with token+cost telemetry.
-    return call_claude(
+    # 🧠 thinker tier — Opus 4.8, gated by prompt complexity.
+    return call_llm(
         prompt=user,
         agent_id="repurposing_dossier",
-        model=MODEL,
+        task="evidence_hard",
+        complexity=len(user),
         system=sys_msg,
         max_tokens=MAX_TOKENS,
         temperature=TEMPERATURE,
