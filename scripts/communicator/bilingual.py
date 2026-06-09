@@ -40,10 +40,20 @@ Test mode
 
 from __future__ import annotations
 
+import json
 import os
+import re
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any
 
+from scripts.cognition import models
 from scripts.cognition.budget import check_daily_budget
+from scripts.cognition.llm import (
+    LLMRefusal,
+    _openrouter_complete,
+    _openrouter_key,
+    _record_call,
+)
 
 if TYPE_CHECKING:  # pragma: no cover — import only for type hints
     from anthropic import Anthropic
@@ -151,20 +161,40 @@ def compose_bilingual(
             than indexing into an empty list).
         BudgetExceeded: If the FND-04 daily-spend gate trips.
     """
-    # Test-mode short-circuit: bypass budget + Anthropic entirely, return stub.
-    if _is_test_mode():
+    # Explicit test-mode short-circuit (CI / verifier).
+    if os.environ.get("BILINGUAL_TEST_MODE", "").strip() == "1":
         return _stub_pair(prompt)
 
-    if client is None:
-        raise RuntimeError(
-            "compose_bilingual: client is required outside test mode "
-            "(set BILINGUAL_TEST_MODE=1 to use the deterministic stub)"
-        )
+    # Provider routing. An injected Anthropic client or MODEL_PROVIDER=anthropic
+    # uses the legacy strict tool_use path (rollback / tests); otherwise the
+    # writer tier (Gemini via OpenRouter, JSON mode) emits the {en, ka} pair.
+    use_anthropic = client is not None or models.provider() == "anthropic"
 
-    # Defence-in-depth budget gate — RAISES BudgetExceeded BEFORE the SDK call
-    # when today's runs.token_cost sum is over the cap (Phase 0 FND-04 ceiling).
+    if use_anthropic:
+        if client is None:
+            if not os.environ.get("ANTHROPIC_API_KEY", "").strip():
+                return _stub_pair(prompt)  # defensive — never crash a smoke run
+            import anthropic  # noqa: PLC0415
+
+            client = anthropic.Anthropic()
+        check_daily_budget(raise_on_over=True)
+        return _compose_anthropic(prompt, client=client, model=model, max_tokens=max_tokens)
+
+    # Writer tier — Gemini via OpenRouter.
+    if not os.environ.get("OPENROUTER_API_KEY", "").strip():
+        return _stub_pair(prompt)  # defensive — never crash a smoke run
     check_daily_budget(raise_on_over=True)
+    return _compose_openrouter(prompt, max_tokens=max_tokens)
 
+
+def _compose_anthropic(
+    prompt: str,
+    *,
+    client: "Anthropic",
+    model: str,
+    max_tokens: int,
+) -> dict[str, str]:
+    """Legacy strict tool_use path (Anthropic). Rollback / injected-client."""
     resp = client.messages.create(
         model=model,
         max_tokens=max_tokens,
@@ -173,14 +203,11 @@ def compose_bilingual(
         messages=[{"role": "user", "content": prompt}],
     )
 
-    # Iterate response blocks; pick the forced tool_use block.
     for block in resp.content:
         block_type = getattr(block, "type", None)
         block_name = getattr(block, "name", None)
         if block_type == "tool_use" and block_name == "compose_bilingual":
             data = block.input  # strict mode guarantees this dict has en+ka
-            # Defensive read for type stability — strict mode makes this redundant
-            # but the cost is one dict lookup.
             return {
                 "en": str(data.get("en", "")),
                 "ka": str(data.get("ka", "")),
@@ -190,6 +217,99 @@ def compose_bilingual(
         "compose_bilingual: model produced no tool_use block for "
         "'compose_bilingual' (response.content blocks: "
         f"{[getattr(b, 'type', '?') for b in resp.content]})"
+    )
+
+
+# OpenRouter/Gemini JSON-mode system prompt. Gemini lacks Anthropic strict
+# grammar-constrained sampling, so we ask for a bare JSON object and parse it
+# defensively (mirrors the Phase 6.1 lesson: never index a possibly-empty body).
+_OPENROUTER_SYSTEM = (
+    "You are a family-facing bilingual medical-log composer. Reply with ONLY a "
+    'JSON object of the exact shape {"en": "...", "ka": "..."} and nothing else '
+    "(no markdown fences, no commentary). Both languages must convey the same "
+    "medical content with the same evidence framing; tone clinical but "
+    "family-friendly. 'ka' must be Georgian in Mkhedruli script. Do not include "
+    "PHI (names, MRN, DOB) — use 'A.J., 8-month-old infant with severe HIE' as "
+    "the patient referent. Avoid Georgian imperatives like 'უნდა', "
+    "'აუცილებლად', 'განიხილეთ', 'მოითხოვეთ' (Phase 6 D-05 lexicon)."
+)
+
+
+def _parse_en_ka(raw: str) -> dict[str, str] | None:
+    """Parse a {en, ka} object from a model reply. Tolerant of stray fences."""
+    candidate = raw.strip()
+    try:
+        data = json.loads(candidate)
+    except json.JSONDecodeError:
+        match = re.search(r"\{.*\}", candidate, flags=re.DOTALL)
+        if not match:
+            return None
+        try:
+            data = json.loads(match.group(0))
+        except json.JSONDecodeError:
+            return None
+    if not isinstance(data, dict) or "en" not in data or "ka" not in data:
+        return None
+    return {"en": str(data.get("en", "")), "ka": str(data.get("ka", ""))}
+
+
+def _compose_openrouter(
+    prompt: str, *, max_tokens: int, max_attempts: int = 2
+) -> dict[str, str]:
+    """Writer-tier path — Gemini via OpenRouter, JSON mode. Records one runs row."""
+    api_key = _openrouter_key()
+    model = models.TIER_MODEL["writer"]
+    messages = [
+        {"role": "system", "content": _OPENROUTER_SYSTEM},
+        {"role": "user", "content": prompt},
+    ]
+
+    last_err: str | None = None
+    for attempt in range(max_attempts):
+        start = datetime.now(timezone.utc)
+        try:
+            raw, in_tok, out_tok = _openrouter_complete(
+                model=model,
+                messages=messages,
+                max_tokens=max_tokens,
+                temperature=0.2,
+                api_key=api_key,
+                response_format={"type": "json_object"},
+            )
+        except LLMRefusal as e:
+            end = datetime.now(timezone.utc)
+            _record_call(
+                agent_id="compose_bilingual",
+                model=model,
+                start=start,
+                end=end,
+                input_tokens=0,
+                output_tokens=0,
+                exit_status="empty_or_refusal",
+                exit_reason=str(e)[:300],
+            )
+            last_err = str(e)
+            continue
+
+        end = datetime.now(timezone.utc)
+        parsed = _parse_en_ka(raw)
+        _record_call(
+            agent_id="compose_bilingual",
+            model=model,
+            start=start,
+            end=end,
+            input_tokens=in_tok,
+            output_tokens=out_tok,
+            exit_status="completed" if parsed else "parse_error",
+            exit_reason=None if parsed else "could not parse {en,ka} JSON",
+        )
+        if parsed:
+            return parsed
+        last_err = "unparseable JSON reply"
+
+    raise RuntimeError(
+        f"compose_bilingual: writer tier produced no valid {{en,ka}} after "
+        f"{max_attempts} attempts ({last_err})"
     )
 
 

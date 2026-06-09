@@ -163,13 +163,26 @@ def _openrouter_complete(
     max_tokens: int,
     temperature: float,
     api_key: str,
+    response_format: dict[str, Any] | None = None,
 ) -> tuple[str, int, int]:
     """POST one chat-completion to OpenRouter. Returns (text, in_tok, out_tok).
+
+    Args:
+        response_format: optional OpenAI-style hint, e.g. {"type": "json_object"},
+            forwarded to the gateway for providers that support JSON mode (Gemini).
 
     Raises:
         LLMRefusal: empty `choices` or empty `content` (refusal / safety stop).
         httpx.HTTPStatusError: non-2xx from the gateway.
     """
+    body: dict[str, Any] = {
+        "model": model,
+        "messages": messages,
+        "max_tokens": max_tokens,
+        "temperature": temperature,
+    }
+    if response_format is not None:
+        body["response_format"] = response_format
     r = httpx.post(
         f"{OPENROUTER_BASE_URL}/chat/completions",
         headers={
@@ -178,12 +191,7 @@ def _openrouter_complete(
             "HTTP-Referer": "https://github.com/navyforses/ALEKSANDRA_BRAIN_v4",
             "X-Title": "ALEKSANDRA_BRAIN",
         },
-        json={
-            "model": model,
-            "messages": messages,
-            "max_tokens": max_tokens,
-            "temperature": temperature,
-        },
+        json=body,
         timeout=180,
     )
     r.raise_for_status()
@@ -330,6 +338,7 @@ def call_llm(
     agent_id: str,
     task: str | None = None,
     model: str | None = None,
+    complexity: int | None = None,
     system: str | None = None,
     max_tokens: int = 4096,
     temperature: float = 0.2,
@@ -339,7 +348,9 @@ def call_llm(
 
     Model resolution (first wins):
       1. explicit ``model`` argument,
-      2. ``models.model_for(task)`` when ``task`` is given,
+      2. ``models.model_for(task, complexity=...)`` when ``task`` is given —
+         a thinker task with ``complexity`` below the gate runs on the worker
+         model instead (gated Opus policy),
       3. legacy Sonnet default.
 
     OpenRouter slugs ('provider/model') route through the OpenRouter gateway;
@@ -353,7 +364,11 @@ def call_llm(
             written first with exit_reason set.
     """
     load_env()
-    resolved = model or (models.model_for(task) if task else "claude-sonnet-4-5")
+    resolved = model or (
+        models.model_for(task, complexity=complexity)
+        if task
+        else "claude-sonnet-4-5"
+    )
 
     # Daily-budget gate — defence-in-depth alongside the n8n cron gate. Raises
     # BudgetExceeded before any provider call when today's spend is over the cap.
