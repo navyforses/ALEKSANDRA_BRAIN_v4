@@ -53,6 +53,28 @@ def test_is_openrouter_model():
     assert models.is_openrouter_model("claude-sonnet-4-5") is False
 
 
+def test_thinker_gating_by_complexity():
+    lo = models.THINKER_COMPLEXITY_MIN - 1
+    hi = models.THINKER_COMPLEXITY_MIN + 1
+    # short/simple reasoning runs on the cheap worker model
+    assert models.model_for("got", complexity=lo) == "deepseek/deepseek-chat"
+    # long/complex reasoning escalates to Opus
+    assert models.model_for("got", complexity=hi) == "anthropic/claude-opus-4-8"
+    # no complexity hint → full tier model (quality-safe default)
+    assert models.model_for("got") == "anthropic/claude-opus-4-8"
+    # gating never downgrades a worker task upward
+    assert models.model_for("extraction", complexity=hi) == "deepseek/deepseek-chat"
+
+
+def test_crew_llm_prefix_and_rollback(monkeypatch):
+    assert models.crew_llm("worker") == "openrouter/deepseek/deepseek-chat"
+    assert models.crew_llm("thinker") == "openrouter/anthropic/claude-opus-4-8"
+    assert models.crew_llm("writer") == "openrouter/google/gemini-2.5-flash"
+    monkeypatch.setenv("MODEL_PROVIDER", "anthropic")
+    assert models.crew_llm("worker") == "claude-haiku-4-5-20251001"
+    assert models.crew_llm("thinker") == "claude-opus-4-8"
+
+
 # --------------------------------------------------------------------------- #
 # call_llm provider dispatch
 # --------------------------------------------------------------------------- #

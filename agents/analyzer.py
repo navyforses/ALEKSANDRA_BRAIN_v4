@@ -13,6 +13,7 @@ from __future__ import annotations
 from crewai import Agent
 
 from agents.tools.analyzer_tools import neo4j_stats, run_graphiti
+from scripts.cognition import models
 
 # Phase 2 cross-cutting wiring. Analyzer turns a chunked paper into typed
 # Graphiti entities + RELATES_TO facts; neo4j_stats lets the agent monitor
@@ -32,7 +33,8 @@ You never invent a finding the paper does not support.
 """.strip()
 
 
-def build_analyzer(llm_model: str = "claude-sonnet-4-5") -> Agent:
+def build_analyzer(llm_model: str | None = None) -> Agent:
+    llm_model = llm_model or models.crew_llm("worker")  # 🔧 worker tier
     return Agent(
         role="Evidence Quality Assessor",
         goal=(

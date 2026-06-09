@@ -10,6 +10,8 @@ from __future__ import annotations
 
 from crewai import Agent
 
+from scripts.cognition import models
+
 from agents.tools.spider_tools import check_ledger_new, trigger_chunking
 
 # Phase 2 cross-cutting wiring (sub-phase 2-cross). These two tools let the
@@ -31,7 +33,8 @@ You are tireless, systematic, and never assume a search is "done".
 """.strip()
 
 
-def build_spider(llm_model: str = "claude-sonnet-4-5") -> Agent:
+def build_spider(llm_model: str | None = None) -> Agent:
+    llm_model = llm_model or models.crew_llm("worker")  # 🔧 worker tier
     return Agent(
         role="Research Paper Hunter",
         goal=(

@@ -145,6 +145,19 @@ def is_openrouter_model(model: str) -> bool:
     return "/" in model
 
 
+def crew_llm(tier: str) -> str:
+    """LiteLLM model string for CrewAI agents.
+
+    CrewAI resolves models through LiteLLM, which needs an explicit
+    ``openrouter/`` provider prefix to reach the gateway (and ``OPENROUTER_API_KEY``
+    in env). Under MODEL_PROVIDER=anthropic this returns the native Claude id,
+    which LiteLLM routes to Anthropic directly (rollback).
+    """
+    if provider() == "anthropic":
+        return TIER_MODEL_ANTHROPIC[tier]
+    return f"openrouter/{TIER_MODEL[tier]}"
+
+
 __all__ = [
     "TIER_MODEL",
     "TIER_MODEL_ANTHROPIC",
@@ -156,4 +169,6 @@ __all__ = [
     "model_for",
     "price_for",
     "is_openrouter_model",
+    "crew_llm",
+    "THINKER_COMPLEXITY_MIN",
 ]
