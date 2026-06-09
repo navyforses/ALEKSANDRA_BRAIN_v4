@@ -1,8 +1,22 @@
 # Multi-Provider Tiered Model Routing — Implementation Plan
 
-> **Status:** APPROVED, not yet started. Saved 2026-06-09 for cross-session continuation.
-> **Branch:** `claude/status-check-1ZMxG`
-> **Resume point:** Section 12 ("Where to resume"). Start with Phase A → B.
+> **Status:** IN PROGRESS. Saved 2026-06-09 for cross-session continuation.
+> **Branch:** `claude/status-check-1ZMxG` · **PR:** #10
+> **Resume point:** Section 12 ("Where to resume").
+>
+> **Progress (2026-06-09):**
+> - ✅ **Phase A done** — `scripts/cognition/models.py` registry + `llm.py` router
+>   (`call_llm(task=...)`, OpenRouter path, MODEL_PROVIDER rollback). 10 unit tests.
+> - ✅ **Phase B done (loop-critical)** — `graphiti_client.py` provider-aware
+>   (DeepSeek via OpenRouter + instrumented AsyncOpenAI), `relevance.py` →
+>   `task="relevance"`, `batch_ingest.py` honesty-log. 12 tests total green.
+>   ⚠️ Graphiti+DeepSeek structured-extraction compatibility is UNVERIFIED here
+>   (no Neo4j/graphiti in CI container) — needs the live curl in §7. Honesty-log
+>   will surface a recall regression.
+>   ↪️ `refactor/classify_edges.py` (worker tier) deferred — NOT in the live
+>   30-min tick (manual migration utility); convert in a follow-up.
+> - ⏭️ **Next:** Phase C (writer→Gemini), Phase D (thinker→Opus, gated), Phase E
+>   (budget cap $5 + digest health-check + verifier sweep).
 
 ---
 

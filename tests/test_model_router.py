@@ -136,3 +136,48 @@ def test_budget_gate_blocks_before_provider_call(llm, monkeypatch):
     with pytest.raises(BudgetExceeded):
         llm.call_llm(prompt="hi", agent_id="analyzer", task="extraction")
     or_path.assert_not_called()
+
+
+# --------------------------------------------------------------------------- #
+# Graphiti instrumentation — AsyncOpenAI chat.completions recording
+# --------------------------------------------------------------------------- #
+def test_instrumented_openai_records_completion_usage(llm):
+    import asyncio
+
+    class _Usage:
+        prompt_tokens = 20
+        completion_tokens = 9
+
+    class _Result:
+        usage = _Usage()
+
+    class _Inner:
+        async def create(self, **kwargs):
+            return _Result()
+
+    comp = llm._InstrumentedAsyncChatCompletions(_Inner(), "analyzer_graphiti")
+    out = asyncio.run(comp.create(model="deepseek/deepseek-chat", messages=[]))
+
+    assert out is not None
+    rec = llm._record_call.call_args.kwargs
+    assert rec["exit_status"] == "completed"
+    assert rec["input_tokens"] == 20 and rec["output_tokens"] == 9
+    assert rec["model"] == "deepseek/deepseek-chat"
+    assert rec["agent_id"] == "analyzer_graphiti"
+
+
+def test_instrumented_openai_records_failure(llm):
+    import asyncio
+
+    class _Inner:
+        async def create(self, **kwargs):
+            raise RuntimeError("deepseek 502")
+
+    comp = llm._InstrumentedAsyncChatCompletions(_Inner(), "analyzer_graphiti")
+    with pytest.raises(RuntimeError):
+        asyncio.run(comp.create(model="deepseek/deepseek-chat", messages=[]))
+
+    rec = llm._record_call.call_args.kwargs
+    assert rec["exit_status"] == "failed"
+    assert rec["input_tokens"] == 0 and rec["output_tokens"] == 0
+    assert "RuntimeError" in rec["exit_reason"]

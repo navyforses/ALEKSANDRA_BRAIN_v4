@@ -492,9 +492,118 @@ def make_instrumented_async_anthropic(
     )
 
 
+# ---------------------------------------------------------------------------
+# Async instrumentation surface — used by Graphiti's OpenAIClient (OpenRouter).
+# Mirrors the Anthropic wrapper above but for the OpenAI chat-completions shape
+# (`client.chat.completions.create`). Graphiti's internal extraction / dedup /
+# summarisation calls each write one `runs` row with agent_id + token+cost.
+# ---------------------------------------------------------------------------
+class _InstrumentedAsyncChatCompletions:
+    """Wraps AsyncOpenAI().chat.completions and records each create()."""
+
+    def __init__(self, inner: Any, agent_id: str) -> None:
+        self._inner = inner
+        self._agent_id = agent_id
+
+    async def create(self, *args: Any, **kwargs: Any) -> Any:
+        # Daily-budget gate — same contract as the sync path. Raises
+        # BudgetExceeded before the SDK call when today's spend is over.
+        check_daily_budget(raise_on_over=True)
+
+        model = kwargs.get("model", "unknown")
+        start = datetime.now(timezone.utc)
+        try:
+            result = await self._inner.create(*args, **kwargs)
+        except Exception as e:
+            end = datetime.now(timezone.utc)
+            _record_call(
+                agent_id=self._agent_id,
+                model=model,
+                start=start,
+                end=end,
+                input_tokens=0,
+                output_tokens=0,
+                exit_status="failed",
+                exit_reason=f"{type(e).__name__}: {str(e)[:600]}",
+            )
+            raise
+
+        end = datetime.now(timezone.utc)
+        usage = getattr(result, "usage", None)
+        in_t = int(getattr(usage, "prompt_tokens", 0) or 0) if usage else 0
+        out_t = int(getattr(usage, "completion_tokens", 0) or 0) if usage else 0
+        _record_call(
+            agent_id=self._agent_id,
+            model=model,
+            start=start,
+            end=end,
+            input_tokens=in_t,
+            output_tokens=out_t,
+            exit_status="completed",
+        )
+        return result
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._inner, name)
+
+
+class _InstrumentedAsyncChat:
+    def __init__(self, inner: Any, agent_id: str) -> None:
+        self._inner = inner
+        self.completions = _InstrumentedAsyncChatCompletions(
+            inner.completions, agent_id
+        )
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._inner, name)
+
+
+class _InstrumentedAsyncOpenAI:
+    """
+    Composition wrapper around openai.AsyncOpenAI that records every
+    `chat.completions.create()` to the runs ledger. Duck-types as AsyncOpenAI —
+    all other attributes forward to the inner client unchanged.
+    """
+
+    def __init__(
+        self, *, api_key: str, base_url: str, agent_id: str, max_retries: int = 1
+    ) -> None:
+        from openai import AsyncOpenAI
+
+        self._inner = AsyncOpenAI(
+            api_key=api_key, base_url=base_url, max_retries=max_retries
+        )
+        self._agent_id = agent_id
+        self.chat = _InstrumentedAsyncChat(self._inner.chat, agent_id)
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._inner, name)
+
+
+def make_instrumented_async_openai(
+    *,
+    agent_id: str,
+    api_key: str | None = None,
+    base_url: str | None = None,
+    max_retries: int = 1,
+) -> _InstrumentedAsyncOpenAI:
+    """Build an instrumented AsyncOpenAI-compatible client for Graphiti/OpenRouter."""
+    load_env()
+    resolved = api_key or os.environ.get("OPENROUTER_API_KEY", "").strip()
+    if not resolved:
+        raise RuntimeError("OPENROUTER_API_KEY missing from environment")
+    return _InstrumentedAsyncOpenAI(
+        api_key=resolved,
+        base_url=base_url or OPENROUTER_BASE_URL,
+        agent_id=agent_id,
+        max_retries=max_retries,
+    )
+
+
 __all__ = [
     "LLMRefusal",
     "call_claude",
     "call_llm",
     "make_instrumented_async_anthropic",
+    "make_instrumented_async_openai",
 ]
