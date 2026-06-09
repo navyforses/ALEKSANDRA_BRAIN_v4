@@ -24,10 +24,13 @@ Public surface
         Returns (today_spend_usd, is_over_budget). Today = since 00:00 UTC.
         If `raise_on_over=True` and over, raises BudgetExceeded.
 
-    DEFAULT_DAILY_BUDGET_USD = 1.50
-        Conservative default. Override per-call or via the DAILY_BUDGET_USD
-        env var (read on each call so n8n can change it without process
-        restart).
+    DEFAULT_DAILY_BUDGET_USD = 5.00
+        Post-multi-provider default (was 1.50). Worker+writer tiers are now
+        near-free (DeepSeek/Gemini) and Opus is gated, so steady-state spend is
+        ~$1-3/day; $5 gives headroom for a legitimate research burst while still
+        catching the 2026-06-01 regression shape ($67/day). Override per-call or
+        via the DAILY_BUDGET_USD env var (read on each call so n8n can change it
+        without a process restart).
 
 Failure modes
 -------------
@@ -48,7 +51,7 @@ import httpx
 from scripts.ledger import _supabase_creds, _supabase_headers, load_env
 
 
-DEFAULT_DAILY_BUDGET_USD: float = 1.50
+DEFAULT_DAILY_BUDGET_USD: float = 5.00
 
 
 class BudgetExceeded(RuntimeError):

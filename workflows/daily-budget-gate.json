@@ -47,7 +47,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// FND-04 — sum token_cost since midnight UTC for agent_run + fire_drill + llm_call.\nconst rows = $input.all().map(i => i.json);\nconst spend = rows.reduce((a, r) => a + parseFloat(r.token_cost || 0), 0);\nconst cap = parseFloat($env.DAILY_BUDGET_USD || '1.50');\nconst exceeded = spend > cap;\nreturn [{ json: {\n  spend_usd: Math.round(spend * 10000) / 10000,\n  cap_usd: cap,\n  row_count: rows.length,\n  exceeded,\n  budget_locked: exceeded,\n  checked_at: new Date().toISOString()\n} }];"
+        "jsCode": "// FND-04 — sum token_cost since midnight UTC for agent_run + fire_drill + llm_call.\nconst rows = $input.all().map(i => i.json);\nconst spend = rows.reduce((a, r) => a + parseFloat(r.token_cost || 0), 0);\nconst cap = parseFloat($env.DAILY_BUDGET_USD || '5.00');\nconst exceeded = spend > cap;\nreturn [{ json: {\n  spend_usd: Math.round(spend * 10000) / 10000,\n  cap_usd: cap,\n  row_count: rows.length,\n  exceeded,\n  budget_locked: exceeded,\n  checked_at: new Date().toISOString()\n} }];"
       },
       "name": "Compute Exceeded",
       "type": "n8n-nodes-base.code",
