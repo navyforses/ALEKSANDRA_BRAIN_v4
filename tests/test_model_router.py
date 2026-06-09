@@ -29,7 +29,7 @@ def test_task_to_tier_mapping():
 def test_model_for_default_openrouter():
     assert models.model_for("extraction") == "deepseek/deepseek-chat"
     assert models.model_for("got") == "anthropic/claude-opus-4-8"
-    assert models.model_for("translate") == "google/gemini-2.5-flash"
+    assert models.model_for("translate") == "google/gemini-3.5-flash"
 
 
 def test_model_for_anthropic_rollback(monkeypatch):
@@ -69,7 +69,7 @@ def test_thinker_gating_by_complexity():
 def test_crew_llm_prefix_and_rollback(monkeypatch):
     assert models.crew_llm("worker") == "openrouter/deepseek/deepseek-chat"
     assert models.crew_llm("thinker") == "openrouter/anthropic/claude-opus-4-8"
-    assert models.crew_llm("writer") == "openrouter/google/gemini-2.5-flash"
+    assert models.crew_llm("writer") == "openrouter/google/gemini-3.5-flash"
     monkeypatch.setenv("MODEL_PROVIDER", "anthropic")
     assert models.crew_llm("worker") == "claude-haiku-4-5-20251001"
     assert models.crew_llm("thinker") == "claude-opus-4-8"

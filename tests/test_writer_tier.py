@@ -35,7 +35,7 @@ def test_translate_openrouter_returns_text(tr, monkeypatch):
     assert out == "გამარჯობა"
     rec = tr._record_call.call_args.kwargs
     assert rec["exit_status"] == "ok"
-    assert rec["model"] == "google/gemini-2.5-flash"
+    assert rec["model"] == "google/gemini-3.5-flash"
 
 
 def test_translate_empty_input_skips_call(tr):
@@ -86,7 +86,7 @@ def test_compose_bilingual_openrouter_path(bi, monkeypatch):
     assert out == {"en": "Hello", "ka": "გამარჯობა"}
     rec = bi._record_call.call_args.kwargs
     assert rec["exit_status"] == "completed"
-    assert rec["model"] == "google/gemini-2.5-flash"
+    assert rec["model"] == "google/gemini-3.5-flash"
     assert rec["input_tokens"] == 30 and rec["output_tokens"] == 12
 
 
