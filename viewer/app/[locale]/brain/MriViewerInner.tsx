@@ -119,30 +119,27 @@ export default function MriViewerInner() {
   return (
     <section
       aria-labelledby="mri-viewer-heading"
-      className="rounded-[2rem] border border-white/10 bg-white/[0.045] p-6 md:p-8"
+      className="rounded border border-border bg-panel/15 p-6 md:p-8"
     >
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.28em] text-sky-200">
+          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
             {t("viewerLabel")}
           </p>
           <h2
             id="mri-viewer-heading"
-            className="mt-2 text-2xl font-black text-white md:text-3xl"
+            className="mt-1.5 text-xl font-bold text-foreground"
           >
             {t("title")}
           </h2>
         </div>
-        {/* A real <button> drives a hidden file input via ref: native focus
-            ring + native disabled announcement to assistive tech (avoids the
-            sr-only-input pattern whose focus ring lands on a 1px element). */}
         <button
           type="button"
           disabled={!ready}
           onClick={() => {
             if (ready) inputRef.current?.click();
           }}
-          className="inline-flex items-center justify-center rounded-full bg-sky-300 px-5 py-3 text-sm font-bold text-slate-950 transition hover:bg-sky-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-slate-400 motion-reduce:transition-none"
+          className="inline-flex items-center justify-center rounded bg-primary px-4 py-2.5 text-xs font-semibold text-primary-foreground hover:bg-primary/95 focus:outline-none disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground cursor-pointer"
         >
           {t("loadFile")}
         </button>
@@ -164,8 +161,8 @@ export default function MriViewerInner() {
         }}
         onDragLeave={() => setDragOver(false)}
         onDrop={onDrop}
-        className={`relative mt-5 h-[480px] w-full overflow-hidden rounded-2xl border bg-black transition-colors motion-reduce:transition-none ${
-          dragOver ? "border-sky-300" : "border-white/10"
+        className={`relative mt-5 h-[480px] w-full overflow-hidden rounded border bg-[#050607] transition-colors duration-150 ${
+          dragOver ? "border-medical-orange" : "border-border"
         }`}
       >
         <canvas
@@ -180,7 +177,7 @@ export default function MriViewerInner() {
         </p>
         {!fileName ? (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-6 text-center">
-            <p className="max-w-md text-sm leading-6 text-slate-400">
+            <p className="max-w-md text-xs leading-5 text-muted-foreground">
               {t("dropMriHint")}
             </p>
           </div>
@@ -188,22 +185,20 @@ export default function MriViewerInner() {
       </div>
 
       <div className="mt-4 flex flex-col gap-2">
-        {/* Persistent polite live region — present in the DOM at all times so
-            AT reliably announces the load confirmation when it appears. */}
         <p
           role="status"
           aria-live="polite"
           aria-atomic="true"
-          className="text-sm font-semibold text-slate-200 empty:hidden"
+          className="text-xs font-semibold text-foreground empty:hidden"
         >
           {fileName ? t("loadedFile", { name: fileName }) : ""}
         </p>
         {errKey ? (
-          <p role="alert" className="text-sm font-semibold text-rose-300">
+          <p role="alert" className="text-xs font-semibold text-medical-red">
             {t(errKey)}
           </p>
         ) : null}
-        <p className="text-xs leading-5 text-slate-400">{t("privacyNote")}</p>
+        <p className="text-xs leading-5 text-muted-foreground">{t("privacyNote")}</p>
       </div>
     </section>
   );

@@ -1,32 +1,47 @@
 @import "tailwindcss";
 
 :root {
-  /* Mayo Clinic / Linear crisp white background */
-  --background: 0 0% 100%;
-  --foreground: 222.2 84% 4.9%;
+  /* Calming warm-light paper background (Mayo Clinic style) */
+  --background: 40 16% 98%;      /* #faf9f6 */
+  --foreground: 224 20% 12%;     /* #181c20 */
 
-  /* 35% BRAIN panel background (slate-50 equivalent) */
-  --panel: 210 40% 98%;
+  /* Panels and cards */
+  --panel: 40 12% 95%;          /* #f2f1ec */
+  --muted: 40 10% 93%;
+  --muted-foreground: 215 16% 45%;
 
-  /* Muted components like subtle backgrounds */
-  --muted: 210 40% 96.1%;
-  --muted-foreground: 215.4 16.3% 46.9%;
+  /* Rigid, thin borders */
+  --border: 220 13% 88%;        /* #dfdfdf */
+  --input: 220 13% 88%;
+  --ring: 220 20% 20%;
 
-  /* Borders - thin and clean */
-  --border: 214.3 31.8% 91.4%;
-  --input: 214.3 31.8% 91.4%;
-  --ring: 221.2 83.2% 53.3%;
+  /* Semantic actions without glow */
+  --primary: 224 20% 12%;
+  --primary-foreground: 40 16% 98%;
+  --secondary: 40 10% 93%;
+  --secondary-foreground: 224 20% 12%;
 
-  /* Primary brand color - clinical dark blue/slate */
-  --primary: 222.2 47.4% 11.2%;
-  --primary-foreground: 210 40% 98%;
+  /* Strict border radius - NO highly rounded corners */
+  --radius: 0.375rem;
+}
 
-  /* Secondary actions */
-  --secondary: 210 40% 96.1%;
-  --secondary-foreground: 222.2 47.4% 11.2%;
+/* Soothing late-night charcoal dark mode when .dark class is active on html */
+html.dark, .dark {
+  --background: 220 10% 8%;     /* #121315 */
+  --foreground: 220 10% 88%;    /* #dfdfe2 */
 
-  /* Strict border radius - NO highly rounded corners (DESIGN.md) */
-  --radius: 0.5rem;
+  --panel: 220 10% 11%;         /* #1a1c1f */
+  --muted: 220 10% 14%;
+  --muted-foreground: 220 8% 60%;
+
+  --border: 220 10% 18%;        /* #2b2e32 */
+  --input: 220 10% 18%;
+  --ring: 220 10% 80%;
+
+  --primary: 220 10% 88%;
+  --primary-foreground: 220 10% 8%;
+  --secondary: 220 10% 14%;
+  --secondary-foreground: 220 10% 88%;
 }
 
 @theme {
@@ -44,12 +59,12 @@
   --color-secondary-foreground: hsl(var(--secondary-foreground));
 
   /* Strict medical semantic palette (DESIGN.md) */
-  --color-medical-red: #dc2626;
-  --color-medical-green: #059669;
-  --color-medical-orange: #d97706;
-  --color-medical-purple: #7c3aed;
-  --color-medical-blue: #2563eb;
-  --color-medical-yellow: #eab308;
+  --color-medical-red: #c2410c;      /* urgent (border/text only) */
+  --color-medical-green: #047857;    /* success/preserved */
+  --color-medical-orange: #b45309;   /* partial/warning */
+  --color-medical-purple: #6d28d9;   /* metadata/today */
+  --color-medical-blue: #1d4ed8;     /* info */
+  --color-medical-yellow: #a16207;
 
   /* Georgian UI uses Noto Sans Georgian first for calmer, more legible text. */
   --font-sans: var(--font-georgian), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
@@ -60,15 +75,16 @@
 }
 
 html {
-  background: #08111f;
+  background-color: hsl(var(--background));
   scroll-behavior: smooth;
   overflow-x: hidden;
+  transition: background-color 0.15s ease-out, color 0.15s ease-out;
 }
 
 body {
   min-height: 100vh;
   overflow-x: hidden;
-  background: #08111f;
+  background-color: hsl(var(--background));
   color: hsl(var(--foreground));
   font-feature-settings: "case" 1;
   text-rendering: optimizeLegibility;
@@ -85,71 +101,33 @@ body {
 }
 
 ::selection {
-  background: rgba(125, 211, 252, 0.25);
-  color: #f8fafc;
+  background: rgba(148, 163, 184, 0.15);
+  color: inherit;
 }
 
-/* Custom Micro-Animations */
-@keyframes shimmer {
-  100% {
-    transform: translateX(100%);
-  }
+/* Micro-animations: clean, fast, strict linear transitions */
+.transition-all-strict {
+  transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-@keyframes pulse-soft {
-  0%, 100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.6;
-    transform: scale(0.95);
-  }
-}
-
-@utility shimmer-loading {
-  position: relative;
-  overflow: hidden;
-  background-color: #f5f5f4;
-}
-
-.shimmer-loading::after {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  transform: translateX(-100%);
-  background-image: linear-gradient(
-    90deg,
-    rgba(255, 255, 255, 0) 0%,
-    rgba(255, 255, 255, 0.2) 20%,
-    rgba(255, 255, 255, 0.5) 60%,
-    rgba(255, 255, 255, 0) 100%
-  );
-  animation: shimmer 1.8s infinite;
-  content: '';
-}
-
-/* SVG Chart Micro-Interactions (scoped to .group wrappers so the donut
-   center circle and other bare SVG primitives are not affected). */
+/* SVG Chart adjustments for clinical look */
 svg .group circle {
-  transition: r 0.25s cubic-bezier(0.4, 0, 0.2, 1), stroke-width 0.25s ease;
+  transition: r 150ms ease-out, stroke-width 150ms ease-out;
 }
 
 svg .group:hover circle {
-  r: 6;
-  stroke-width: 2.5;
+  r: 5;
+  stroke-width: 2;
   cursor: pointer;
 }
 
 svg .group rect {
-  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), fill 0.2s ease;
+  transition: transform 150ms ease-out, fill 150ms ease-out;
   transform-origin: bottom;
 }
 
 svg .group:hover rect {
-  transform: scaleY(1.03);
+  transform: scaleY(1.01);
 }
 
 .skip-link {
@@ -158,185 +136,82 @@ svg .group:hover rect {
   top: 1rem;
   z-index: 9999;
   transform: translateY(-150%);
-  border-radius: 9999px;
-  background: #ffffff;
-  color: #0f172a;
-  padding: 0.75rem 1rem;
-  font-weight: 700;
-  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.22);
-  transition: transform 0.16s ease;
+  background-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  padding: 0.5rem 1rem;
+  font-weight: 600;
+  border: 1px solid hsl(var(--border));
+  border-radius: var(--radius);
+  transition: transform 150ms ease-out;
 }
 
 .skip-link:focus {
   transform: translateY(0);
-  outline: 3px solid #67e8f9;
-  outline-offset: 3px;
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
 }
 
 #main:focus {
   outline: none;
 }
 
-/* Portal document reader: title-only cards open into an A4-like article sheet. */
-@keyframes portal-reader-backdrop-in {
-  from {
-    opacity: 0;
-    backdrop-filter: blur(0);
-  }
-  to {
-    opacity: 1;
-    backdrop-filter: blur(14px);
-  }
-}
-
-@keyframes portal-document-open {
-  0% {
-    opacity: 0;
-    clip-path: inset(0 48% 96% 48% round 1.25rem);
-    transform: translateY(2.75rem) scale(0.86) rotateX(14deg);
-    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.32);
-  }
-  42% {
-    opacity: 1;
-    clip-path: inset(0 18% 42% 18% round 1.25rem);
-    transform: translateY(0.75rem) scale(0.97) rotateX(4deg);
-  }
-  72% {
-    clip-path: inset(0 0 0 0 round 1.25rem);
-    transform: translateY(-0.18rem) scale(1.012) rotateX(0deg);
-  }
-  100% {
-    opacity: 1;
-    clip-path: inset(0 0 0 0 round 1.25rem);
-    transform: translateY(0) scale(1) rotateX(0deg);
-    box-shadow: 0 40px 120px rgba(0, 0, 0, 0.45);
-  }
-}
-
-@keyframes portal-reader-content-in {
-  from {
-    opacity: 0;
-    transform: translateY(0.85rem);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes portal-reader-sheen {
-  0% {
-    opacity: 0;
-    transform: translateX(-120%) rotate(10deg);
-  }
-  42% {
-    opacity: 0.65;
-  }
-  100% {
-    opacity: 0;
-    transform: translateX(120%) rotate(10deg);
-  }
-}
-
+/* Portal document reader A4 sheets */
 .portal-reader-backdrop {
-  perspective: 1200px;
-  animation: portal-reader-backdrop-in 220ms ease-out both;
-}
-
-.portal-a4-sheet {
-  transform-origin: top center;
-  animation: portal-document-open 520ms cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-.portal-a4-sheet::before {
-  content: "";
-  position: absolute;
-  inset: 0.75rem;
-  pointer-events: none;
-  border: 1px solid rgba(148, 163, 184, 0.28);
-  border-radius: 0.9rem;
-}
-
-.portal-a4-sheet::after {
-  content: "";
-  position: absolute;
-  inset: -20% auto -20% -35%;
-  width: 34%;
-  pointer-events: none;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.68), transparent);
-  filter: blur(10px);
-  animation: portal-reader-sheen 760ms ease-out 80ms both;
-}
-
-.portal-reader-header,
-.portal-reader-body,
-.portal-reader-footer {
-  animation: portal-reader-content-in 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-.portal-reader-header {
-  animation-delay: 180ms;
-}
-
-.portal-reader-body {
-  animation-delay: 260ms;
-}
-
-.portal-reader-footer {
-  animation-delay: 340ms;
-}
-
-.portal-document-body p + p {
-  margin-top: 1.1rem;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .portal-reader-backdrop,
-  .portal-a4-sheet,
-  .portal-a4-sheet::after,
-  .portal-reader-header,
-  .portal-reader-body,
-  .portal-reader-footer {
-    animation: none;
-  }
-}
-
-.portal-card-title {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: center;
   overflow: hidden;
+  background-color: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+  padding: 1rem;
 }
 
-/* The A4 reader scrolls inside the opened sheet, not in the page behind it. */
 .portal-a4-sheet {
-  scrollbar-gutter: stable;
-  overscroll-behavior: contain;
-  -webkit-overflow-scrolling: touch;
+  position: relative;
+  width: 100%;
+  max-width: 794px;
+  max-height: calc(100vh - 4rem);
+  overflow-y: auto;
+  border-radius: var(--radius);
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  border: 1px solid hsl(var(--border));
+  padding: 2.5rem;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
 }
 
 .portal-a4-sheet::-webkit-scrollbar {
-  width: 0.85rem;
+  width: 8px;
 }
 
 .portal-a4-sheet::-webkit-scrollbar-track {
-  background: rgba(226, 232, 240, 0.9);
-  border-radius: 9999px;
-  margin: 1.25rem 0;
+  background: hsl(var(--panel));
 }
 
 .portal-a4-sheet::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, #38bdf8, #0f172a);
-  border: 3px solid rgba(226, 232, 240, 0.9);
-  border-radius: 9999px;
+  background: hsl(var(--border));
+  border-radius: var(--radius);
 }
 
-.portal-a4-sheet::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, #0ea5e9, #020617);
-}
-
-.portal-a4-sheet {
-  scrollbar-color: #0ea5e9 rgba(226, 232, 240, 0.9);
-  scrollbar-width: thin;
+/* Printable layout styling */
+@media print {
+  body {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+  .portal-a4-sheet {
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
 }

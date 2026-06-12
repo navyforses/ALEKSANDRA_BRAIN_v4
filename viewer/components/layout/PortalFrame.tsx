@@ -1,38 +1,20 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  BookOpen,
-  Brain,
-  FileText,
-  FlaskConical,
-  Home,
-  Info,
-  Layers3,
-  MessageSquareText,
-  ShieldCheck,
-  Stethoscope,
-  type LucideIcon,
-} from "lucide-react";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 
 type Locale = "en" | "ka";
-type NavItem = { href: string; labelKa: string; labelEn: string; helperKa: string; helperEn: string; icon: LucideIcon };
+type NavItem = { href: string; labelKa: string; labelEn: string; helperKa: string; helperEn: string };
 
 const primaryNav: NavItem[] = [
-  { href: "/", labelKa: "მთავარი", labelEn: "Home", helperKa: "მოკლე სურათი", helperEn: "Overview", icon: Home },
-  { href: "/evidence-map", labelKa: "მტკიცებულება", labelEn: "Evidence", helperKa: "წყაროები და ხარისხი", helperEn: "Sources and grade", icon: BookOpen },
-  { href: "/hypotheses", labelKa: "ჰიპოთეზები", labelEn: "Hypotheses", helperKa: "რა მოწმდება", helperEn: "What is being tested", icon: FlaskConical },
-  { href: "/therapies", labelKa: "თერაპიები", labelEn: "Therapies", helperKa: "მხოლოდ კვლევითი საზღვრით", helperEn: "Research boundary", icon: Stethoscope },
-  { href: "/brain", labelKa: "ტვინის რუკა", labelEn: "Brain map", helperKa: "კავშირები და კონტექსტი", helperEn: "Context and links", icon: Brain },
-  { href: "/resources", labelKa: "ბრიფი", labelEn: "Brief", helperKa: "ექიმთან წასაღები", helperEn: "For the doctor visit", icon: FileText },
-];
-
-const secondaryLinks: NavItem[] = [
-  { href: "/dashboard", labelKa: "სრული პანელი", labelEn: "Full panel", helperKa: "დეტალური ხედვა", helperEn: "Detailed view", icon: Layers3 },
-  { href: "/how-it-works", labelKa: "საზღვარი", labelEn: "Boundary", helperKa: "როგორ წავიკითხოთ", helperEn: "How to read", icon: ShieldCheck },
+  { href: "/", labelKa: "დღეს", labelEn: "Today", helperKa: "კვირის რეზიუმე და შეტანა", helperEn: "Weekly brief & upload" },
+  { href: "/library", labelKa: "ბიბლიოთეკა", labelEn: "Library", helperKa: "სტატიები და ჰიპოთეზები", helperEn: "Papers and hypotheses" },
+  { href: "/brain", labelKa: "ტვინი", labelEn: "Private Brain", helperKa: "ლოკალური MRI მნახველი", helperEn: "Local MRI viewer" },
+  { href: "/journal", labelKa: "აქტივობა", labelEn: "Journal", helperKa: "ქმედებები და ჟურნალი", helperEn: "Audit & actions" },
+  { href: "/settings", labelKa: "პარამეტრები", labelEn: "Settings", helperKa: "ენის გადართვა და სისტემა", helperEn: "Language & system config" },
 ];
 
 function normalizePath(pathname: string, locale: Locale) {
@@ -49,117 +31,172 @@ function isActive(current: string, href: string) {
   return current === href || current.startsWith(`${href}/`);
 }
 
-function NavLink({ item, locale, active, compact = false }: { item: NavItem; locale: Locale; active: boolean; compact?: boolean }) {
-  const Icon = item.icon;
-  const isKa = locale === "ka";
-
-  return (
-    <Link
-      href={localizedHref(locale, item.href)}
-      className={`group flex items-center gap-3 rounded-2xl border px-3 py-3 text-left transition duration-200 focus:outline-none focus:ring-2 focus:ring-sky-300/70 ${
-        active
-          ? "border-sky-300/25 bg-sky-300/[0.08] text-white"
-          : "border-transparent text-slate-300 hover:border-white/10 hover:bg-white/[0.045] hover:text-white"
-      }`}
-    >
-      <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl border ${active ? "border-sky-300/25 bg-sky-300/10 text-sky-100" : "border-white/10 bg-white/[0.035] text-slate-400 group-hover:text-sky-100"}`}>
-        <Icon className="h-4 w-4" />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-sm font-semibold tracking-normal">{isKa ? item.labelKa : item.labelEn}</span>
-        {!compact ? <span className="mt-0.5 block truncate text-[0.7rem] leading-4 text-slate-500">{isKa ? item.helperKa : item.helperEn}</span> : null}
-      </span>
-    </Link>
-  );
-}
-
 export default function PortalFrame({ children, locale }: { children: ReactNode; locale: Locale }) {
   const pathname = usePathname();
   const currentPath = normalizePath(pathname || "/", locale);
   const isKa = locale === "ka";
 
-  return (
-    <div className="min-h-screen bg-[#08111f] text-slate-100 selection:bg-sky-300/25 selection:text-sky-50">
-      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_20%_-10%,rgba(14,165,233,0.16),transparent_28%),linear-gradient(180deg,#08111f_0%,#0a1220_48%,#070d18_100%)]" />
-      <div className="relative grid min-h-screen xl:grid-cols-[16rem_minmax(0,1fr)_20rem]">
-        <aside className="border-b border-white/10 bg-[#091323]/90 px-4 py-4 backdrop-blur-xl xl:sticky xl:top-0 xl:h-screen xl:border-b-0 xl:border-r xl:overflow-y-auto">
-          <Link href={localizedHref(locale, "/")} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.035] px-3 py-3 transition hover:border-sky-300/25 hover:bg-white/[0.055]">
-            <span className="grid h-10 w-10 place-items-center rounded-xl border border-sky-300/20 bg-sky-300/[0.08] text-sky-100">
-              <Brain className="h-5 w-5" />
-            </span>
-            <span className="min-w-0">
-              <span className="block truncate text-sm font-semibold tracking-normal text-white">Aleksandra</span>
-              <span className="block text-[0.72rem] leading-4 text-slate-400">{isKa ? "კვლევის ნავიგატორი" : "Research navigator"}</span>
-            </span>
-          </Link>
+  const [darkMode, setDarkMode] = useState(false);
+  const [assistantOpen, setAssistantOpen] = useState(true);
 
-          <div className="mt-4 rounded-2xl border border-amber-200/15 bg-amber-200/[0.045] p-3 text-[0.74rem] leading-5 text-amber-50/80">
-            <div className="flex items-center gap-2 font-semibold text-amber-50">
-              <ShieldCheck className="h-4 w-4" />
+  // Initialize theme from localStorage or default dark/light
+  useEffect(() => {
+    const root = window.document.documentElement;
+    const isDark = localStorage.getItem("theme") === "dark" || 
+      (!("theme" in localStorage) && window.matchMedia("(prefers-color-scheme: dark)").matches);
+    
+    setDarkMode(isDark);
+    if (isDark) {
+      root.classList.add("dark");
+    } else {
+      root.classList.remove("dark");
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    const root = window.document.documentElement;
+    if (darkMode) {
+      root.classList.remove("dark");
+      localStorage.setItem("theme", "light");
+      setDarkMode(false);
+    } else {
+      root.classList.add("dark");
+      localStorage.setItem("theme", "dark");
+      setDarkMode(true);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-background text-foreground transition-colors duration-150 selection:bg-neutral-200/50 dark:selection:bg-neutral-800/50">
+      <div className="relative mx-auto grid min-h-screen max-w-[1440px] grid-cols-1 border-x border-border md:grid-cols-[16rem_minmax(0,1fr)] lg:grid-cols-[16rem_minmax(0,1fr)_20rem]">
+        
+        {/* Navigation Sidebar */}
+        <aside className="border-b border-border bg-panel/30 px-5 py-6 md:sticky md:top-0 md:h-screen md:border-b-0 md:border-r md:overflow-y-auto">
+          <div className="mb-8 flex items-baseline justify-between">
+            <Link href={localizedHref(locale, "/")} className="group block focus:outline-none">
+              <span className="block text-xs font-bold uppercase tracking-[0.25em] text-foreground/40">ALEKSANDRA</span>
+              <span className="block text-lg font-bold tracking-tight text-foreground group-hover:underline">BRAIN</span>
+            </Link>
+            <span className="rounded border border-border px-1.5 py-0.5 text-[0.65rem] font-semibold text-foreground/50">
+              v4.0
+            </span>
+          </div>
+
+          <div className="mb-6 border-l border-medical-orange/30 pl-3 py-1 text-[0.72rem] leading-relaxed text-muted-foreground">
+            <div className="font-semibold text-foreground/80 flex items-center gap-1.5">
+              <span>●</span>
               {isKa ? "მხოლოდ კვლევისთვის" : "Research only"}
             </div>
-            <p className="mt-1">{isKa ? "საიტი არ სვამს დიაგნოზს და არ ცვლის ექიმის გადაწყვეტილებას." : "This portal does not diagnose or replace clinical judgment."}</p>
+            <p className="mt-1">
+              {isKa ? "პორტალი არ სვამს დიაგნოზს. გადაწყვეტილებებს იღებს ექიმი." : "This portal does not diagnose. Clinicians make all decisions."}</p>
           </div>
 
-          <nav aria-label={isKa ? "მთავარი მენიუ" : "Primary menu"} className="mt-5 space-y-1.5">
-            {primaryNav.map((item) => (
-              <NavLink key={item.href} item={item} locale={locale} active={isActive(currentPath, item.href)} />
-            ))}
+          <nav aria-label={isKa ? "მთავარი მენიუ" : "Primary menu"} className="space-y-1">
+            <p className="px-1 py-1.5 text-[0.68rem] font-bold uppercase tracking-wider text-muted-foreground/60">
+              {isKa ? "სარჩევი" : "Contents"}
+            </p>
+            {primaryNav.map((item) => {
+              const active = isActive(currentPath, item.href);
+              return (
+                <Link
+                  key={item.href}
+                  href={localizedHref(locale, item.href)}
+                  className={`group block rounded-md px-3 py-2 text-left transition duration-150 focus:outline-none focus:ring-1 focus:ring-ring ${
+                    active
+                      ? "bg-panel border border-border font-medium text-foreground"
+                      : "border border-transparent text-muted-foreground hover:text-foreground hover:bg-panel/50"
+                  }`}
+                >
+                  <span className="block text-sm leading-normal">{isKa ? item.labelKa : item.labelEn}</span>
+                  <span className="block text-[0.68rem] leading-relaxed text-muted-foreground/75 group-hover:text-muted-foreground">
+                    {isKa ? item.helperKa : item.helperEn}
+                  </span>
+                </Link>
+              );
+            })}
           </nav>
-
-          <div className="mt-5 border-t border-white/10 pt-4">
-            <p className="px-3 text-[0.68rem] font-semibold text-slate-500">{isKa ? "დამატებით" : "More"}</p>
-            <div className="mt-2 space-y-1">
-              {secondaryLinks.map((item) => (
-                <NavLink key={item.href} item={item} locale={locale} active={isActive(currentPath, item.href)} compact />
-              ))}
-            </div>
-          </div>
         </aside>
 
-        <div className="min-w-0 border-white/10 xl:border-r">
-          <header className="sticky top-0 z-40 border-b border-white/10 bg-[#091323]/82 px-4 py-3 backdrop-blur-xl sm:px-6">
-            <div className="flex flex-wrap items-center justify-between gap-3">
+        {/* Middle Main Content */}
+        <div className="min-w-0 border-border md:border-r">
+          <header className="sticky top-0 z-40 border-b border-border bg-background/90 px-6 py-3.5 backdrop-blur-md">
+            <div className="flex items-center justify-between gap-4">
               <div className="min-w-0">
-                <p className="text-xs font-medium leading-5 text-slate-400">{isKa ? "მტკიცებულება → რისკი → ექიმთან კითხვა" : "Evidence → risk → doctor question"}</p>
-                <p className="text-sm font-semibold text-white">{isKa ? "მოკლე გზა კვლევიდან უსაფრთხო საუბრამდე" : "A short path from research to safe discussion"}</p>
+                <h2 className="text-sm font-semibold text-foreground tracking-tight">
+                  {isKa ? "კვლევითი სამუშაო რვეული" : "Clinical Research Notebook"}
+                </h2>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="hidden rounded-full border border-emerald-300/20 bg-emerald-300/[0.06] px-3 py-1.5 text-xs font-semibold text-emerald-100 md:inline-flex">
-                  {isKa ? "ექიმი იღებს გადაწყვეტილებას" : "Doctor decides"}
-                </span>
+              <div className="flex items-center gap-4">
+                <button
+                  type="button"
+                  onClick={toggleTheme}
+                  className="text-xs text-muted-foreground hover:text-foreground font-mono focus:outline-none"
+                  aria-label={isKa ? "თემის გადართვა" : "Toggle theme"}
+                >
+                  {darkMode ? (isKa ? "[დღე]" : "[Light]") : (isKa ? "[ღამე]" : "[Dark]")}
+                </button>
                 <LanguageSwitcher />
               </div>
             </div>
           </header>
-          <main id="main" tabIndex={-1} className="min-h-[calc(100vh-4rem)] p-4 sm:p-6">
+
+          <main id="main" tabIndex={-1} className="min-h-[calc(100vh-4.5rem)] p-6 sm:p-8">
             {children}
           </main>
         </div>
 
-        <aside className="bg-[#091323]/78 px-4 py-4 backdrop-blur-xl xl:sticky xl:top-0 xl:h-screen xl:overflow-y-auto">
-          <section className="rounded-3xl border border-white/10 bg-white/[0.035] p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <h2 className="text-sm font-semibold text-white">{isKa ? "კვლევის ასისტენტი" : "Research assistant"}</h2>
-                <p className="mt-3 rounded-2xl border border-dashed border-white/15 bg-white/[0.035] p-3 text-[0.72rem] font-semibold leading-5 text-slate-300">{isKa ? "მონაცემი არ არის" : "No data available"}</p>
-              </div>
-              <span className="grid h-9 w-9 place-items-center rounded-xl border border-sky-300/20 bg-sky-300/[0.07] text-sky-100">
-                <MessageSquareText className="h-4 w-4" />
-              </span>
-            </div>
+        {/* Right Research Assistant Sidebar */}
+        <aside className={`bg-panel/10 p-5 lg:block lg:sticky lg:top-0 lg:h-screen lg:overflow-y-auto ${assistantOpen ? "block border-t border-border lg:border-t-0" : "hidden"}`}>
+          <div className="flex items-center justify-between border-b border-border pb-3 mb-4">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              {isKa ? "ასისტენტი" : "Assistant"}
+            </h3>
+            <button
+              type="button"
+              onClick={() => setAssistantOpen(false)}
+              className="text-xs text-muted-foreground hover:text-foreground lg:hidden focus:outline-none"
+            >
+              {isKa ? "[დახურვა]" : "[Close]"}
+            </button>
+          </div>
 
-            <div className="mt-4 rounded-2xl border border-white/10 bg-[#0b1424] p-3">
-              <div className="flex items-center gap-2 text-sm font-semibold text-white">
-                <Info className="h-4 w-4 text-sky-100" />
-                {isKa ? "უსაფრთხო პასუხის წესი" : "Safe answer rule"}
-              </div>
-              <p className="mt-2 text-[0.72rem] leading-5 text-slate-400">
-                {isKa ? "თუ წყაროთი დადასტურებული მონაცემი არ არსებობს, ინტერფეისი წერს: „მონაცემი არ არის“." : "If source-backed data does not exist, the interface says: “No data available.”"}
+          <div className="space-y-4">
+            <div className="rounded border border-border bg-panel/20 p-4">
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                {isKa 
+                  ? "სისტემა მუდმივად აანალიზებს ახალ ლიტერატურას. თუ შეამჩნევს რელევანტურ კავშირს, აქ გამოჩნდება რჩევები."
+                  : "The system monitors scientific literature. When it finds relevant connections, suggestions will appear here."
+                }
+              </p>
+              <p className="mt-3 text-[0.68rem] text-medical-orange font-semibold">
+                {isKa ? "● მონაცემი ჯერ არ არის" : "● No new signals"}
               </p>
             </div>
-          </section>
+
+            <div className="rounded border border-border p-4 bg-background">
+              <h4 className="text-xs font-bold text-foreground">
+                {isKa ? "უსაფრთხოების წესები" : "Privacy & Safety"}
+              </h4>
+              <ul className="mt-2 space-y-2 text-[0.72rem] leading-relaxed text-muted-foreground list-disc pl-4">
+                <li>{isKa ? "MRI მონაცემები არასოდეს ტოვებს თქვენს ბრაუზერს." : "MRI data never leaves your browser."}</li>
+                <li>{isKa ? "ყველა ჰიპოთეზას აქვს წყარო — AI არაფერს იგონებს." : "Every hypothesis carries provenance — no fabrications."}</li>
+                <li>{isKa ? "ნებისმიერი ქმედების გაუქმება შესაძლებელია 24 საათში." : "All database writes have a 24-hour safety undo net."}</li>
+              </ul>
+            </div>
+          </div>
         </aside>
+
+        {/* Floating open assistant link when collapsed */}
+        {!assistantOpen && (
+          <button
+            type="button"
+            onClick={() => setAssistantOpen(true)}
+            className="fixed bottom-4 right-4 z-50 rounded-full border border-border bg-panel px-4 py-2.5 text-xs font-bold shadow-sm lg:hidden focus:outline-none"
+          >
+            {isKa ? "ასისტენტის გახსნა" : "Open Assistant"}
+          </button>
+        )}
+
       </div>
     </div>
   );
