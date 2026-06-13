@@ -43,14 +43,17 @@ from datetime import datetime, timezone
 import httpx
 from neo4j import GraphDatabase
 
+from scripts.cognition import models
 from scripts.cognition.llm import call_llm
+from scripts.hypothesis.validate import validate
 from scripts.ledger import _supabase_creds, _supabase_headers, load_env
 from scripts.rag.retrieve import retrieve
 
 # ------------------------------------------------------------------
 # Config
 # ------------------------------------------------------------------
-MODEL = "claude-sonnet-4-5"  # per CLAUDE.md default
+MODEL = "claude-sonnet-4-5"  # legacy/reference only — real model resolved per
+# call via models.model_for("got"); see COG-5 in _insert_hypotheses.
 TEMPERATURE = 0.4
 MAX_TOKENS = 8192
 GROUP_ID = "hie_research"
@@ -254,10 +257,16 @@ def _parse_hypotheses(raw: str) -> list[dict]:
 # ------------------------------------------------------------------
 # Step 4: write to Supabase
 # ------------------------------------------------------------------
-def _insert_hypotheses(rows: list[dict]) -> list[str]:
-    """Insert into Supabase hypotheses table. Returns new row UUIDs."""
+def _insert_hypotheses(rows: list[dict], *, generated_by: str) -> list[str]:
+    """Insert into Supabase hypotheses table. Returns new row UUIDs.
+
+    Each row is gated by the COG-3 validator: it surfaces as 'under_review' only
+    if it passes >=3/5 deterministic rules, else it is held as 'new'. The
+    promoted-vs-held tally is printed so a borderline lead is never silently lost.
+    """
     url, key = _supabase_creds()
     inserted: list[str] = []
+    promoted = 0
     now = datetime.now(timezone.utc).isoformat()
 
     for h in rows:
@@ -275,6 +284,14 @@ def _insert_hypotheses(rows: list[dict]) -> list[str]:
         # UUIDs. We store the source_id strings in ai_reasoning JSON and leave
         # supporting_papers empty for now — Phase 2.5 will join source_ids
         # back to papers.id and rewrite the array.
+        #
+        # COG-3: gate the row. With no ledger_ids/entity_match available at
+        # insert time, only the 3 text rules can pass; >=3/5 -> surface as
+        # 'under_review', else hold as 'new' for later review.
+        verdict = validate(h)
+        status = "under_review" if verdict["passing"] else "new"
+        if status == "under_review":
+            promoted += 1
         body = {
             "id": str(uuid.uuid4()),
             "title": (h.get("title") or "")[:300],
@@ -301,8 +318,8 @@ def _insert_hypotheses(rows: list[dict]) -> list[str]:
             "discovery_method": (h.get("discovery_method") or "")[:300],
             "recommended_action": (h.get("recommended_action") or "")[:2000],
             "contact_researcher": (h.get("contact_researcher") or "")[:200],
-            "status": "new",
-            "generated_by": MODEL,
+            "status": status,
+            "generated_by": generated_by,
             "generation_batch": f"phase2c_run_{now}",
         }
         r = httpx.post(
@@ -315,6 +332,10 @@ def _insert_hypotheses(rows: list[dict]) -> list[str]:
             inserted.append(body["id"])
         else:
             print(f"  insert fail HTTP {r.status_code}: {r.text[:300]}")
+    print(
+        f"  validator: {promoted} promoted (under_review), "
+        f"{len(rows) - promoted} held (new) of {len(rows)}"
+    )
     return inserted
 
 
@@ -362,7 +383,11 @@ def run_first(max_hypotheses: int = 5) -> dict:
     parsed = parsed[:max_hypotheses]
     print(f"LLM proposed {len(parsed)} hypotheses")
 
-    ids = _insert_hypotheses(parsed)
+    # COG-5: record the model actually used. _call_claude routes via
+    # call_llm(task="got"), so the real model is the thinker-tier slug the
+    # router picks for this prompt — not the legacy MODEL constant.
+    resolved_model = models.model_for("got", complexity=len(user))
+    ids = _insert_hypotheses(parsed, generated_by=resolved_model)
     print(f"inserted {len(ids)} rows into Supabase hypotheses")
 
     return {

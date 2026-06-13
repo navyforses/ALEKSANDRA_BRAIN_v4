@@ -23,6 +23,7 @@ import httpx
 from crewai.tools import tool
 from neo4j import GraphDatabase
 
+from scripts.hypothesis.validate import validate
 from scripts.ledger import _supabase_creds, _supabase_headers, load_env
 
 
@@ -61,26 +62,9 @@ def validate_hypothesis(hypothesis_id: str) -> str:
         return json.dumps({"error": f"hypothesis {hypothesis_id} not found"})
     h = rows[0]
 
-    checks: dict[str, bool] = {}
-
-    # Rule 1: title is plausible (not empty, not generic)
-    checks["title_present"] = bool(h.get("title")) and len(h["title"]) >= 8
-
-    # Rule 2: confidence is not 1.0 (overconfident) — we use enum so check for 'high'
-    checks["confidence_not_overconfident"] = (
-        h.get("confidence_level")
-        in (
-            "moderate",
-            "low",
-            "very_low",
-            None,
-        )
-        or h.get("confidence_level") == "high"
-        and (h.get("novelty_score") or 0) < 0.9
-    )
-
-    # Rule 3: every supporting_paper id resolves in evidence_ledger
+    # Rule 3 input: which supporting_papers resolve in evidence_ledger.
     sp = h.get("supporting_papers") or []
+    real: set[str] = set()
     if sp:
         id_list = ",".join(f'"{i}"' for i in sp)
         r = httpx.get(
@@ -89,12 +73,9 @@ def validate_hypothesis(hypothesis_id: str) -> str:
             headers=_supabase_headers(key, prefer="count=none"),
             timeout=15,
         )
-        real = {row["id"] for row in r.json()} if r.status_code == 200 else set()
-        checks["citations_round_trip"] = len(real) == len(sp) and len(sp) > 0
-    else:
-        checks["citations_round_trip"] = False
+        real = {str(row["id"]) for row in r.json()} if r.status_code == 200 else set()
 
-    # Rule 4: title references a real Entity in Neo4j (drug / disease / etc.)
+    # Rule 4 input: does the title ground in a real Neo4j entity?
     drv = GraphDatabase.driver(
         os.environ["NEO4J_URI"],
         auth=(os.environ["NEO4J_USERNAME"], os.environ["NEO4J_PASSWORD"]),
@@ -117,20 +98,16 @@ def validate_hypothesis(hypothesis_id: str) -> str:
                 matched_entity = row["name"]
                 break
     drv.close()
-    checks["title_grounds_in_graph"] = matched_entity is not None
 
-    # Rule 5: recommended_action is concrete (not empty, doesn't say 'consider')
-    rec = (h.get("recommended_action") or "").lower()
-    checks["action_concrete"] = bool(rec) and "consider" not in rec and len(rec) >= 20
-
-    passing_count = sum(1 for v in checks.values() if v)
+    # Single source of truth: the same pure rules got_pipeline gates on.
+    result = validate(h, ledger_ids=real, entity_match=matched_entity is not None)
     return json.dumps(
         {
             "hypothesis_id": hypothesis_id,
             "title": h.get("title"),
-            "checks": checks,
-            "passing": passing_count >= 3,
-            "passing_count": passing_count,
+            "checks": result["checks"],
+            "passing": result["passing"],
+            "passing_count": result["passing_count"],
             "matched_entity": matched_entity,
         }
     )

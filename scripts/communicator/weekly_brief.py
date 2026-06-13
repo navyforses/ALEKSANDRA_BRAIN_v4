@@ -423,6 +423,9 @@ def collect_sections(
                 SELECT title, status, confidence_level, reviewed_at, supporting_papers
                 FROM hypotheses
                 WHERE COALESCE(reviewed_at, created_at) >= %s
+                  AND status IN (
+                      'under_review', 'promising', 'pursuing', 'tested', 'confirmed'
+                  )
                 ORDER BY COALESCE(reviewed_at, created_at) DESC
                 LIMIT 10
                 """,
