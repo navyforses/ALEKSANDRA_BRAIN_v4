@@ -298,7 +298,9 @@ def _build_papers_row(ledger_row: dict) -> dict | None:
         "ct_id": ct_id,
         "doi": doi,
         "pmc_id": pmc_id,
-        "abstract": build_bilingual(meta.get("abstract_excerpt")),
+        "abstract": build_bilingual(
+            meta.get("abstract_full") or meta.get("abstract_excerpt")
+        ),
         "authors": meta.get("authors"),
         "journal": meta.get("journal"),
         "publication_year": publication_year,

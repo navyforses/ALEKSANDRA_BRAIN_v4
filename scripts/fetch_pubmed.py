@@ -165,7 +165,10 @@ def _xml_to_metadata(xml: bytes, pmid: str) -> dict[str, Any]:
             abstract_parts.append(ab.text.strip())
     if abstract_parts:
         full_abstract = " ".join(abstract_parts)
-        meta["abstract_excerpt"] = full_abstract[:300]
+        meta["abstract_full"] = (
+            full_abstract  # full text → papers.abstract (process_ledger)
+        )
+        meta["abstract_excerpt"] = full_abstract[:300]  # kept for list-view previews
         meta["abstract_chars"] = len(full_abstract)
 
     # DOI is in ArticleIdList

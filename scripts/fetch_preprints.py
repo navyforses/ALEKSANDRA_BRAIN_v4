@@ -115,7 +115,10 @@ def _entry_to_metadata(entry: dict[str, Any], doi: str) -> dict[str, Any]:
         plain = re.sub(r"<[^>]+>", " ", summary)
         plain = re.sub(r"\s+", " ", plain).strip()
         if plain:
-            meta["abstract_excerpt"] = plain[:300]
+            meta["abstract_full"] = (
+                plain  # full text → papers.abstract (process_ledger)
+            )
+            meta["abstract_excerpt"] = plain[:300]  # kept for list-view previews
             meta["abstract_chars"] = len(plain)
     return meta
 
