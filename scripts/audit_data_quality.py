@@ -58,9 +58,15 @@ TABLES: dict[str, dict] = {
         "text": ["title", "intervention"],
         "provenance_any": ["nct_id", "source_url"],
     },
+    "brain_regions": {
+        "text": ["name", "damage_description", "plasticity_notes"],
+    },
+    "pathways": {"text": ["name", "description"]},
     "discovery_reports": {"text": ["title", "executive_summary"]},
     "ingestion_log": {"text": ["source", "status"]},
     "manager_actions": {"text": ["action_type", "target_table"]},
+    "outreach_log": {"text": ["trigger_kind", "channel"]},
+    "alerts_log": {"text": ["tier", "event_kind"]},
     "briefs": {"briefs": True},
 }
 
@@ -160,8 +166,11 @@ def audit_table(name: str, spec: dict, rows: list[dict]) -> list[str]:
 
     for idx, field in enumerate(spec.get("bilingual", [])):
         en_ok = ka_ok = ka_mirror = ka_blank = corrupt = 0
+        blank_ids: list[str] = []
+        corrupt_ids: list[str] = []
         for r in rows:
             en, ka = parse_bilingual(r.get(field))
+            rid = str(r.get("id") or "")[:8]
             if not is_blank(en):
                 en_ok += 1
             if not is_blank(ka):
@@ -170,8 +179,11 @@ def audit_table(name: str, spec: dict, rows: list[dict]) -> list[str]:
                     ka_mirror += 1
             else:
                 ka_blank += 1
+                if en_ok:  # only worth fixing when there IS an English source
+                    blank_ids.append(rid)
             if idx == 0 and (looks_corrupt(en) or looks_corrupt(ka)):
                 corrupt += 1
+                corrupt_ids.append(rid)
         ka_real = ka_ok - ka_mirror
         out.append(f"  {field} (en/ka):")
         out.append(f"      en present   : {en_ok}/{n} ({pct(en_ok, n)})")
@@ -182,6 +194,15 @@ def audit_table(name: str, spec: dict, rows: list[dict]) -> list[str]:
         if idx == 0:
             flag = "  ⚠" if corrupt else ""
             out.append(f"      corrupt title: {corrupt}/{n} ({pct(corrupt, n)}){flag}")
+        # Remediation list — exactly which rows need a clean ka re-translation.
+        if blank_ids:
+            shown = ", ".join(blank_ids[:40])
+            more = f" …(+{len(blank_ids) - 40})" if len(blank_ids) > 40 else ""
+            out.append(f"      → FIX ka blank   [{field}]: {shown}{more}")
+        if corrupt_ids:
+            shown = ", ".join(corrupt_ids[:40])
+            more = f" …(+{len(corrupt_ids) - 40})" if len(corrupt_ids) > 40 else ""
+            out.append(f"      → FIX ka corrupt [{field}]: {shown}{more}")
 
     for field in spec.get("text", []):
         present = sum(1 for r in rows if not is_blank(r.get(field)))
