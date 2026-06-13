@@ -65,6 +65,10 @@ TASK_TIER: dict[str, str] = {
     "got": "thinker",
     "repurpose": "thinker",
     "evidence_hard": "thinker",
+    # Evidence Refinery Stage 2 (REASON): per-paper deep analysis. thinker tier,
+    # complexity-gated — short abstracts run on thinker_light (DeepSeek V4 Pro),
+    # long/complex ones escalate to Opus. See scripts.analysis.analyze_paper.
+    "analyze_paper": "thinker",
     # ✍️ writer — prose / translation
     "translate": "writer",
     "weekly_brief": "writer",

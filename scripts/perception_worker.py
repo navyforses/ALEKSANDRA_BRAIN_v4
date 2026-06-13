@@ -120,6 +120,7 @@ class _Handler(BaseHTTPRequestHandler):
             "/perception-tick",
             "/chunking-tick",
             "/extraction-tick",
+            "/analysis-tick",
             "/daily-spend-report",
             "/voice-transcribe",
             "/apply-actions",
@@ -203,6 +204,8 @@ class _Handler(BaseHTTPRequestHandler):
             self._handle_chunking(body)
         elif self.path == "/extraction-tick":
             self._handle_extraction(body)
+        elif self.path == "/analysis-tick":
+            self._handle_analysis(body)
 
     def _parse_body(self) -> dict[str, Any] | None:
         body: dict[str, Any] = {}
@@ -285,6 +288,44 @@ class _Handler(BaseHTTPRequestHandler):
                 500,
                 {
                     "error": "chunking_failed",
+                    "detail": f"{type(e).__name__}: {e}",
+                    "trace": traceback.format_exc(limit=5),
+                },
+            )
+            return
+        _json_response(self, 200, result)
+
+    def _handle_analysis(self, body: dict[str, Any]) -> None:
+        """Evidence Refinery Stage 2. Deep-analyse relevant, unanalysed papers
+        (fills ai_summary / ai_key_findings / ai_aleksandra_implications /
+        evidence_level). LLM-using, so it sits behind the budget gate."""
+        limit = int(body.get("limit", 0)) or 0
+        min_relevance = float(body.get("min_relevance", 0.5))
+        dry_run = bool(body.get("dry_run", False))
+        try:
+            from scripts.analysis.analyze_paper import run as analyze_run  # noqa: PLC0415
+
+            result = analyze_run(
+                limit=limit, min_relevance=min_relevance, dry_run=dry_run
+            )
+        except BudgetExceeded as e:
+            _json_response(
+                self,
+                429,
+                {
+                    "error": "budget_exceeded",
+                    "today_spend_usd": e.today_spend_usd,
+                    "cap_usd": e.threshold_usd,
+                },
+            )
+            return
+        except Exception as e:
+            LOG.exception("analyze_paper.run raised")
+            _json_response(
+                self,
+                500,
+                {
+                    "error": "analysis_failed",
                     "detail": f"{type(e).__name__}: {e}",
                     "trace": traceback.format_exc(limit=5),
                 },
