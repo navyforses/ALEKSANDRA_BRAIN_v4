@@ -39,6 +39,7 @@ Deploy on Railway:
 
 from __future__ import annotations
 
+import hmac
 import json
 import logging
 import os
@@ -114,6 +115,32 @@ class _Handler(BaseHTTPRequestHandler):
             return
         _json_response(self, 404, {"error": "not_found", "path": self.path})
 
+    def _require_auth(self) -> bool:
+        """OPS-7: enforce a shared secret, but only when one is configured.
+
+        Accepts any of the historical env names so neither the already-deployed
+        PHASE5 manager routes nor the PHASE4 digest workflow break. When no
+        token is set, returns True — the pre-OPS-7 open-relay behavior — so a
+        single env var flips enforcement on with no coordinated deploy. The
+        comparison is constant-time (hmac.compare_digest).
+        """
+        expected = ""
+        for _name in (
+            "PERCEPTION_WORKER_AUTH_TOKEN",
+            "PHASE5_WORKER_AUTH_TOKEN",
+            "PHASE4_WORKER_AUTH_TOKEN",
+        ):
+            expected = (os.environ.get(_name) or "").strip()
+            if expected:
+                break
+        if not expected:
+            return True
+        got = (self.headers.get("X-Auth-Token") or "").strip()
+        if hmac.compare_digest(got, expected):
+            return True
+        _json_response(self, 401, {"error": "unauthorized"})
+        return False
+
     def do_POST(self) -> None:  # noqa: N802
         # Four POST endpoints. The first three sit behind a budget gate
         # because they trigger LLM-using pipelines. The fourth
@@ -135,6 +162,12 @@ class _Handler(BaseHTTPRequestHandler):
             "/render-weekly-brief",
         ):
             _json_response(self, 404, {"error": "not_found", "path": self.path})
+            return
+
+        # OPS-7: one auth gate for EVERY worker endpoint. Open relay until a
+        # shared secret is configured (see _require_auth), so nothing breaks
+        # before Shako sets the token; once set, every POST needs X-Auth-Token.
+        if not self._require_auth():
             return
 
         # /voice-transcribe is multipart/form-data, not JSON. Handle it
@@ -439,13 +472,6 @@ class _Handler(BaseHTTPRequestHandler):
 
     def _handle_voice_transcribe(self) -> None:
         """Phase 5 MNG-04. Multipart audio → Whisper → redacted transcript."""
-        # Optional shared-secret auth so the Railway URL isn't an open relay.
-        expected_token = os.environ.get("PHASE5_WORKER_AUTH_TOKEN", "").strip()
-        if expected_token:
-            got = (self.headers.get("X-Auth-Token") or "").strip()
-            if got != expected_token:
-                _json_response(self, 401, {"error": "unauthorized"})
-                return
 
         content_type = self.headers.get("Content-Type") or ""
         if "multipart/form-data" not in content_type:
@@ -518,12 +544,6 @@ class _Handler(BaseHTTPRequestHandler):
 
     def _handle_apply_actions(self, body: dict[str, Any]) -> None:
         """Phase 5 MNG-07. Apply N approved ActionCards atomically."""
-        expected_token = os.environ.get("PHASE5_WORKER_AUTH_TOKEN", "").strip()
-        if expected_token:
-            got = (self.headers.get("X-Auth-Token") or "").strip()
-            if got != expected_token:
-                _json_response(self, 401, {"error": "unauthorized"})
-                return
 
         cards = body.get("cards")
         if not isinstance(cards, list) or not cards:
@@ -578,12 +598,6 @@ class _Handler(BaseHTTPRequestHandler):
 
     def _handle_undo_action(self, body: dict[str, Any]) -> None:
         """Phase 5 MNG-09. Reverse one manager_actions row."""
-        expected_token = os.environ.get("PHASE5_WORKER_AUTH_TOKEN", "").strip()
-        if expected_token:
-            got = (self.headers.get("X-Auth-Token") or "").strip()
-            if got != expected_token:
-                _json_response(self, 401, {"error": "unauthorized"})
-                return
 
         manager_action_id = body.get("manager_action_id")
         manager_user_id = body.get("manager_user_id")
@@ -642,12 +656,6 @@ class _Handler(BaseHTTPRequestHandler):
 
     def _handle_morning_briefing(self, body: dict[str, Any]) -> None:
         """Phase 5 MNG-10. Compose + send the Sunday morning briefing."""
-        expected_token = os.environ.get("PHASE5_WORKER_AUTH_TOKEN", "").strip()
-        if expected_token:
-            got = (self.headers.get("X-Auth-Token") or "").strip()
-            if got != expected_token:
-                _json_response(self, 401, {"error": "unauthorized"})
-                return
         dry_run = bool(body.get("dry_run", False))
         try:
             from scripts.manager.briefing import run as briefing_run  # noqa: PLC0415
@@ -665,12 +673,6 @@ class _Handler(BaseHTTPRequestHandler):
 
     def _handle_email_intent(self, body: dict[str, Any]) -> None:
         """Phase 5 MNG-11. Parse 'write to X about Y' -> Gmail draft."""
-        expected_token = os.environ.get("PHASE5_WORKER_AUTH_TOKEN", "").strip()
-        if expected_token:
-            got = (self.headers.get("X-Auth-Token") or "").strip()
-            if got != expected_token:
-                _json_response(self, 401, {"error": "unauthorized"})
-                return
         text = (body.get("text") or "").strip()
         dry_run = bool(body.get("dry_run", False))
         if not text:
