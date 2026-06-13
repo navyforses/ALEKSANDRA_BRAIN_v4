@@ -48,7 +48,11 @@ TABLES: dict[str, dict] = {
     "therapies": {
         "bilingual": ["name", "evidence_summary"],
         "text": ["mechanism_of_action", "ai_assessment"],
-        "provenance_any": ["evidence_in_hie", "clinical_status", "best_evidence_paper_id"],
+        "provenance_any": [
+            "evidence_in_hie",
+            "clinical_status",
+            "best_evidence_paper_id",
+        ],
     },
     "aleksandra_timeline": {
         "bilingual": ["title", "description"],
@@ -87,8 +91,10 @@ def load_env() -> None:
 
 
 def config() -> tuple[str, str]:
-    url = (os.environ.get("SUPABASE_URL") or "").rstrip("/")
-    key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or ""
+    # .strip() guards against a secret pasted with a trailing newline (urllib
+    # rejects header values containing "\n").
+    url = (os.environ.get("SUPABASE_URL") or "").strip().rstrip("/")
+    key = (os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or "").strip()
     return url, key
 
 
@@ -96,7 +102,11 @@ def fetch(table: str, url: str, key: str, limit: int = 5000) -> list[dict]:
     href = f"{url}/rest/v1/{table}?select=*&limit={limit}"
     req = urllib.request.Request(
         href,
-        headers={"apikey": key, "Authorization": f"Bearer {key}", "Accept": "application/json"},
+        headers={
+            "apikey": key,
+            "Authorization": f"Bearer {key}",
+            "Accept": "application/json",
+        },
     )
     with urllib.request.urlopen(req, timeout=30) as resp:  # noqa: S310 (trusted Supabase host)
         return json.loads(resp.read().decode("utf-8"))
@@ -158,9 +168,14 @@ def audit_table(name: str, spec: dict, rows: list[dict]) -> list[str]:
         ka_sections = 0
         for r in rows:
             sec = r.get("sections")
-            if isinstance(sec, dict) and json.dumps(sec, ensure_ascii=False).find('"ka"') >= 0:
+            if (
+                isinstance(sec, dict)
+                and json.dumps(sec, ensure_ascii=False).find('"ka"') >= 0
+            ):
                 ka_sections += 1
-        out.append(f"  sections present : {with_sections}/{n} ({pct(with_sections, n)})")
+        out.append(
+            f"  sections present : {with_sections}/{n} ({pct(with_sections, n)})"
+        )
         out.append(f"  ka in sections   : {ka_sections}/{n} ({pct(ka_sections, n)})")
         return out
 
@@ -212,13 +227,19 @@ def audit_table(name: str, spec: dict, rows: list[dict]) -> list[str]:
         cols = spec["provenance_any"]
         with_src = sum(1 for r in rows if any(not is_blank(r.get(c)) for c in cols))
         flag = "" if with_src == n else "  ⚠ some rows have no source"
-        out.append(f"  PROVENANCE (any of {', '.join(cols)}): {with_src}/{n} ({pct(with_src, n)}){flag}")
+        out.append(
+            f"  PROVENANCE (any of {', '.join(cols)}): {with_src}/{n} ({pct(with_src, n)}){flag}"
+        )
 
     if "provenance_array" in spec:
         col = spec["provenance_array"][0]
-        with_src = sum(1 for r in rows if isinstance(r.get(col), list) and len(r.get(col)) > 0)
+        with_src = sum(
+            1 for r in rows if isinstance(r.get(col), list) and len(r.get(col)) > 0
+        )
         flag = "" if with_src == n else f"  ⚠ {n - with_src} without {col}"
-        out.append(f"  PROVENANCE ({col} non-empty): {with_src}/{n} ({pct(with_src, n)}){flag}")
+        out.append(
+            f"  PROVENANCE ({col} non-empty): {with_src}/{n} ({pct(with_src, n)}){flag}"
+        )
 
     return out
 
@@ -241,7 +262,9 @@ def main() -> int:
         try:
             rows = fetch(name, url, key)
         except urllib.error.HTTPError as e:
-            lines.append(f"\n=== {name} ===\n  HTTP {e.code} — {e.reason} (table missing or RLS?)")
+            lines.append(
+                f"\n=== {name} ===\n  HTTP {e.code} — {e.reason} (table missing or RLS?)"
+            )
             continue
         except Exception as e:  # noqa: BLE001
             lines.append(f"\n=== {name} ===\n  error: {type(e).__name__}: {e}")
