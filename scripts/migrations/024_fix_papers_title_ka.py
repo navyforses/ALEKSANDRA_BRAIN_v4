@@ -194,6 +194,77 @@ def _has_georgian(text: str | None) -> bool:
     return any("Ⴀ" <= ch <= "ჿ" for ch in (text or ""))
 
 
+def _has_cjk(text: str | None) -> bool:
+    return any("　" <= ch <= "鿿" for ch in (text or ""))
+
+
+# Commentary the translator sometimes prepends instead of just translating.
+_KA_COMMENTARY = (
+    "გთხოვთ",
+    "მოდი,",
+    "თარგმანი:",
+    "translation",
+    "I cannot",
+    "I'm unable",
+)
+
+
+def _ka_is_messy(ka: str | None) -> bool:
+    """A clean title is one Mkhedruli line. Flag multi-line / markdown /
+    horizontal-rule / model-commentary / stray-CJK outputs for a re-translate."""
+    if not ka:
+        return False
+    if "\n" in ka or "---" in ka or "##" in ka or ka.lstrip().startswith("#"):
+        return True
+    if _has_cjk(ka):
+        return True
+    return any(m in ka for m in _KA_COMMENTARY)
+
+
+def _titleize(text: str) -> str:
+    """Reduce a translator response to a single clean title line: take the
+    first paragraph, drop markdown / quotes / alternative-version separators."""
+    s = (text or "").strip()
+    for sep in ("\n---", "\n\n", "\n"):
+        if sep in s:
+            s = s.split(sep, 1)[0].strip()
+    s = _MD_HEADER.sub("", s).replace("**", "").strip()
+    return s.strip("\"'").strip()
+
+
+# A title-specific system prompt — unlike scripts/extraction/translate.py it does
+# NOT ask to "preserve markdown", which is what made sonnet-4-6 elaborate a few
+# titles into essays / multi-version answers in the first place.
+_TITLE_SYSTEM = (
+    "You translate a single research-paper TITLE from English to Georgian "
+    "(Mkhedruli script only). Output ONLY the Georgian title on ONE line — no "
+    "commentary, no alternative versions, no markdown, no quotes, no '---', no "
+    "explanation. If the English is truncated, translate only what is given. "
+    "Use ONLY Georgian Mkhedruli letters plus Latin letters/digits for proper "
+    "nouns and acronyms; never use Chinese, Japanese, or any other script. "
+    "The text is descriptive scientific terminology, not medical advice; do not "
+    "refuse."
+)
+
+
+def _translate_title_strict(client, en: str, max_tokens: int = 200) -> str:
+    """Direct sonnet-4-6 call with the title-only prompt. Raises on refusal."""
+    resp = client.messages.create(
+        model="claude-sonnet-4-6",
+        max_tokens=max_tokens,
+        system=_TITLE_SYSTEM,
+        messages=[
+            {"role": "user", "content": f"Translate this title to Georgian:\n\n{en}"}
+        ],
+    )
+    blocks = [b for b in resp.content if getattr(b, "type", None) == "text"]
+    if not blocks or not blocks[0].text.strip():
+        from scripts.extraction.translate import TranslationFailed
+
+        raise TranslationFailed(f"empty/refusal (stop_reason={resp.stop_reason})")
+    return _titleize(blocks[0].text)
+
+
 def _ka_needs_translation(en: str | None, ka_clean: str) -> bool:
     """True when ka is missing, an English mirror, non-Georgian, or still
     looks like a corrupted blob rather than a title."""
@@ -400,6 +471,72 @@ def run(*, apply_changes: bool, limit: int | None, samples: int) -> int:
     return 0 if failures == 0 else 1
 
 
+def run_polish(*, apply_changes: bool) -> int:
+    """Second-pass repair: find rows whose ka is multi-line / markdown /
+    commentary / stray-CJK (a misbehaving first-pass translation) and
+    re-translate them with the strict single-line title prompt."""
+    _load_env()
+    base, key = _config()
+    if not base or not key:
+        sys.stderr.write("ERROR: SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY not set\n")
+        return 2
+    if apply_changes and not os.environ.get("ANTHROPIC_API_KEY", "").strip():
+        sys.stderr.write("ERROR: ANTHROPIC_API_KEY required for --apply\n")
+        return 2
+
+    rows = _rest("GET", "papers?select=id,title&limit=5000", base, key)
+    messy = []
+    for r in rows:
+        t = r.get("title")
+        if isinstance(t, dict) and _ka_is_messy(t.get("ka")):
+            messy.append(r)
+    print(f"[024-polish] {len(messy)} rows with messy ka")
+    for r in messy:
+        t = r["title"]
+        print(f"  [{str(r['id'])[:8]}] en={str(t.get('en'))[:60]!r}")
+
+    if not apply_changes:
+        print("\n[024-polish] DRY RUN — pass --apply to re-translate. No rows changed.")
+        return 0
+
+    import anthropic
+
+    from scripts.extraction.translate import TranslationFailed
+
+    client = anthropic.Anthropic()
+    fixed = failures = 0
+    failed_ids: list[str] = []
+    for r in messy:
+        rid = str(r["id"])
+        short = rid[:8]
+        en = r["title"].get("en")
+        if not en:
+            continue
+        try:
+            ka = _translate_title_strict(client, en)
+            if not ka or _ka_is_messy(ka) or not _has_georgian(ka):
+                raise TranslationFailed(f"still messy after strict retry: {ka[:60]!r}")
+        except TranslationFailed as e:
+            failures += 1
+            failed_ids.append(short)
+            sys.stderr.write(f"  [{short}] {e}\n")
+            continue
+        _rest(
+            "PATCH",
+            f"papers?id=eq.{urllib.parse.quote(rid)}",
+            base,
+            key,
+            {"title": {"en": en, "ka": ka}},
+        )
+        fixed += 1
+        print(f"  fixed [{short}] -> {ka[:70]!r}", flush=True)
+
+    print("\n=== 024-polish summary ===")
+    print(f"  rows re-translated : {fixed}")
+    print(f"  still failing      : {failures}  {failed_ids}")
+    return 0 if failures == 0 else 1
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -416,7 +553,15 @@ def main() -> int:
     ap.add_argument(
         "--samples", type=int, default=3, help="Sample translations to show in dry run."
     )
+    ap.add_argument(
+        "--polish",
+        action="store_true",
+        help="Second pass: re-translate rows whose ka is multi-line / markdown / "
+        "commentary / stray-CJK using the strict single-line title prompt.",
+    )
     args = ap.parse_args()
+    if args.polish:
+        return run_polish(apply_changes=args.apply)
     return run(apply_changes=args.apply, limit=args.limit, samples=args.samples)
 
 

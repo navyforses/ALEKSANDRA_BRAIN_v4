@@ -216,13 +216,32 @@ COMMIT;
 
 ---
 
-## Result log (fill in after apply)
+## Result log (2026-06-13)
 
-- 017 applied in SQL Editor: ____ (date / who)
-- 024 rows patched: ____  · ka translated: ____  · structure-only: ____
-- translator refusals (en kept, id list): ____
-- run spend (Anthropic): $____
-- post-audit `papers.title` ka real / blank / corrupt: ____ / ____ / ____
+- **017 applied in SQL Editor:** 2026-06-13 by Shako. Pre-flight `text, text`;
+  post `jsonb, jsonb`; `mirrored = total = 608`. ✅
+- **024 first pass** (`--apply`): 608 rows patched · 555 ka translated · 51
+  structure/strip-only · **2 genuine refusals** (en kept, ka blank):
+  - `a638d030` — "Against Chikungunya Virus and Neonatal Infection"
+  - `5e769694` — "Chronic cocaine exposure … SARS-CoV-2 spike protein in the rat"
+- **024 second pass** (`--polish --apply`): 5 rows had multi-line / markdown /
+  commentary / stray-CJK first-pass output (the shared translator's
+  "preserve markdown" prompt made sonnet-4-6 elaborate a few titles). Re-translated
+  with the strict single-line `_TITLE_SYSTEM` prompt: 4 fixed automatically
+  (`e877d32e`, `45323db1`, `db0b4b38`, `64301a99`); 1 (`abf5b02b`, the
+  "calm before the storm" idiom → kanji 嵐) fixed on a model rewrite with an
+  idiom hint → "სიმშვიდე ქარიშხლამდე …". No hand-authored Georgian.
+- **Run spend (Anthropic):** ≈ $0.30–0.40 (≈560 sonnet-4-6 title calls; well
+  under the $5/day gate). 2 transient cost-ledger write blips (`getaddrinfo`,
+  DNS) — translations themselves succeeded.
+- **Post-audit `papers.title`:** 608/608 proper JSONB · ka real **606/608** ·
+  blank **2** (the refusals) · markdown 0 · multiline 0 · CJK 0 · mirror 0.
+  The audit still prints `corrupt title: 4` — those are **bracketed-English
+  false positives** (`ddbb5587`, `dbfeae1d`, `2ee4c013`, `922cf5fe`): correctly
+  translated PubMed titles that begin with `[`, which the heuristic over-flags.
+- **Scope honored:** `papers.title` only. `papers.abstract` is now JSONB with
+  `ka = en` mirror (untranslated) — deferred. `therapies` / `hypotheses` /
+  `aleksandra_timeline` JSONB cleanup — deferred.
 
 ## Root-cause follow-up (out of scope here, worth a separate task)
 
