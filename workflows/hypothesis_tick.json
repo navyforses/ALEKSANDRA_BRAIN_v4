@@ -1,0 +1,102 @@
+{
+  "name": "hypothesis-tick",
+  "active": false,
+  "_phase_2c_note": "COG-1 hypothesis leg trigger. Calls the Railway worker /hypothesis-tick, which runs got_pipeline.run_first_gated() — the GoT pipeline runs ONLY when >= min_new_entities new evidence_ledger rows have arrived since the last successful tick (gate is server-side, so a quiet week spends no LLM budget; the worker's budget gate also guards it). Activates after the worker is deployed. method:POST is explicit (omit -> 404 GET). active:false ships dormant.",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "hours", "hoursInterval": 6 }]
+        }
+      },
+      "name": "Every 6 hours",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 300],
+      "id": "trigger-6h"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.PERCEPTION_WORKER_URL }}/hypothesis-tick",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "X-Auth-Token", "value": "={{ $env.PERCEPTION_WORKER_AUTH_TOKEN || $env.PHASE5_WORKER_AUTH_TOKEN || $env.PHASE4_WORKER_AUTH_TOKEN || '' }}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"min_new_entities\": 5, \"max_hypotheses\": 5 }",
+        "options": { "timeout": 600000 }
+      },
+      "name": "Run hypothesis-tick",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300],
+      "id": "hypothesis-call"
+    },
+    {
+      "parameters": {
+        "jsCode": "// run_first_gated() returns {skipped:true,...} on a quiet week, else a\n// summary with hypotheses_inserted. Only ping Telegram when something ran.\nconst r = $input.first().json || {};\nif (r.skipped) {\n  return [{ json: { noisy: false, summary: '', ...r } }];\n}\nconst ins = r.hypotheses_inserted ?? 0;\nconst gen = r.hypotheses_generated ?? 0;\nconst summary = `\\u{1F9E0} hypothesis-tick  +${ins} inserted (${gen} generated)  ledger=${r.ledger_count ?? '?'}`;\nreturn [{ json: { noisy: ins > 0, summary, ...r } }];"
+      },
+      "name": "Format summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300],
+      "id": "format-summary"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "typeValidation": "loose" },
+          "conditions": [
+            {
+              "id": "is-noisy",
+              "leftValue": "={{ $json.noisy }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "true", "singleValue": true }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "name": "Has new hypotheses?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [900, 300],
+      "id": "noisy-gate"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.telegram.org/bot{{ $env.TELEGRAM_BOT_TOKEN }}/sendMessage",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"chat_id\": \"{{ $env.TELEGRAM_CHAT_ID }}\", \"text\": {{ JSON.stringify($json.summary) }}}",
+        "options": {}
+      },
+      "name": "Telegram summary",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1120, 240],
+      "id": "telegram-post"
+    }
+  ],
+  "connections": {
+    "Every 6 hours": {
+      "main": [[{ "node": "Run hypothesis-tick", "type": "main", "index": 0 }]]
+    },
+    "Run hypothesis-tick": {
+      "main": [[{ "node": "Format summary", "type": "main", "index": 0 }]]
+    },
+    "Format summary": {
+      "main": [[{ "node": "Has new hypotheses?", "type": "main", "index": 0 }]]
+    },
+    "Has new hypotheses?": {
+      "main": [[{ "node": "Telegram summary", "type": "main", "index": 0 }], []]
+    }
+  },
+  "settings": { "executionOrder": "v1" }
+}

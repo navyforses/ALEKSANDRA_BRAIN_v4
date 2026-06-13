@@ -152,6 +152,7 @@ class _Handler(BaseHTTPRequestHandler):
             "/chunking-tick",
             "/extraction-tick",
             "/analysis-tick",
+            "/hypothesis-tick",
             "/daily-spend-report",
             "/voice-transcribe",
             "/apply-actions",
@@ -247,6 +248,8 @@ class _Handler(BaseHTTPRequestHandler):
             self._handle_extraction(body)
         elif self.path == "/analysis-tick":
             self._handle_analysis(body)
+        elif self.path == "/hypothesis-tick":
+            self._handle_hypothesis_tick(body)
 
     def _parse_body(self) -> dict[str, Any] | None:
         body: dict[str, Any] = {}
@@ -332,6 +335,25 @@ class _Handler(BaseHTTPRequestHandler):
                     "detail": f"{type(e).__name__}: {e}",
                     "trace": traceback.format_exc(limit=5),
                 },
+            )
+            return
+        _json_response(self, 200, result)
+
+    def _handle_hypothesis_tick(self, body: dict[str, Any]) -> None:
+        """COG-1. Run the GoT hypothesis leg, gated on the new-evidence count so
+        it only spends LLM budget when enough new rows have landed since the last
+        tick. Sits behind the budget gate above (hypothesis generation is
+        LLM-using)."""
+        max_hyp = int(body.get("max_hypotheses", 5))
+        min_new = int(body.get("min_new_entities", 5))
+        try:
+            from scripts.hypothesis.got_pipeline import run_first_gated
+
+            result = run_first_gated(max_hypotheses=max_hyp, min_new_entities=min_new)
+        except Exception as e:
+            LOG.exception("hypothesis-tick failed")
+            _json_response(
+                self, 500, {"error": "hypothesis_tick_failed", "detail": str(e)[:300]}
             )
             return
         _json_response(self, 200, result)
