@@ -128,9 +128,12 @@ def _load_env() -> None:
 
 
 def _config() -> tuple[str, str]:
-    return (os.environ.get("SUPABASE_URL") or "").rstrip("/"), os.environ.get(
-        "SUPABASE_SERVICE_ROLE_KEY"
-    ) or ""
+    # .strip() guards against secrets pasted with a trailing newline — urllib
+    # rejects header values containing "\n" ("Invalid header value").
+    return (
+        (os.environ.get("SUPABASE_URL") or "").strip().rstrip("/"),
+        (os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or "").strip(),
+    )
 
 
 def _rest(
@@ -138,6 +141,7 @@ def _rest(
 ) -> list:
     url = f"{base}/rest/v1/{path}"
     data = json.dumps(body).encode("utf-8") if body is not None else None
+    key = key.strip()  # defensive: a trailing "\n" makes urllib reject the header
     req = urllib.request.Request(url, data=data, method=method)
     req.add_header("apikey", key)
     req.add_header("Authorization", f"Bearer {key}")
