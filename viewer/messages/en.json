@@ -59,7 +59,8 @@
     "undone": "undone",
     "undo": "Undo",
     "undoing": "Undoing…",
-    "unreachable": "The history feed is unreachable right now.",
+    "unreachable": "The history feed isn't connected yet.",
+    "unreachableNote": "The activity log will appear here once BRAIN is connected to its database.",
     "empty": "No actions yet.",
     "emptyNote": "When BRAIN applies something — a staged email, a logged note — it appears here."
   },
