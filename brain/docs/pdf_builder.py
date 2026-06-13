@@ -101,9 +101,7 @@ class PdfDocument(BaseModel):
     def _validate_citation_patterns(cls, value: list[str]) -> list[str]:
         for i, citation in enumerate(value):
             if not isinstance(citation, str) or not citation.strip():
-                raise PDFCitationError(
-                    f"citation[{i}] empty or non-string"
-                )
+                raise PDFCitationError(f"citation[{i}] empty or non-string")
             lowered = citation.lower()
             if not any(p in lowered for p in PRIMARY_SOURCE_PATTERNS):
                 raise PDFCitationError(
@@ -194,6 +192,26 @@ def build_pdf(
         author=doc.author,
     )
     styles = getSampleStyleSheet()
+
+    # W2: KA docs need a Georgian-glyph font or every Mkhedruli character
+    # renders as a tofu box. Provision strictly on ka (fail loudly rather than
+    # silently ship boxes); EN docs never touch this path.
+    if (doc.language or "").lower() == "ka":
+        from brain.common.ka_font import ensure_ka_font
+
+        ka_family = ensure_ka_font(strict=True)
+        if ka_family:
+            for _name in (
+                "Title",
+                "Heading1",
+                "Heading2",
+                "Heading3",
+                "Italic",
+                "BodyText",
+            ):
+                if _name in styles.byName:
+                    styles[_name].fontName = ka_family
+
     flow: list[Any] = []
 
     # Header.
@@ -224,9 +242,7 @@ def build_pdf(
     # References - mandatory section.
     flow.append(Paragraph("References", styles["Heading1"]))
     for i, citation in enumerate(doc.citations, start=1):
-        flow.append(
-            Paragraph(f"[{i}] {_escape(citation)}", styles["BodyText"])
-        )
+        flow.append(Paragraph(f"[{i}] {_escape(citation)}", styles["BodyText"]))
 
     template.build(flow)
     return out_path
@@ -363,8 +379,7 @@ def build_family_handover_pdf(
             PdfSection(
                 heading="ციფრული ტყუპის გადაცემა",
                 body=(
-                    "ALEKSANDRA_BRAIN v7 ფამილი-handover. "
-                    "დეტალები web cockpit-ში."
+                    "ALEKSANDRA_BRAIN v7 ფამილი-handover. " "დეტალები web cockpit-ში."
                 ),
                 level=1,
             )
@@ -388,11 +403,7 @@ def _escape(text: str) -> str:
     `&` are special). Escape the three reserved characters so user
     text never breaks the renderer.
     """
-    return (
-        text.replace("&", "&amp;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
-    )
+    return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
 __all__ = [

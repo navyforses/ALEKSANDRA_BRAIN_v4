@@ -27,6 +27,12 @@
 patient_data/
 mri_data/
 
+# Provisioned fonts — downloaded on demand + checksum-verified by
+# brain/common/ka_font.py; never vendored (see brain/assets/fonts/README.md)
+brain/assets/fonts/*.ttf
+brain/assets/fonts/*.otf
+brain/assets/fonts/*.part
+
 # Python
 __pycache__/
 *.py[cod]
