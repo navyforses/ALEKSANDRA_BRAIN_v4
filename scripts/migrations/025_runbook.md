@@ -94,7 +94,7 @@ manual rebuild). Per field `ka real / en present`:
 
 | field | ka real / en | note |
 |---|---|---|
-| papers.title | 607 / 608 | 1 = `5e769694` hard refusal |
+| papers.title | 608 / 608 | `5e769694` now translated by Gemini (Claude had refused) |
 | papers.abstract | 499 / 499 | 109 rows have no en abstract |
 | hypotheses.title | 10 / 10 | green |
 | hypotheses.description | 10 / 10 | green |
@@ -109,6 +109,36 @@ manual rebuild). Per field `ka real / en present`:
 2. `papers.title` `5e769694` — add the Georgian title manually if desired
    (the model refuses to translate it).
 3. `therapies.evidence_summary` for the 2 flagged rows — author from source.
+
+## Translator bot + automation (2026-06-13, added after the one-time repair)
+
+**Engine — `scripts/extraction/gemini_translator.py`.** A single reusable
+EN→KA bot on Google's newest GA model **gemini-3.5-flash**:
+
+- Two gateways, auto-selected: OpenRouter (`call_llm`, the "writer" tier) when
+  `OPENROUTER_API_KEY` is present (Railway production parity, budget-gated +
+  logged); otherwise direct Google AI Studio (`GEMINI_API_KEY`) with
+  `thinkingConfig.thinkingBudget: 0` (Gemini 3.x otherwise spends the token
+  budget on reasoning and truncates short titles). Both hit the same model.
+- `translate_title` (one Mkhedruli line) / `translate_prose` (faithful, keeps
+  paragraphs). Strict prompts + markdown/`**`/CJK/Cyrillic guards + retry +
+  transient-error backoff (the public API 503s under load). A refusal/guard
+  failure raises `TranslationFailed`; the caller keeps en.
+- **Why Gemini:** it translates clinical titles the Claude classifier refused
+  (e.g. the "cocaine" title `5e769694`) — switching the repair engine to Gemini
+  closed that last residual, so papers.title is 608/608.
+- `025` now delegates all translation to this bot (no Anthropic dependency);
+  ingestion (`build_bilingual`) already used the gemini-3.5-flash writer tier.
+
+**Source fix — `build_bilingual`** now sanitizes ka at write time (strip
+markdown/bold; drop foreign-script to "" so the nightly bot re-does it), so new
+papers land clean.
+
+**Nightly safety net — `.github/workflows/repair-bilingual-ka.yml`.** Runs the
+bot through `025 --apply` across all tables every night (07:00 UTC) + a manual
+"Run workflow" button. Idempotent: clean rows skip, only broken ka is touched
+(this run left 0 to do). Needs repo secrets: `SUPABASE_URL`,
+`SUPABASE_SERVICE_ROLE_KEY`, `GEMINI_API_KEY` (and optional `OPENROUTER_API_KEY`).
 
 ## Root cause (resolved)
 

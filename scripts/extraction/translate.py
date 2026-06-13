@@ -29,6 +29,7 @@ Cost shape (sonnet-4-6 pricing as of 2026-05):
 from __future__ import annotations
 
 import os
+import re
 import time
 from datetime import datetime, timezone
 
@@ -106,9 +107,7 @@ def translate_to_georgian(
         return _translate_anthropic(
             text, client=client, max_attempts=max_attempts, max_tokens=max_tokens
         )
-    return _translate_openrouter(
-        text, max_attempts=max_attempts, max_tokens=max_tokens
-    )
+    return _translate_openrouter(text, max_attempts=max_attempts, max_tokens=max_tokens)
 
 
 def _translate_anthropic(
@@ -142,9 +141,11 @@ def _translate_anthropic(
             end = datetime.now(timezone.utc)
             usage = getattr(resp, "usage", None)
             # Roll cache_read/cache_create into input_tokens for the ledger.
-            in_tok = int(getattr(usage, "input_tokens", 0) or 0) + int(
-                getattr(usage, "cache_creation_input_tokens", 0) or 0
-            ) + int(getattr(usage, "cache_read_input_tokens", 0) or 0)
+            in_tok = (
+                int(getattr(usage, "input_tokens", 0) or 0)
+                + int(getattr(usage, "cache_creation_input_tokens", 0) or 0)
+                + int(getattr(usage, "cache_read_input_tokens", 0) or 0)
+            )
             out_tok = int(getattr(usage, "output_tokens", 0) or 0)
             blocks = [b for b in resp.content if getattr(b, "type", None) == "text"]
             ok = bool(blocks and blocks[0].text.strip())
@@ -253,13 +254,38 @@ def _translate_openrouter(text: str, *, max_attempts: int, max_tokens: int) -> s
     )
 
 
+_MD_HEADER_ML = re.compile(r"(?m)^\s*#{1,6}\s+")
+
+
+def _sanitize_ka_output(ka: str | None) -> str:
+    """Clean a freshly translated ka value at write time so new rows never
+    carry markdown headers, bold markers, or foreign-script artifacts.
+
+    A value containing stray CJK or Cyrillic (the model occasionally emits
+    e.g. a kanji for "storm" or "МРТ"/"ШД") is dropped to "" so the scheduled
+    repair (scripts/migrations/025_repair_bilingual_ka.py) re-translates it
+    cleanly rather than persisting garbage. Mkhedruli (U+10A0–10FF) never
+    overlaps either script, so the test is unambiguous.
+    """
+    if not ka:
+        return ""
+    s = _MD_HEADER_ML.sub("", str(ka).strip()).replace("**", "").strip()
+    if any("　" <= c <= "鿿" for c in s) or any("Ѐ" <= c <= "ӿ" for c in s):
+        return ""
+    return s
+
+
 def build_bilingual(en_text: str | None) -> dict | None:
     """Wrap English text into a {en, ka} JSONB-ready dict.
 
     Returns None when input is None (preserves nullable column semantics).
     Returns {"en": "", "ka": ""} when input is empty string (deliberate
     empty cell). Translation failures fall back to en-only so ingestion
-    never blocks on translator hiccups; a later backfill catches up.
+    never blocks on translator hiccups; the scheduled 025 repair catches up.
+
+    The ka is sanitized (markdown/bold stripped, foreign-script dropped) so
+    new rows land clean at the source — the nightly repair is a safety net,
+    not the primary cleaner.
     """
     if en_text is None:
         return None
@@ -267,7 +293,7 @@ def build_bilingual(en_text: str | None) -> dict | None:
     if not en:
         return {"en": "", "ka": ""}
     try:
-        ka = translate_to_georgian(en)
+        ka = _sanitize_ka_output(translate_to_georgian(en))
     except (TranslationFailed, BudgetExceeded):
         ka = ""
     return {"en": en, "ka": ka}
