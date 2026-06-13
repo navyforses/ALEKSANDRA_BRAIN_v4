@@ -39,6 +39,9 @@ TABLES: dict[str, dict] = {
         "bilingual": ["title", "abstract"],
         "text": ["ai_summary", "ai_aleksandra_implications"],
         "provenance_any": ["source", "source_url", "pmid", "doi"],
+        # Evidence Refinery scoreboard: of the papers worth a clinician's time
+        # (relevance_score >= gate), how many have actually been deep-analysed?
+        "relevance_gate": 0.5,
     },
     "hypotheses": {
         "bilingual": ["title", "description"],
@@ -222,6 +225,29 @@ def audit_table(name: str, spec: dict, rows: list[dict]) -> list[str]:
     for field in spec.get("text", []):
         present = sum(1 for r in rows if not is_blank(r.get(field)))
         out.append(f"  {field:<26} present: {present}/{n} ({pct(present, n)})")
+
+    gate = spec.get("relevance_gate")
+    if gate is not None:
+        def _score(r: dict) -> float | None:
+            v = r.get("relevance_score")
+            return v if isinstance(v, (int, float)) else None
+
+        relevant = [r for r in rows if (_score(r) or -1) >= gate]
+        nrel = len(relevant)
+        analysed = sum(1 for r in relevant if not is_blank(r.get("ai_summary")))
+        graded = sum(
+            1 for r in relevant if r.get("evidence_level") not in (None, "")
+        )
+        implied = sum(
+            1 for r in relevant if not is_blank(r.get("ai_aleksandra_implications"))
+        )
+        flag = "" if analysed == nrel else "  ⚠ analysis backlog"
+        out.append(f"  ANALYSIS (relevance >= {gate}): {nrel} relevant papers")
+        out.append(
+            f"      ai_summary       : {analysed}/{nrel} ({pct(analysed, nrel)}){flag}"
+        )
+        out.append(f"      implications     : {implied}/{nrel} ({pct(implied, nrel)})")
+        out.append(f"      evidence_level   : {graded}/{nrel} ({pct(graded, nrel)})")
 
     if "provenance_any" in spec:
         cols = spec["provenance_any"]
