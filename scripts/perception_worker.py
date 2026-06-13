@@ -47,7 +47,11 @@ import traceback
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
 
-from scripts.cognition.budget import BudgetExceeded, check_daily_budget
+from scripts.cognition.budget import (
+    DEFAULT_DAILY_BUDGET_USD,
+    BudgetExceeded,
+    check_daily_budget,
+)
 from scripts.ledger import load_env
 
 LOG = logging.getLogger("perception_worker")
@@ -180,8 +184,12 @@ class _Handler(BaseHTTPRequestHandler):
             return
 
         # Defence-in-depth budget gate (HC-2/HC-4) BEFORE any pipeline.
+        # OPS-3: use the single env-resolved cap (DAILY_BUDGET_USD or the $5.00
+        # default) — not a worker-local $12 literal that silently overrode the
+        # cap the rest of the system (budget.py, daily-budget-gate.json) enforces.
+        cap_usd = float(os.environ.get("DAILY_BUDGET_USD") or DEFAULT_DAILY_BUDGET_USD)
         try:
-            today_spend, over = check_daily_budget(threshold_usd=12.0)
+            today_spend, over = check_daily_budget()
         except Exception as e:
             LOG.exception("budget check failed open")
             today_spend, over = 0.0, False
@@ -193,7 +201,7 @@ class _Handler(BaseHTTPRequestHandler):
                 {
                     "error": "budget_exceeded",
                     "today_spend_usd": today_spend,
-                    "cap_usd": 12.0,
+                    "cap_usd": cap_usd,
                 },
             )
             return

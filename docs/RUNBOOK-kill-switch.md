@@ -9,7 +9,7 @@
 ALEKSANDRA_BRAIN-ს ორი დამოუკიდებელი მცველი აქვს:
 
 1. **Telegram `/stop`** — ხელით აჩერებ, როცა რაიმე უცნაურია
-2. **ბიუჯეტის ჭერი** — ავტომატურად აჩერებს, თუ ხარჯი $1.50/დღეს გადააჭარბა
+2. **ბიუჯეტის ჭერი** — ავტომატურად აჩერებს, თუ ხარჯი $5.00/დღეს გადააჭარბა
 
 ორივეს ერთი ამოცანა აქვს: სანამ გავიგებთ რა ხდება, **გავაჩერო ყველაფერი.**
 
@@ -52,13 +52,17 @@ ALEKSANDRA_BRAIN-ს ორი დამოუკიდებელი მცვ
 
 ---
 
-## 5. ბიუჯეტის ჭერი ($1.50/დღე)
+## 5. ბიუჯეტის ჭერი ($5.00/დღე)
+
+> ჭერი 1.50→5.00 აიწია 2026-06-02-ის გადახარჯვის ინციდენტის შემდეგ (multi-provider
+> routing: worker/writer tiers თითქმის უფასოა, Opus gated — steady-state ~$1-3/დღე).
+> წყარო: `scripts/cognition/budget.py` `DEFAULT_DAILY_BUDGET_USD = 5.00` + env `DAILY_BUDGET_USD`.
 
 n8n-ის `daily-budget-gate` workflow ყოველ 30 წუთში ერთხელ ამოწმებს:
 
 - Supabase `runs.token_cost` rows since 00:00 UTC
 - მხოლოდ `kind in (agent_run, fire_drill, llm_call)` rows ითვლება
-- თუ პასუხი > $1.50:
+- თუ პასუხი > $5.00:
   - Supabase `runs`-ში იწერება `kind='budget_lock'`
   - Telegram-ში მოგვდის წითელი შეტყობინება „🔴 ბიუჯეტი დაბლოკილია"
 - ყველა Anthropic call code-side helper-ით ჯერ იძახებს `check_daily_budget()`-ს
