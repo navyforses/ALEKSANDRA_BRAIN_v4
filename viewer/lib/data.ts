@@ -9,7 +9,7 @@
 // role stays on the server). It never touches MRI/PHI — that lives
 // client-side only, in the browser, on the Brain surface.
 
-import { type BilingualField, displayField } from "@/lib/i18n";
+import type { BilingualField } from "@/lib/i18n";
 import type { Locale } from "@/lib/seo";
 import { getCount, getRows } from "@/lib/supabase";
 
@@ -92,10 +92,12 @@ function flatten(value: unknown, locale: Locale): string {
   }
   if (typeof value === "object") {
     const obj = value as Record<string, unknown>;
-    const localized = flatten(
-      obj[locale] ?? obj[locale === "ka" ? "en" : "ka"],
-      locale,
-    );
+    // Prefer the requested locale, but treat an EMPTY string as missing and
+    // fall back to the other locale — `??` alone keeps "" (e.g. a paper whose
+    // ka title was never backfilled), which would otherwise show as a dash.
+    const localized =
+      flatten(obj[locale], locale) ||
+      flatten(obj[locale === "ka" ? "en" : "ka"], locale);
     if (localized) return localized;
     const preferred = [
       "reasoning",
@@ -120,6 +122,25 @@ function flatten(value: unknown, locale: Locale): string {
     return preferred ?? "";
   }
   return "";
+}
+
+// Strip markdown artifacts the ka translation backfill left behind ('# ',
+// '## ', '**bold**'). Applied to short display strings so a headline never
+// shows a stray '#'.
+function stripMarkdown(s: string): string {
+  return s
+    .replace(/^\s*#{1,6}\s+/gm, "")
+    .replace(/\*\*(.*?)\*\*/g, "$1")
+    .replace(/__(.*?)__/g, "$1")
+    .trim();
+}
+
+// A display title. Critically, this runs the value through `flatten` (which
+// parses a JSON-encoded string like '{"en":...,"ka":...}' into the locale's
+// text) — `displayField` does NOT, so a title stored as a JSON string would
+// otherwise render as raw JSON on screen. Then it strips markdown leftovers.
+function cleanTitle(value: unknown, locale: Locale): string {
+  return stripMarkdown(flatten(value, locale)).replace(/^[-*]\s+/, "").trim();
 }
 
 function joinMeta(parts: Array<string | number | undefined | null | false>): string[] {
@@ -245,7 +266,7 @@ function mapPaper(row: PaperRow, locale: Locale): ResearchItem {
   return {
     id: row.id,
     kind: "paper",
-    title: displayField(row.title, locale) || "—",
+    title: cleanTitle(row.title, locale) || "—",
     summary: summary || findings || "",
     detail: [summary, findings].filter(Boolean).join("\n\n"),
     implication: implication || undefined,
@@ -268,7 +289,7 @@ function mapHypothesis(row: HypothesisRow, locale: Locale): ResearchItem {
   return {
     id: row.id,
     kind: "hypothesis",
-    title: flatten(row.title, locale) || "—",
+    title: cleanTitle(row.title, locale) || "—",
     summary: description || reasoning || "",
     detail: [description, reasoning].filter(Boolean).join("\n\n"),
     implication: action || undefined,
@@ -289,7 +310,7 @@ function mapTherapy(row: TherapyRow, locale: Locale): ResearchItem {
   return {
     id: row.id,
     kind: "therapy",
-    title: flatten(row.name, locale) || "—",
+    title: cleanTitle(row.name, locale) || "—",
     summary: mechanism || evidence || assessment || "",
     detail: [mechanism, evidence, assessment].filter(Boolean).join("\n\n"),
     implication: notes || undefined,
@@ -473,18 +494,18 @@ function toBriefLines(value: unknown, locale: Locale): BriefLine[] {
       .map((entry): BriefLine | null => {
         if (entry && typeof entry === "object" && !Array.isArray(entry)) {
           const obj = entry as Record<string, unknown>;
-          const text = flatten(obj.text ?? obj.title ?? obj.summary ?? obj, locale);
+          const text = stripMarkdown(flatten(obj.text ?? obj.title ?? obj.summary ?? obj, locale));
           const source = flatten(obj.source ?? obj.url ?? obj.provenance, locale);
           if (!text) return null;
           return { text, source: source || undefined };
         }
-        const text = flatten(entry, locale);
+        const text = stripMarkdown(flatten(entry, locale));
         return text ? { text } : null;
       })
       .filter((l): l is BriefLine => l !== null)
       .slice(0, 12);
   }
-  const text = flatten(value, locale);
+  const text = stripMarkdown(flatten(value, locale));
   return text ? [{ text }] : [];
 }
 

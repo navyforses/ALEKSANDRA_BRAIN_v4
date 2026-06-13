@@ -132,10 +132,14 @@ export default function HistoryFeed() {
   const { rows, error, refresh } = useManagerActivity({ intervalMs: 5000, limit: 50 });
 
   if (error) {
+    // A missing DB connection (HTTP 503) or a transient blip should read as
+    // calm as the empty state — never a raw status code at the family.
     return (
-      <div className="rounded-xl border border-line bg-surface px-5 py-10 text-center">
+      <div className="rounded-xl border border-line bg-surface px-5 py-12 text-center">
         <p className="text-sm text-muted">{t("unreachable")}</p>
-        <p className="mt-1 text-xs text-faint">{error}</p>
+        <p className="mx-auto mt-1 max-w-sm text-xs leading-relaxed text-faint">
+          {t("unreachableNote")}
+        </p>
       </div>
     );
   }
