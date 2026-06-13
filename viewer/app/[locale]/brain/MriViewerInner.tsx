@@ -1,17 +1,14 @@
 "use client";
 
-// viewer/app/[locale]/brain/MriViewerInner.tsx — Phase 11 inner client widget.
-//
-// Holds the actual @niivue/niivue (WebGL2) instantiation. The parent
+// The actual @niivue/niivue (WebGL2) instantiation. The parent
 // MriViewer.tsx dynamic-imports it with { ssr: false } so this WebGL code
-// never runs on the server and lands in a code-split chunk (matches the
-// Network.tsx / NetworkInner.tsx pattern used for vis-network).
+// never runs on the server and lands in a code-split chunk.
 //
 // PRIVACY — project Rule #1 (MRI is client-side only): the volume is read
 // ONLY in the browser via <input type="file"> / drag-drop + nv.loadFromFile().
-// There is deliberately NO fetch / XHR / upload in this file — the bytes never
-// leave the device. Keep it that way so scripts/check-no-remote-fetch.sh stays
-// GREEN.
+// There is deliberately NO fetch / XHR / upload in this file — the bytes
+// never leave the device. Keep it that way so check-no-remote-fetch.sh
+// stays GREEN.
 
 import {
   useCallback,
@@ -23,11 +20,10 @@ import {
 } from "react";
 import { Niivue } from "@niivue/niivue";
 import { useTranslations } from "next-intl";
+import { IconAttach } from "@/components/shell/icons";
 
-// Accept NIfTI single-file volumes only (.nii / .nii.gz). A bare *.gz is
-// rejected — it is almost never a standalone NIfTI and would only fail at
-// parse time. DICOM is a multi-file series and is out of scope for a single
-// <input type="file"> picker.
+// Accept NIfTI single-file volumes only (.nii / .nii.gz). DICOM is a
+// multi-file series and is out of scope for a single file picker.
 const ACCEPTED = /\.nii(\.gz)?$/i;
 
 type ErrKey = "openError" | "webglError";
@@ -43,12 +39,10 @@ export default function MriViewerInner() {
   const [dragOver, setDragOver] = useState(false);
 
   // Instantiate + attach NiiVue once on the client; tear down on unmount.
-  // React 19 StrictMode double-mounts effects in dev — each new Niivue() grabs
-  // a WebGL2 context (browsers cap ~16), so cleanup() in the return is
-  // mandatory. NOTE: the return closes over the LOCAL `nv`, not nvRef.current,
-  // because at StrictMode teardown attachToCanvas().then() may not have
-  // resolved yet (nvRef.current still null) — closing over `nv` guarantees the
-  // exact instance this effect created is always disposed.
+  // React 19 StrictMode double-mounts effects in dev — each new Niivue()
+  // grabs a WebGL2 context (browsers cap ~16), so cleanup() is mandatory.
+  // The return closes over the LOCAL `nv` (not nvRef.current) because at
+  // StrictMode teardown attachToCanvas().then() may not have resolved yet.
   useEffect(() => {
     let cancelled = false;
     const canvas = canvasRef.current;
@@ -56,7 +50,7 @@ export default function MriViewerInner() {
 
     const nv = new Niivue({
       isResizeCanvas: true,
-      backColor: [0, 0, 0, 1],
+      backColor: [0.02, 0.02, 0.02, 1],
       show3Dcrosshair: true,
     });
 
@@ -82,8 +76,7 @@ export default function MriViewerInner() {
     };
   }, []);
 
-  // LOCAL file -> NiiVue. The parser is picked from the file name extension.
-  // No object URL, no upload, no network — bytes stay in the browser.
+  // LOCAL file -> NiiVue. No object URL, no upload, no network.
   const loadFile = useCallback((file: File) => {
     const nv = nvRef.current;
     if (!nv) return;
@@ -101,7 +94,7 @@ export default function MriViewerInner() {
     (e: ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (file) loadFile(file);
-      e.target.value = ""; // allow re-selecting the same file
+      e.target.value = "";
     },
     [loadFile],
   );
@@ -119,17 +112,14 @@ export default function MriViewerInner() {
   return (
     <section
       aria-labelledby="mri-viewer-heading"
-      className="rounded border border-border bg-panel/15 p-6 md:p-8"
+      className="card overflow-hidden"
     >
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 border-b border-line p-5 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+          <p className="text-xs font-medium uppercase tracking-[0.18em] text-faint">
             {t("viewerLabel")}
           </p>
-          <h2
-            id="mri-viewer-heading"
-            className="mt-1.5 text-xl font-bold text-foreground"
-          >
+          <h2 id="mri-viewer-heading" className="mt-1 font-serif text-lg text-ink">
             {t("title")}
           </h2>
         </div>
@@ -139,8 +129,9 @@ export default function MriViewerInner() {
           onClick={() => {
             if (ready) inputRef.current?.click();
           }}
-          className="inline-flex items-center justify-center rounded bg-primary px-4 py-2.5 text-xs font-semibold text-primary-foreground hover:bg-primary/95 focus:outline-none disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground cursor-pointer"
+          className="inline-flex items-center justify-center gap-2 rounded-full bg-ink px-4 py-2.5 text-sm font-medium text-paper transition-colors hover:bg-accent-ink disabled:cursor-not-allowed disabled:bg-line disabled:text-faint"
         >
+          <IconAttach className="h-4 w-4" />
           {t("loadFile")}
         </button>
         <input
@@ -161,8 +152,8 @@ export default function MriViewerInner() {
         }}
         onDragLeave={() => setDragOver(false)}
         onDrop={onDrop}
-        className={`relative mt-5 h-[480px] w-full overflow-hidden rounded border bg-[#050607] transition-colors duration-150 ${
-          dragOver ? "border-medical-orange" : "border-border"
+        className={`relative m-5 h-[460px] overflow-hidden rounded-lg border bg-[#050505] transition-colors ${
+          dragOver ? "border-accent" : "border-line"
         }`}
       >
         <canvas
@@ -177,28 +168,26 @@ export default function MriViewerInner() {
         </p>
         {!fileName ? (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-6 text-center">
-            <p className="max-w-md text-xs leading-5 text-muted-foreground">
-              {t("dropMriHint")}
-            </p>
+            <p className="max-w-md text-sm leading-relaxed text-white/55">{t("dropMriHint")}</p>
           </div>
         ) : null}
       </div>
 
-      <div className="mt-4 flex flex-col gap-2">
+      <div className="flex flex-col gap-2 px-5 pb-5">
         <p
           role="status"
           aria-live="polite"
           aria-atomic="true"
-          className="text-xs font-semibold text-foreground empty:hidden"
+          className="text-sm font-medium text-ink empty:hidden"
         >
           {fileName ? t("loadedFile", { name: fileName }) : ""}
         </p>
         {errKey ? (
-          <p role="alert" className="text-xs font-semibold text-medical-red">
+          <p role="alert" className="text-sm font-medium text-urgent">
             {t(errKey)}
           </p>
         ) : null}
-        <p className="text-xs leading-5 text-muted-foreground">{t("privacyNote")}</p>
+        <p className="text-xs leading-relaxed text-faint">{t("privacyNote")}</p>
       </div>
     </section>
   );

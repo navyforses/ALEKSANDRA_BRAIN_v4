@@ -1,443 +1,157 @@
 {
-  "Audit": {
-    "title": "Audit log",
-    "subtitle": "Every BRAIN-applied action, newest first. Undo works for the last {undoLimit} actions within {undoWindow}.",
-    "colWhen": "When",
-    "colAction": "Action",
-    "colTarget": "Target",
-    "colSource": "Source",
-    "emptyState": "No actions yet."
-  },
   "Brain": {
-    "title": "Digital Twin / 3D Model",
-    "controls": "Controls",
-    "fullscreen": "Fullscreen",
-    "doctorView": "Doctor View (Clinical)",
-    "parentView": "Parent View (Simplified)",
-    "researcherView": "Researcher View (TVB)",
-    "toggleLayers": "Toggle Layers",
-    "viewerLabel": "3D Viewer",
-    "inDevelopment": "In development",
-    "dropMriHint": "Open a local MRI volume (.nii or .nii.gz) — drag it here or use the button above. The file is read in your browser and never uploaded.",
-    "legendDamaged": "Damaged (HIE)",
-    "legendPreserved": "Preserved",
+    "pageTitle": "The brain",
+    "pageSubtitle": "Open Aleksandra's MRI here. It is read entirely inside your browser and never uploaded — privacy is built into how this works, not added on top.",
+    "privacyHeading": "The file never leaves your computer",
+    "privacyBody": "NIfTI volumes (.nii / .nii.gz) are decoded with WebGL2 in this browser tab. There is no upload, no server processing, and no telemetry.",
+    "viewerLabel": "Local viewer",
+    "title": "MRI viewer",
     "loadFile": "Open MRI file",
-    "loadedFile": "Opened: {name}",
+    "dropMriHint": "Drag a NIfTI volume here, or use the button above. It is read in your browser and never uploaded.",
     "privacyNote": "This file is read only in your browser — it is never uploaded or sent anywhere.",
-    "openError": "Could not open this file. Use a .nii or .nii.gz volume.",
-    "webglError": "The 3D viewer could not start — WebGL is unavailable in this browser.",
-    "loading": "Loading the 3D viewer…",
+    "loadedFile": "Opened: {name}",
+    "loading": "Loading the viewer…",
     "canvasEmpty": "MRI viewer, no file loaded",
     "canvasLoaded": "MRI viewer, showing {name}",
-    "canvasControlsHint": "Once a volume is loaded, drag to rotate and scroll to zoom."
+    "canvasControlsHint": "Once a volume is loaded, drag to rotate and scroll to zoom.",
+    "openError": "Could not open this file. Use a .nii or .nii.gz volume.",
+    "webglError": "The viewer could not start — WebGL is unavailable in this browser."
+  },
+  "Brief": {
+    "title": "Weekly brief",
+    "subtitle": "What the system found in the last seven days, written to read on screen — and to print or save as a PDF for the clinician.",
+    "print": "Save as PDF",
+    "forName": "Aleksandra Jincharadze",
+    "weekOf": "Week of {week}",
+    "generatedOn": "compiled {date}",
+    "source": "Source",
+    "footer": "Prepared for clinical review. The system surfaces and explains; every medical decision rests with Aleksandra's clinicians.",
+    "empty": "No weekly brief has been written yet.",
+    "emptyNote": "A brief is composed every Sunday from the week's papers, hypotheses, and updates. The first one will appear here."
   },
   "Common": {
-    "cancel": "Cancel",
-    "loading": "Loading...",
-    "save": "Save"
+    "source": "Source",
+    "noSource": "No source found"
   },
-  "ConfidenceLevel": {
-    "high": "High",
-    "moderate": "Moderate",
-    "low": "Low",
-    "very_low": "Very low"
-  },
-  "Dashboard": {
-    "accessPosture": "Access posture",
-    "accessPostureBody": "Server-rendered data only. Service credentials remain on the server, and MRI data is never fetched here.",
-    "configWarning": "Supabase environment is not configured for the viewer runtime. The page shell is ready; live counts appear after `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are set on the server.",
-    "configurationPending": "Waiting for server configuration",
-    "emptyHypotheses": "No hypothesis rows returned.",
-    "emptyPapers": "No paper rows returned.",
-    "emptyRuns": "No recent runs.",
-    "hypothesisStatus": "Hypothesis status",
-    "latestEvents": "Latest workflow events",
-    "liveSupabaseCount": "Live Supabase count",
-    "metricChunks": "Chunks",
-    "metricEvidenceLedger": "Evidence ledger",
-    "metricHypotheses": "Hypotheses",
-    "metricPapers": "Papers",
-    "phaseLabel": "Phase II.5C",
-    "rlsSmoke": "RLS smoke: covered by Phase 2.5 verifier C.2.",
-    "subtitle": "A compact family view of ingestion, memory growth, alerts, and validation status. Clinical decisions stay with Aleksandra's doctors; this view tracks research workflow state.",
-    "system": "system",
-    "title": "Family-visible operations dashboard",
-    "topPapers": "Top papers by relevance"
-  },
-  "Home": {
-    "closedFoundation": "Closed foundation",
-    "dashboardCardLabel": "Family-visible layer",
-    "dashboardCardSubtitle": "Counts, latest workflow events, spend traces, and top-ranked papers in one view.",
-    "dashboardCardTitle": "Dashboard",
-    "hypothesesCardLabel": "Validation workflow",
-    "hypothesesCardSubtitle": "Confirm evidence-linked research hypotheses, hold uncertain items, or reject weak ones.",
-    "hypothesesCardTitle": "Hypotheses",
-    "phaseLabel": "Phase II.5",
-    "phaseIClosed": "Phase I Perception closed",
-    "phaseIIClosed": "Phase II Memory closed",
-    "phaseIIaClosed": "Phase II.5A spend instrumentation closed",
-    "phaseIIbClosed": "Phase II.5B perception scale-up closed",
-    "privacyFooter": "Privacy: MRI data is client-side only. Never persisted on a server.",
-    "subtitle": "Continuous research ingestion, memory, and hypothesis validation for Aleksandra Jincharadze. This surface is for family workflow visibility; clinical action stays with physicians.",
-    "title": "ALEKSANDRA_BRAIN"
-  },
-  "Hypotheses": {
-    "backToList": "Back to hypotheses",
-    "confidence": "Confidence",
-    "confirm": "Confirm",
-    "confirmedKpi": "Confirmed",
-    "curatorAction": "Curator action",
-    "curatorActionBody": "Confirmation marks the evidence link curated for research follow-up. It is not a clinical treatment recommendation.",
-    "configWarning": "Hypotheses are ready to display after Supabase is configured on the server.",
-    "curatorNotePlaceholder": "Optional curator note (why? evidence quality? next step?)",
-    "currentOutcome": "Current outcome (last curator note)",
-    "detailReasoningPlaceholder": "Why this verdict? Which paper carries the weight? What is the next step?",
-    "emptyList": "No hypotheses returned.",
-    "emptySupportingPapers": "No supporting papers linked yet. The pipeline cites these in ai_reasoning; `backfill_supporting_papers.py` populates the UUID array.",
-    "evidenceLinkedKpi": "Evidence-linked",
-    "feasibility": "Feasibility",
-    "feasible": "Feasible",
-    "genPrefix": "gen",
-    "noRecommendedAction": "No recommended action captured.",
-    "novelty": "Novelty",
-    "papersBadge": "papers",
-    "phaseLabel": "Phase II.5D",
-    "reasoning": "AI reasoning",
-    "recommendedAction": "Recommended action",
-    "reject": "Reject",
-    "relatedTherapies": "Related therapies",
-    "review": "Review",
-    "reviewedAt": "reviewed_at",
-    "statusNew": "new",
-    "subtitle": "Research hypotheses can be confirmed for follow-up, held under review, or rejected. Confirmation here means evidence links were curated; it does not mean treatment approval.",
-    "supportingPapers": "Supporting papers",
-    "title": "Validation workflow",
-    "typeOther": "other",
-    "underReview": "Under review",
-    "urgencyPrefix": "urgency"
-  },
-  "HypothesisStatus": {
-    "new": "New",
-    "under_review": "Under review",
-    "promising": "Promising",
-    "pursuing": "Pursuing",
-    "tested": "Tested",
-    "confirmed": "Confirmed",
-    "rejected": "Rejected",
-    "archived": "Archived"
-  },
-  "HypothesisType": {
-    "drug_repurposing": "Drug repurposing",
-    "pathway_target": "Pathway target",
-    "combination_therapy": "Combination therapy",
-    "timing_optimization": "Timing optimization",
-    "cross_disease_inference": "Cross-disease inference",
-    "plasticity_mechanism": "Plasticity mechanism",
-    "biomarker_discovery": "Biomarker discovery",
-    "technology_application": "Technology application",
-    "rehabilitation_innovation": "Rehabilitation innovation",
-    "other": "Other"
-  },
-  "Knowledge": {
-    "fallback": "Until then, use the dashboard for live counts and top papers.",
-    "subtitle": "Papers, graph, hypotheses, perception pipeline — coming soon.",
-    "title": "Knowledge"
-  },
-  "Manager": {
-    "title": "BRAIN",
-    "active": "Active",
-    "activityLog": "Activity Log",
-    "activityUnreachable": "Activity feed unreachable: {error}",
-    "noActivity": "No recent activity. Drop a file or speak a note to start.",
-    "summarize": {
-      "undidAction": "Undid action {id}…",
-      "addedAppointment": "Added appointment '{title}' ({date})",
-      "logged": "Logged '{title}'",
+  "History": {
+    "title": "History",
+    "subtitle": "Everything BRAIN has done, newest first — what it proposed, what was confirmed, and what was undone.",
+    "undoNote": "Any action can be undone for 24 hours. Reversals are real and recorded here too.",
+    "summary": {
+      "appointment": "Added appointment “{title}” ({date})",
+      "observation": "Logged “{title}”",
+      "contact": "Added contact {name}",
+      "pattern": "Noted a pattern: {description}",
+      "reversed": "Undid action {id}",
+      "dismissed": "Dismissed an intake item",
       "newTherapy": "New therapy candidate: {name}",
-      "appendedNote": "Appended note to therapy",
-      "dismissed": "Dismissed an intake drop",
-      "pattern": "Pattern: {description}",
+      "created": "Created a record in {table}",
+      "therapyNote": "Appended a note to a therapy",
+      "updated": "Updated {table}",
       "fallback": "{action} on {table}"
     },
-    "relativeTime": {
+    "time": {
       "justNow": "just now",
       "minutesAgo": "{n}m ago",
       "hoursAgo": "{n}h ago"
     },
-    "email": {
-      "writeToPlaceholder": "Write to … about …",
-      "drafting": "Drafting…",
-      "draftEmail": "Draft email",
-      "draftStaged": "✓ Gmail draft staged for {contact}",
-      "openGmailNote": "Open Gmail → Drafts to review and send. Never auto-sent.",
-      "draftBlocked": "Draft blocked: {reason}",
-      "contactFallback": "contact"
+    "via": "via {source}",
+    "undone": "undone",
+    "undo": "Undo",
+    "undoing": "Undoing…",
+    "unreachable": "The history feed is unreachable right now.",
+    "empty": "No actions yet.",
+    "emptyNote": "When BRAIN applies something — a staged email, a logged note — it appears here."
+  },
+  "Intake": {
+    "title": "Tell BRAIN something",
+    "subtitle": "Type or speak a request, or attach a file. BRAIN reads what you mean and stages an action for you to confirm — nothing is sent on its own.",
+    "placeholder": "e.g. “Write to Dr. Hien about Aleksandra's latest EEG.”",
+    "heroPrompt": "Ask BRAIN, or leave a note…",
+    "attach": "Attach",
+    "removeAttach": "Remove file",
+    "fileNote": "This file stays on your device. Describe what you'd like done with it.",
+    "voiceHold": "Hold to talk",
+    "voiceRecording": "Recording…",
+    "voiceTranscribing": "Transcribing…",
+    "voiceRetry": "Try again",
+    "send": "Send",
+    "sending": "Reading…",
+    "close": "Close",
+    "contactFallback": "your contact",
+    "stagedTitle": "Draft ready for {contact}",
+    "openGmail": "Open Gmail → Drafts to review and send. BRAIN never sends on its own.",
+    "blockedTitle": "Held back",
+    "blockedHint": "BRAIN didn't stage this: {reason}.",
+    "noMatchTitle": "Not an action yet",
+    "noMatchHint": "Right now BRAIN can stage messages to your contacts. Try: “write to Dr. Hien about the EEG results.”",
+    "workerDownTitle": "BRAIN's worker is offline",
+    "workerDownHint": "Your note is kept in the field. Try again in a moment.",
+    "errorTitle": "Something went wrong",
+    "privacy": "Files and MRI scans never leave this device.",
+    "seeHistory": "History"
+  },
+  "Research": {
+    "title": "Research",
+    "subtitle": "Everything the system is reading for Aleksandra — papers, hypotheses, and therapy candidates in one place. Every item carries its source; where there is none, it says so.",
+    "lensLabel": "Filter by kind",
+    "lens": {
+      "all": "All",
+      "papers": "Papers",
+      "hypotheses": "Hypotheses",
+      "therapies": "Therapies"
     },
-    "input": {
-      "askPlaceholder": "Ask BRAIN or drop file...",
-      "attach": "Attach"
-    },
-    "voice": {
-      "recording": "Recording…",
-      "transcribing": "Transcribing…",
-      "retry": "Retry",
-      "holdToTalk": "Hold to talk"
+    "searchPlaceholder": "Search…",
+    "updated": "Last updated {time}",
+    "empty": "No research has been ingested yet.",
+    "noMatch": "Nothing matches that search.",
+    "noDetail": "No further detail recorded.",
+    "implication": "What this could mean for Aleksandra",
+    "kind": {
+      "paper": "Paper",
+      "hypothesis": "Hypothesis",
+      "therapy": "Therapy"
     }
   },
-  "Navigation": {
-    "primaryLabel": "Primary navigation",
-    "audit": "Audit",
-    "brain": "Brain",
-    "dashboard": "Dashboard",
-    "doctorMode": "Doctor Mode",
-    "hypotheses": "Hypotheses",
-    "knowledge": "Knowledge",
-    "papers": "Papers",
-    "therapies": "Therapies",
-    "timeline": "Timeline",
-    "today": "Today"
-  },
-  "Papers": {
-    "clinicalTrials": "Clinical trials",
-    "confidencePending": "metadata pending",
-    "datePending": "date pending",
-    "direct": "Direct",
-    "directHie": "direct HIE",
-    "emptyList": "No paper rows returned.",
-    "evidenceLabel": "evidence",
-    "high": "High",
-    "latestIngest": "Latest ingest",
-    "literatureRows": "Literature rows",
-    "openSource": "Open source record",
-    "phaseLabel": "Research corpus",
-    "shown": "Shown",
-    "sourcePending": "source pending",
-    "subtitle": "Read-only view of ingested literature and trial records ranked by relevance to Aleksandra's research context.",
-    "title": "Papers",
-    "topScore": "Top score",
-    "unclassified": "unclassified"
-  },
-  "Shared": {
-    "empty": "No rows returned.",
-    "error": "Something went wrong.",
-    "errorRetry": "Try again",
-    "loading": "Loading...",
-    "na": "n/a",
-    "no": "no",
-    "notListed": "not listed",
-    "sourcePending": "source pending",
-    "unknown": "unknown",
-    "yes": "yes"
-  },
-  "Therapies": {
-    "active": "Active",
-    "ageWindow": "Window",
-    "aleksandraFor": "for Aleksandra",
-    "clinicalStatus": "Clinical status",
-    "cost": "Cost",
-    "costUnknown": "unknown",
-    "eligible": "Eligible",
-    "eligibleYes": "Eligible marked yes",
-    "emptyList": "No therapy rows returned.",
-    "evidenceLabel": "evidence",
-    "evidenceUnknown": "unknown",
-    "locations": "Locations",
-    "phaseLabel": "Therapy tracker",
-    "promisingEvidence": "Promising HIE evidence",
-    "shown": "Shown",
-    "statusNotConsidered": "not_considered",
-    "subtitle": "Read-only status view of treatments, programs, and research candidates. This page is operational context, not clinical advice.",
-    "timeCritical": "Time critical",
-    "timing": "Timing",
-    "title": "Therapies",
-    "typePending": "type pending",
-    "watching": "Watching"
-  },
-  "Timeline": {
-    "emptyList": "No timeline rows returned.",
-    "events": "Events",
-    "latest": "Latest",
-    "locationPending": "location pending",
-    "phaseLabel": "Clinical context",
-    "shown": "Shown",
-    "subtitle": "Read-only chronological record of key events used for family workflow visibility and research context.",
-    "title": "Timeline"
-  },
-  "TimelineEventType": {
-    "SYSTEM_MILESTONE": "System milestone",
-    "PROGRAM_ENROLLMENT": "Program enrollment",
-    "MEDICATION_CHANGE": "Medication change",
-    "APPOINTMENT": "Appointment",
-    "RELOCATION": "Relocation",
-    "MRI_SCAN": "MRI scan",
-    "DIAGNOSIS": "Diagnosis",
-    "BIRTH": "Birth",
-    "appointment": "Appointment",
-    "medication_change": "Medication change",
-    "observation": "Observation"
+  "Shell": {
+    "nav": {
+      "label": "Primary",
+      "today": "Today",
+      "research": "Research",
+      "brain": "Brain",
+      "brief": "Brief",
+      "history": "History"
+    },
+    "intake": "Add",
+    "skipToContent": "Skip to content",
+    "privacy": "MRI and DICOM data stay client-side only — read in the browser, never on a server.",
+    "clinician": "BRAIN surfaces, ranks, and explains. Every medical decision is made by Aleksandra's clinicians.",
+    "theme": {
+      "toLight": "Switch to day",
+      "toDark": "Switch to night"
+    }
   },
   "Today": {
-    "comingSoon": "Daily clinical view — coming soon.",
-    "fallback": "Awaiting calendar pipeline, vitals stream, and observation log.",
-    "title": "Today"
-  },
-  "Twin": {
-    "phaseLabel": "Phase 7.6 Digital Twin",
-    "title": "Twin status",
-    "subtitle": "Posterior distribution across 13 modeled dimensions of ალექსანდრა's clinical and developmental state. Values reflect the current belief snapshot.",
-    "dimensionsCount": "Dimensions",
-    "evidence30d": "Evidence (30 days)",
-    "mockNotice": "Structural build: rendered from a deterministic mock snapshot. Backend wiring lands in a follow-up sprint.",
-    "privacyFooter": "Privacy posture: no MRI bytes, no medical record numbers. Posterior values only.",
-    "posteriorOverview": "Posterior overview",
-    "lastUpdated": "Last updated",
-    "mean": "Mean",
-    "hdiLow": "HDI low",
-    "hdiHigh": "HDI high",
-    "discreteSummary": "Discrete distribution — see categorical detail view.",
-    "ciAnnotation": "80% credible interval: {low} to {high}",
-    "dimensions": {
-      "cyst_volume_pct": "Cyst volume (% of brain)",
-      "brainstem_function": "Brainstem function",
-      "seizure_freq_per_day": "Seizure frequency (per day)",
-      "muscle_tone_hammersmith": "Muscle tone (Hammersmith)",
-      "eye_tracking_seconds": "Eye tracking (seconds)",
-      "head_control_seconds": "Head control (seconds vertical)",
-      "gmfcs_level": "GMFCS level",
-      "bayley_cognitive": "Bayley cognitive composite",
-      "feeding_stage": "Feeding stage",
-      "respiratory_apnea_per_day": "Respiratory apnea (per day)",
-      "csf_biomarkers": "CSF biomarker panel",
-      "neuroplasticity_resource": "Neuroplasticity window",
-      "family_readiness": "Family readiness"
-    }
-  },
-  "Drift": {
-    "phaseLabel": "Phase 7.6 Belief Drift",
-    "title": "Belief drift over time",
-    "subtitle": "Posterior mean trajectory across the last 30 days for each dimension. Diamond markers indicate days where new evidence updated the belief.",
-    "dimensions": "Dimensions tracked",
-    "evidenceEvents": "Evidence events",
-    "mockNotice": "Structural build: rendered from a deterministic synthetic drift series. Backend wiring lands in a follow-up sprint.",
-    "howToRead": "Click a dimension chip to toggle its trace. Hover any point to see the value on that day.",
-    "timelineHeading": "Posterior mean timeline",
-    "xAxis": "Date",
-    "yAxis": "Posterior mean",
-    "evidence": "evidence"
-  },
-  "Causal": {
-    "phaseLabel": "Phase 7.6 Causal Graph",
-    "title": "Causal graph",
-    "subtitle": "Structural causal model: nodes represent variables, edges represent directed mechanisms with citations.",
-    "nodes": "Nodes",
-    "edges": "Edges",
-    "mockNotice": "Structural build: rendered from the reference SCM (Vigabatrin to Seizure frequency). Live SCM CRUD lands in a follow-up sprint.",
-    "howToRead": "Edge color encodes relationship type: green causes, red inhibits, blue mediates, amber confounds, purple moderates. Click a node to see parents, children, mechanisms, and citations.",
-    "selectedNode": "Selected node",
-    "parents": "Parents",
-    "children": "Children",
-    "noParents": "No incoming edges in this graph.",
-    "noChildren": "No outgoing edges in this graph.",
-    "noSelection": "Pick a node on the left to see its mechanism trail."
-  },
-  "Simulate": {
-    "phaseLabel": "Phase 7.6 Simulation Studio",
-    "title": "Simulation studio",
-    "subtitle": "Build a scenario, run the simulation, compare against a control. Output is a posterior over outcomes, never a recommendation.",
-    "scenariosSaved": "Scenarios saved",
-    "defaultScm": "Default SCM",
-    "mockNotice": "Structural build: comparison rendered from a deterministic Vigabatrin-vs-control reference run. Backend wiring lands in a follow-up sprint.",
-    "decisionFooter": "Decision authority stays with ალექსანდრა's clinicians. This studio surfaces uncertainty; it does not prescribe.",
-    "builder": "Scenario builder",
-    "scenarioName": "Scenario name",
-    "nSamples": "Samples",
-    "horizonDays": "Horizon (days)",
-    "runSimulation": "Run simulation ({samples} samples)",
-    "running": "Running...",
-    "errSamplesRange": "Samples must be between 10 and 10000.",
-    "errHorizonRange": "Horizon must be between 1 and 2000 days.",
-    "errMinIntervention": "Add at least one Intervention node.",
-    "errNameRequired": "Scenario name is required.",
-    "noResultsYet": "No comparison yet. Build a scenario and run a simulation.",
-    "results": "Results",
-    "palette": {
-      "Intervention": "Intervention",
-      "Outcome": "Outcome",
-      "Confounder": "Confounder",
-      "Mediator": "Mediator"
-    },
-    "verdict": {
-      "A_better": "A better",
-      "B_better": "B better",
-      "tie": "Tie",
-      "ambiguous": "Ambiguous"
-    }
-  },
-  "SnapshotWidget": {
-    "title": "Twin snapshot",
-    "loading": "Loading twin snapshot...",
-    "dimensionsSuffix": "dimensions"
-  },
-  "SimulationGraph": {
-    "title": "Expected benefit",
-    "noSim": "Simulation not yet attached"
-  },
-  "TwinImpactFilter": {
-    "title": "Twin impact sort",
-    "description": "Sort by how much each paper would shift the digital-twin posterior (Kullback-Leibler divergence). Falls back to relevance score when the twin estimate is missing.",
-    "sortByKl": "Sorting by KL divergence",
-    "sortByRelevance": "Sorting by relevance score"
-  },
-  "ActiveQuestionsSection": {
-    "title": "Active questions this week",
-    "loading": "Loading active questions...",
-    "empty": "No questions in the queue right now.",
-    "questionsSuffix": "in queue",
-    "status": {
-      "open": "Open",
-      "responded": "Responded",
-      "skipped": "Skipped",
-      "expired": "Expired"
-    }
-  },
-  "DashboardHub": {
-    "phaseLabel": "Phase 7.6",
-    "title": "v7 tools hub",
-    "subtitle": "Launch points for the Phase 7.0-7.7 analytical surfaces, widget routes, and the most clinician-relevant portal pages. Family-facing reading lives on the rest of the portal.",
-    "footer": "Click a card to enter the surface. Each route gates itself via its own feature flag; disabled surfaces return 404.",
-    "cards": {
-      "twin": {
-        "title": "Twin Status",
-        "description": "13-dimension belief posterior histograms with TwinImpactFilter (KL-divergence sort)."
-      },
-      "causal": {
-        "title": "Causal Graph",
-        "description": "571-node SCM in vis-network; Pearl 5-type edge taxonomy."
-      },
-      "simulate": {
-        "title": "Simulation Studio",
-        "description": "Scenario builder + Monte Carlo comparison + per-hypothesis benefit graph."
-      },
-      "drift": {
-        "title": "Belief Drift",
-        "description": "Posterior trajectory timeline across the 13 dimensions."
-      },
-      "activeQuestions": {
-        "title": "Active Questions",
-        "description": "Phase 7.4 EIG-ranked questions for the current week, with response status."
-      },
-      "snapshot": {
-        "title": "Twin Snapshot",
-        "description": "Compact 13-dim posterior summary (mean + 80% HDI + delta)."
-      },
-      "hypotheses": {
-        "title": "Hypotheses",
-        "description": "Manus portal page — live hypothesis grid with status badges."
-      },
-      "papers": {
-        "title": "Papers",
-        "description": "Manus portal page — research paper list with relevance scores."
-      }
-    }
+    "statusConnecting": "Connecting to the research store…",
+    "statusScanning": "The system is reading new research right now.",
+    "statusIdle": "Last read {time} · {source}.",
+    "statusReady": "The system is watching the literature.",
+    "theLiterature": "the literature",
+    "title": "What's new for Aleksandra",
+    "lead": "While you were away, the system kept reading. Here is what it found, what may need you, and one step you can take now.",
+    "tracking": "Tracking {papers} papers, {hypotheses} hypotheses, and {therapies} therapy candidates.",
+    "askLabel": "Do something in one step",
+    "attentionTitle": "What may need you",
+    "attentionEmpty": "Nothing is waiting on you right now.",
+    "attentionEmptyNote": "The system is still reading. New signals will surface here.",
+    "seeAllResearch": "See all research",
+    "weekTitle": "This week",
+    "openBrief": "Open the weekly brief",
+    "weekEmpty": "The first weekly brief hasn't been written yet.",
+    "weekEmptyNote": "A brief is composed every Sunday from the week's findings.",
+    "exploreResearch": "Research",
+    "exploreResearchNote": "Papers, hypotheses, and therapy candidates — each with its source.",
+    "exploreBrain": "The brain",
+    "exploreBrainNote": "Open an MRI privately, here in your browser."
   }
 }

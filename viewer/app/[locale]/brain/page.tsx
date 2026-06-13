@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
-import { setRequestLocale } from "next-intl/server";
-import { buildPageMetadata, type Locale } from "@/lib/seo";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 import MriViewer from "./MriViewer";
+import { IconLock } from "@/components/shell/icons";
+import { buildPageMetadata, type Locale } from "@/lib/seo";
 
 export async function generateMetadata({
   params,
@@ -19,33 +20,34 @@ export default async function BrainPage({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
-  const isKa = locale === "ka";
+  const t = await getTranslations("Brain");
 
   return (
-    <div className="space-y-6">
-      {/* Privacy lock banner */}
-      <div className="flex items-start gap-3 border border-medical-green bg-medical-green/5 p-4 rounded text-xs leading-relaxed text-medical-green">
-        <span className="text-base select-none">🔒</span>
-        <div>
-          <p className="font-bold">
-            {isKa 
-              ? "ლოკალური და დაცული: ფაილები ბრაუზერს არ ტოვებს" 
-              : "Private & Localized: MRI files never leave your computer"
-            }
-          </p>
-          <p className="mt-1 opacity-90">
-            {isKa 
-              ? "NIfTI (.nii / .nii.gz) ფაილის დამუშავება ხდება მხოლოდ თქვენს ბრაუზერში WebGL-ის მეშვეობით. სერვერზე ატვირთვა ან მესამე მხარისთვის გადაცემა არ ხდება." 
-              : "Your MRI files are parsed 100% client-side inside the browser using WebGL2. There are zero uploads, zero server processing, and zero telemetry."
-            }
-          </p>
-        </div>
-      </div>
+    <div className="space-y-8">
+      <header className="u-rise max-w-2xl">
+        <h1 className="font-serif text-[1.9rem] leading-tight tracking-tight text-ink">
+          {t("pageTitle")}
+        </h1>
+        <p className="mt-3 text-[0.98rem] leading-relaxed text-muted">{t("pageSubtitle")}</p>
+      </header>
 
-      {/* Main MRI Viewer Canvas Container */}
-      <div className="border border-border rounded bg-background p-4 sm:p-6">
+      {/* Privacy is the foundation of trust here, not a footnote — so it
+          leads, stated as a promise the architecture keeps. */}
+      <section className="u-rise u-rise-1 rounded-xl border border-signal-line bg-signal-soft p-5">
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-full bg-signal/10 text-signal">
+            <IconLock />
+          </span>
+          <div>
+            <p className="font-serif text-base text-ink">{t("privacyHeading")}</p>
+            <p className="mt-1.5 text-sm leading-relaxed text-muted">{t("privacyBody")}</p>
+          </div>
+        </div>
+      </section>
+
+      <section className="u-rise u-rise-2">
         <MriViewer />
-      </div>
+      </section>
     </div>
   );
 }
