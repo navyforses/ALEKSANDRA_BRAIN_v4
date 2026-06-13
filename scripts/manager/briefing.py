@@ -288,13 +288,20 @@ def compose(
         {"en": activity_line, "ka": ka_activity},
         {"en": follow_line, "ka": ka_follow},
     ]
-    text = "Good morning. " + "\n".join(bullets)
+    # W1 fix (Phase 6 D-02): the Telegram audience is the Georgian-speaking
+    # family (BRIEFING_LOCALE='ka'), so the SENT body must be Georgian. The
+    # English `bullets` / `bilingual_bullets[*].en` are retained only for the
+    # briefs.sections audit trail. Previously `text` was built from the English
+    # `bullets`, so the family physically received "Good morning..." every time.
+    ka_bullets = [ka_today, ka_activity, ka_follow]
+    greeting = BRIEFING_TEMPLATES_KA["good_morning"]
+    text = greeting + " " + "\n".join(ka_bullets)
     wc = _count_words(text)
 
     if wc > WORD_CAP:
         # Soft truncate: drop the activity sub-line first, then trim.
-        shorter = [today_line, follow_line]
-        text = "Good morning. " + "\n".join(shorter)
+        shorter = [ka_today, ka_follow]
+        text = greeting + " " + "\n".join(shorter)
         wc = _count_words(text)
         # bilingual_bullets keeps all 3 bullets — JSONB audit trail is allowed
         # to be richer than the truncated Telegram body.
