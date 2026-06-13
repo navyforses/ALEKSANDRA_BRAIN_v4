@@ -92,10 +92,12 @@ function flatten(value: unknown, locale: Locale): string {
   }
   if (typeof value === "object") {
     const obj = value as Record<string, unknown>;
-    const localized = flatten(
-      obj[locale] ?? obj[locale === "ka" ? "en" : "ka"],
-      locale,
-    );
+    // Prefer the requested locale, but treat an EMPTY string as missing and
+    // fall back to the other locale — `??` alone keeps "" (e.g. a paper whose
+    // ka title was never backfilled), which would otherwise show as a dash.
+    const localized =
+      flatten(obj[locale], locale) ||
+      flatten(obj[locale === "ka" ? "en" : "ka"], locale);
     if (localized) return localized;
     const preferred = [
       "reasoning",
