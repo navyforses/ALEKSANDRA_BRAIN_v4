@@ -58,6 +58,12 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
+from scripts.extraction.gemini_translator import (
+    TranslationFailed,
+    translate_prose,
+    translate_title,
+)
+
 # --------------------------------------------------------------------------- #
 # config — what to repair
 # --------------------------------------------------------------------------- #
@@ -66,7 +72,11 @@ TABLES: dict[str, dict] = {
     "therapies": {
         "id_col": "id",
         "fields": [
-            {"name": "name", "kind": "title", "strategy": "retranslate"},
+            # "auto" for ongoing/scheduled runs (idempotent: only fixes broken
+            # rows, skips clean ones — no churn, near-zero cost). The one-time
+            # "retranslate" cleanup that fixed the silent mistranslations was
+            # already applied 2026-06-13; pass --retranslate-names to force it.
+            {"name": "name", "kind": "title", "strategy": "auto"},
             {"name": "evidence_summary", "kind": "prose", "strategy": "auto"},
         ],
     },
@@ -246,62 +256,11 @@ def _ka_messy(ka: str | None) -> bool:
 
 
 # --------------------------------------------------------------------------- #
-# translation
+# translation — delegated to the Gemini translator bot (gemini-3.5-flash).
+# translate_title / translate_prose are imported at the top of the module;
+# both apply the strict prompts + markdown/CJK/Cyrillic guards and raise
+# TranslationFailed on a refusal or guard failure (caller then keeps en).
 # --------------------------------------------------------------------------- #
-
-_TITLE_SYSTEM = (
-    "You translate a single short label/title from English to Georgian "
-    "(Mkhedruli script only). Output ONLY the Georgian text on ONE line — no "
-    "commentary, no alternative versions, no markdown, no quotes, no '---', no "
-    "explanation. If the English is truncated, translate only what is given. "
-    "Use ONLY Georgian Mkhedruli letters plus Latin letters/digits for proper "
-    "nouns and acronyms; never use Chinese, Japanese, or any other script. "
-    "Translate idioms naturally. The text is descriptive scientific/clinical "
-    "terminology, not medical advice; do not refuse."
-)
-
-
-def _titleize(text: str) -> str:
-    s = (text or "").strip()
-    for sep in ("\n---", "\n\n", "\n"):
-        if sep in s:
-            s = s.split(sep, 1)[0].strip()
-    return _MD_HEADER.sub("", s).replace("**", "").strip().strip("\"'").strip()
-
-
-def _translate_title_strict(client, en: str, max_attempts: int = 3) -> str:
-    from scripts.extraction.translate import TranslationFailed
-
-    last = ""
-    for _ in range(max_attempts):
-        resp = client.messages.create(
-            model="claude-sonnet-4-6",
-            max_tokens=TITLE_MAX_TOKENS,
-            system=_TITLE_SYSTEM,
-            messages=[{"role": "user", "content": f"Translate to Georgian:\n\n{en}"}],
-        )
-        blocks = [b for b in resp.content if getattr(b, "type", None) == "text"]
-        cand = _titleize(blocks[0].text) if blocks and blocks[0].text.strip() else ""
-        last = cand
-        if cand and _has_georgian(cand) and not _has_cjk(cand) and not _ka_messy(cand):
-            return cand
-    raise TranslationFailed(
-        f"title still bad after {max_attempts} attempts: {last[:60]!r}"
-    )
-
-
-def _translate_prose(client, en: str) -> str:
-    """Faithful prose translation via the shared helper, with a leading-header
-    strip and a CJK/commentary guard."""
-    from scripts.extraction.translate import TranslationFailed, translate_to_georgian
-
-    out = translate_to_georgian(en, client=client, max_tokens=PROSE_MAX_TOKENS)
-    # Strip markdown section headers on any line and bold markers the model adds
-    # to structured abstracts ("## Methods", "**Objective:**"); keep paragraphs.
-    out = _MD_HEADER_ML.sub("", (out or "").strip()).replace("**", "").strip()
-    if not out or not _has_georgian(out) or _has_cjk(out) or _ka_messy(out):
-        raise TranslationFailed(f"prose translation rejected: {out[:60]!r}")
-    return out
 
 
 # --------------------------------------------------------------------------- #
@@ -355,7 +314,6 @@ def _process_field(
     key: str,
     apply_changes: bool,
     limit: int | None,
-    client,
 ) -> dict:
     fname, kind, strategy = field["name"], field["kind"], field["strategy"]
     id_col = TABLES[table]["id_col"]
@@ -407,7 +365,6 @@ def _process_field(
         }
 
     from scripts.cognition.budget import BudgetExceeded
-    from scripts.extraction.translate import TranslationFailed
 
     if limit:
         todo = todo[:limit]
@@ -420,9 +377,7 @@ def _process_field(
         try:
             if action == "translate":
                 ka_final = (
-                    _translate_title_strict(client, en)
-                    if kind == "title"
-                    else _translate_prose(client, en)
+                    translate_title(en) if kind == "title" else translate_prose(en)
                 )
                 translated += 1
             else:  # keep
@@ -464,22 +419,28 @@ def _process_field(
 
 
 def run(
-    *, table: str | None, field: str | None, apply_changes: bool, limit: int | None
+    *,
+    table: str | None,
+    field: str | None,
+    apply_changes: bool,
+    limit: int | None,
+    retranslate_names: bool = False,
 ) -> int:
     _load_env()
     base, key = _config()
     if not base or not key:
         sys.stderr.write("ERROR: SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY not set\n")
         return 2
-    if apply_changes and not os.environ.get("ANTHROPIC_API_KEY", "").strip():
-        sys.stderr.write("ERROR: ANTHROPIC_API_KEY required for --apply\n")
+    if apply_changes and not (
+        os.environ.get("OPENROUTER_API_KEY", "").strip()
+        or os.environ.get("GEMINI_API_KEY", "").strip()
+        or os.environ.get("GOOGLE_AI_STUDIO_KEY", "").strip()
+    ):
+        sys.stderr.write(
+            "ERROR: set OPENROUTER_API_KEY (production) or GEMINI_API_KEY "
+            "(direct Google) for --apply — the translator bot needs one\n"
+        )
         return 2
-
-    client = None
-    if apply_changes:
-        import anthropic
-
-        client = anthropic.Anthropic()
 
     targets = [table] if table else list(TABLES)
     overall_fail = 0
@@ -490,6 +451,9 @@ def run(
         for f in TABLES[tname]["fields"]:
             if field and f["name"] != field:
                 continue
+            # one-time forced re-translation of therapies.name (semantic fix)
+            if retranslate_names and tname == "therapies" and f["name"] == "name":
+                f = {**f, "strategy": "retranslate"}
             res = _process_field(
                 table=tname,
                 field=f,
@@ -497,7 +461,6 @@ def run(
                 key=key,
                 apply_changes=apply_changes,
                 limit=limit,
-                client=client,
             )
             overall_fail += res["failures"]
     print("\n[025] done." + ("" if apply_changes else "  (DRY RUN — pass --apply)"))
@@ -516,9 +479,20 @@ def main() -> int:
     ap.add_argument(
         "--limit", type=int, default=None, help="Patch at most N rows per field."
     )
+    ap.add_argument(
+        "--retranslate-names",
+        action="store_true",
+        help="One-time: force re-translation of every therapies.name from en "
+        "(fixes silent mistranslations a heuristic cannot see). Off by default "
+        "so scheduled runs stay idempotent.",
+    )
     args = ap.parse_args()
     return run(
-        table=args.table, field=args.field, apply_changes=args.apply, limit=args.limit
+        table=args.table,
+        field=args.field,
+        apply_changes=args.apply,
+        limit=args.limit,
+        retranslate_names=args.retranslate_names,
     )
 
 

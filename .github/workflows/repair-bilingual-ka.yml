@@ -1,0 +1,95 @@
+# Nightly bilingual-ka safety net.
+#
+# Runs the Gemini translator bot (scripts/extraction/gemini_translator.py)
+# through the table-driven repair (scripts/migrations/025_repair_bilingual_ka.py)
+# across every bilingual JSONB field. It is idempotent and cheap: clean rows are
+# skipped, only blank / English-mirror / markdown / foreign-script ka is
+# (re)translated. New papers already arrive translated at ingestion
+# (build_bilingual); this catches the rare failure or fallback-blank.
+#
+# Engine: google/gemini-3.5-flash. The bot prefers OpenRouter when
+# OPENROUTER_API_KEY is set (production parity) and otherwise calls Google AI
+# Studio directly with GEMINI_API_KEY. Provide at least one.
+#
+# Required repo secrets (Settings → Secrets and variables → Actions):
+#   SUPABASE_URL                 — your project URL
+#   SUPABASE_SERVICE_ROLE_KEY    — service-role key (RLS-bypassing writes)
+#   GEMINI_API_KEY               — Google AI Studio key (already in local .env)
+#   OPENROUTER_API_KEY           — OPTIONAL; if set the bot uses OpenRouter
+
+name: Repair bilingual ka (nightly)
+
+on:
+  schedule:
+    - cron: "0 7 * * *" # 07:00 UTC ≈ 02:00–03:00 ET, daily
+  workflow_dispatch: # manual "Run workflow" button
+    inputs:
+      dry_run:
+        description: "Dry run (no writes)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: repair-bilingual-ka
+  cancel-in-progress: false
+
+jobs:
+  repair:
+    name: translate + repair missing/broken ka
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      PYTHONUTF8: "1"
+      PYTHONIOENCODING: "utf-8"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies (best effort)
+        run: |
+          python -m pip install --upgrade pip
+          [ -f requirements.txt ] && pip install -r requirements.txt || true
+          # Light deps the bot + repair actually import.
+          pip install requests httpx || true
+        continue-on-error: true
+
+      - name: Preconditions
+        run: |
+          set -euo pipefail
+          if [ -z "${SUPABASE_URL:-}" ] || [ -z "${SUPABASE_SERVICE_ROLE_KEY:-}" ]; then
+            echo "::error::SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY secrets are missing"; exit 1
+          fi
+          if [ -z "${GEMINI_API_KEY:-}" ] && [ -z "${OPENROUTER_API_KEY:-}" ]; then
+            echo "::error::Set GEMINI_API_KEY or OPENROUTER_API_KEY"; exit 1
+          fi
+
+      - name: Repair bilingual ka (all tables)
+        run: |
+          set -uo pipefail
+          FLAGS="--apply"
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then FLAGS=""; fi
+          python -m scripts.migrations.025_repair_bilingual_ka $FLAGS
+          code=$?
+          # exit 2 = config/env error (fail the job). exit 1 = some rows could
+          # not be translated (e.g. a provider refusal) — expected, not fatal.
+          if [ "$code" = "2" ]; then exit 2; fi
+          echo "repair exit code: $code (0=clean, 1=some rows kept en)"
+
+      - name: Audit summary (informational)
+        if: always()
+        run: |
+          set -uo pipefail
+          python scripts/audit_data_quality.py | grep -E "===|ka real|corrupt|blank:" || true
