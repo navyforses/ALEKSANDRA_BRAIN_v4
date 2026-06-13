@@ -219,6 +219,64 @@ def is_known_source(
     return len(r.json()) > 0
 
 
+def known_sources(
+    source_ids: list[str],
+    source_type: str,
+    *,
+    mode: str = "positive",
+    chunk: int = 80,
+) -> set[str]:
+    """Batch form of is_known_source: return the subset of `source_ids` already
+    present in evidence_ledger for (source_type, mode).
+
+    P-4. One ``source_id=in.(...)`` query per chunk instead of one GET per
+    candidate. **Fail-open**: on ANY error (missing creds, non-200, network) this
+    returns an EMPTY set — i.e. treats everything as unknown so the caller
+    re-fetches rather than silently skipping a credible lead. That inverts
+    is_known_source (which raises on non-200): a transient Supabase blip must
+    never drop a lead. The cost of fail-open is a redundant fetch + a 409 on
+    insert (deduped server-side), never a double row.
+    """
+    ids = sorted({s for s in source_ids if s})
+    if not ids:
+        return set()
+    known: set[str] = set()
+    try:
+        url, key = _supabase_creds()
+        for i in range(0, len(ids), chunk):
+            batch = ids[i : i + chunk]
+            quoted = ",".join('"' + s.replace('"', '""') + '"' for s in batch)
+            r = httpx.get(
+                f"{url}/rest/v1/evidence_ledger",
+                params={
+                    "source_id": f"in.({quoted})",
+                    "source_type": f"eq.{source_type}",
+                    "mode": f"eq.{mode}",
+                    "select": "source_id",
+                },
+                headers=_supabase_headers(key, prefer="count=none"),
+                timeout=15,
+            )
+            if r.status_code != 200:
+                return set()  # fail-open
+            for row in r.json():
+                sid = row.get("source_id")
+                if sid is not None:
+                    known.add(str(sid))
+    except Exception:
+        return set()  # fail-open
+    return known
+
+
+def query_watermark_key(query: str, *, mode: str = "positive") -> str:
+    """Stable kv_state key for a fetcher query's incremental date watermark (P-3).
+
+    Folds in `mode` so the positive and negative branches of the same query text
+    never collide on one watermark row.
+    """
+    return f"pubmed_watermark:{mode}:{compute_hash(query.encode('utf-8'))[:16]}"
+
+
 def insert_ledger_row(
     *,
     source_id: str,

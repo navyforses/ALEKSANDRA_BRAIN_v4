@@ -30,7 +30,7 @@ import httpx
 from scripts.ledger import (
     compute_hash,
     insert_ledger_row,
-    is_known_source,
+    known_sources,
     load_env,
     upload_artifact,
 )
@@ -170,12 +170,20 @@ def run(
                 continue
             studies = page.get("studies", [])
             counts["studies_found"] += len(studies)
+            # P-4: one batch dedup query per page (fail-open) instead of one GET
+            # per study. _study_to_metadata is pure parsing, so re-deriving the
+            # NCT id list here is cheap.
+            already = known_sources(
+                [n for n in (_study_to_metadata(s)[0] for s in studies) if n],
+                "ctgov",
+                mode=mode,
+            )
             new_for_q = 0
             for study in studies:
                 nct_id, meta = _study_to_metadata(study)
                 if not nct_id:
                     continue
-                if is_known_source(nct_id, "ctgov", mode=mode):
+                if nct_id in already:
                     counts["duplicates"] += 1
                     continue
                 try:
