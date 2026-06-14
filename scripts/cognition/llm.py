@@ -228,6 +228,7 @@ def _run_openrouter(
     system: str | None,
     max_tokens: int,
     temperature: float,
+    response_format: dict[str, Any] | None = None,
 ) -> str:
     api_key = _openrouter_key()
     messages: list[dict[str, str]] = []
@@ -243,6 +244,7 @@ def _run_openrouter(
             max_tokens=max_tokens,
             temperature=temperature,
             api_key=api_key,
+            response_format=response_format,
         )
     except Exception as e:
         end = datetime.now(timezone.utc)
@@ -348,9 +350,16 @@ def call_llm(
     system: str | None = None,
     max_tokens: int = 4096,
     temperature: float = 0.2,
+    response_format: dict[str, Any] | None = None,
 ) -> str:
     """
     Send one user message and return the text reply, appending a runs row.
+
+    ``response_format`` is an optional OpenAI-style hint (e.g.
+    ``{"type": "json_object"}``) forwarded only on the OpenRouter path for
+    providers that support JSON mode; the Anthropic path ignores it (JSON is
+    prompt-enforced there). Default ``None`` keeps every existing caller
+    byte-identical.
 
     Model resolution (first wins):
       1. explicit ``model`` argument,
@@ -386,6 +395,7 @@ def call_llm(
             system=system,
             max_tokens=max_tokens,
             temperature=temperature,
+            response_format=response_format,
         )
     return _run_anthropic(
         prompt=prompt,
