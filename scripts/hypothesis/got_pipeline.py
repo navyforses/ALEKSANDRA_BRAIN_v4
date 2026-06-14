@@ -43,14 +43,23 @@ from datetime import datetime, timezone
 import httpx
 from neo4j import GraphDatabase
 
+from scripts.cognition import models
 from scripts.cognition.llm import call_llm
-from scripts.ledger import _supabase_creds, _supabase_headers, load_env
+from scripts.hypothesis.validate import validate
+from scripts.ledger import (
+    _supabase_creds,
+    _supabase_headers,
+    get_state,
+    load_env,
+    set_state,
+)
 from scripts.rag.retrieve import retrieve
 
 # ------------------------------------------------------------------
 # Config
 # ------------------------------------------------------------------
-MODEL = "claude-sonnet-4-5"  # per CLAUDE.md default
+MODEL = "claude-sonnet-4-5"  # legacy/reference only — real model resolved per
+# call via models.model_for("got"); see COG-5 in _insert_hypotheses.
 TEMPERATURE = 0.4
 MAX_TOKENS = 8192
 GROUP_ID = "hie_research"
@@ -254,10 +263,16 @@ def _parse_hypotheses(raw: str) -> list[dict]:
 # ------------------------------------------------------------------
 # Step 4: write to Supabase
 # ------------------------------------------------------------------
-def _insert_hypotheses(rows: list[dict]) -> list[str]:
-    """Insert into Supabase hypotheses table. Returns new row UUIDs."""
+def _insert_hypotheses(rows: list[dict], *, generated_by: str) -> list[str]:
+    """Insert into Supabase hypotheses table. Returns new row UUIDs.
+
+    Each row is gated by the COG-3 validator: it surfaces as 'under_review' only
+    if it passes >=3/5 deterministic rules, else it is held as 'new'. The
+    promoted-vs-held tally is printed so a borderline lead is never silently lost.
+    """
     url, key = _supabase_creds()
     inserted: list[str] = []
+    promoted = 0
     now = datetime.now(timezone.utc).isoformat()
 
     for h in rows:
@@ -275,6 +290,14 @@ def _insert_hypotheses(rows: list[dict]) -> list[str]:
         # UUIDs. We store the source_id strings in ai_reasoning JSON and leave
         # supporting_papers empty for now — Phase 2.5 will join source_ids
         # back to papers.id and rewrite the array.
+        #
+        # COG-3: gate the row. With no ledger_ids/entity_match available at
+        # insert time, only the 3 text rules can pass; >=3/5 -> surface as
+        # 'under_review', else hold as 'new' for later review.
+        verdict = validate(h)
+        status = "under_review" if verdict["passing"] else "new"
+        if status == "under_review":
+            promoted += 1
         body = {
             "id": str(uuid.uuid4()),
             "title": (h.get("title") or "")[:300],
@@ -301,8 +324,8 @@ def _insert_hypotheses(rows: list[dict]) -> list[str]:
             "discovery_method": (h.get("discovery_method") or "")[:300],
             "recommended_action": (h.get("recommended_action") or "")[:2000],
             "contact_researcher": (h.get("contact_researcher") or "")[:200],
-            "status": "new",
-            "generated_by": MODEL,
+            "status": status,
+            "generated_by": generated_by,
             "generation_batch": f"phase2c_run_{now}",
         }
         r = httpx.post(
@@ -315,7 +338,78 @@ def _insert_hypotheses(rows: list[dict]) -> list[str]:
             inserted.append(body["id"])
         else:
             print(f"  insert fail HTTP {r.status_code}: {r.text[:300]}")
+    print(
+        f"  validator: {promoted} promoted (under_review), "
+        f"{len(rows) - promoted} held (new) of {len(rows)}"
+    )
     return inserted
+
+
+# ------------------------------------------------------------------
+# COG-1: cheap entity-count gate so the hypothesis leg only runs when enough
+# new evidence has landed — avoids LLM token burn on a quiet week.
+# ------------------------------------------------------------------
+_HYP_WATERMARK_KEY = "hypothesis_tick_watermark"
+
+
+def _ledger_count() -> int:
+    """Total evidence_ledger rows via a cheap PostgREST exact count (no body)."""
+    url, key = _supabase_creds()
+    r = httpx.get(
+        f"{url}/rest/v1/evidence_ledger",
+        params={"select": "id"},
+        headers={
+            **_supabase_headers(key, prefer="count=exact"),
+            "Range-Unit": "items",
+            "Range": "0-0",
+        },
+        timeout=15,
+    )
+    # PostgREST returns Content-Range: 0-0/<total> (or */<total>).
+    cr = r.headers.get("content-range", "")
+    if "/" in cr:
+        try:
+            return int(cr.rsplit("/", 1)[1])
+        except ValueError:
+            return 0
+    return 0
+
+
+def should_tick(min_new_entities: int = 5) -> tuple[bool, int, int]:
+    """Return (should_run, current_count, last_count). True when at least
+    `min_new_entities` new evidence_ledger rows have arrived since the last
+    successful hypothesis tick. Malformed/absent watermark => last=0."""
+    current = _ledger_count()
+    state = get_state(_HYP_WATERMARK_KEY)
+    last = int((state or {}).get("count", 0) or 0)
+    return (current - last) >= min_new_entities, current, last
+
+
+def run_first_gated(max_hypotheses: int = 5, min_new_entities: int = 5) -> dict:
+    """run_first, but only when enough new evidence has landed. Below threshold
+    returns {"skipped": True} WITHOUT any LLM call. The watermark advances only
+    after a successful run, so a crash mid-run safely re-ticks next time."""
+    load_env()
+    go, current, last = should_tick(min_new_entities)
+    if not go:
+        return {
+            "skipped": True,
+            "reason": "below_threshold",
+            "current_count": current,
+            "last_count": last,
+            "delta": current - last,
+        }
+    summary = run_first(max_hypotheses=max_hypotheses)
+    try:
+        set_state(
+            _HYP_WATERMARK_KEY,
+            {"count": current, "updated_at": datetime.now(timezone.utc).isoformat()},
+        )
+    except Exception:
+        pass
+    summary["skipped"] = False
+    summary["ledger_count"] = current
+    return summary
 
 
 # ------------------------------------------------------------------
@@ -362,7 +456,11 @@ def run_first(max_hypotheses: int = 5) -> dict:
     parsed = parsed[:max_hypotheses]
     print(f"LLM proposed {len(parsed)} hypotheses")
 
-    ids = _insert_hypotheses(parsed)
+    # COG-5: record the model actually used. _call_claude routes via
+    # call_llm(task="got"), so the real model is the thinker-tier slug the
+    # router picks for this prompt — not the legacy MODEL constant.
+    resolved_model = models.model_for("got", complexity=len(user))
+    ids = _insert_hypotheses(parsed, generated_by=resolved_model)
     print(f"inserted {len(ids)} rows into Supabase hypotheses")
 
     return {

@@ -115,7 +115,9 @@ FALLBACK_PRICE: tuple[float, float] = (15.00, 75.00)
 
 def provider() -> str:
     """Active provider: 'openrouter' (default) or 'anthropic' (rollback)."""
-    return os.environ.get("MODEL_PROVIDER", "openrouter").strip().lower() or "openrouter"
+    return (
+        os.environ.get("MODEL_PROVIDER", "openrouter").strip().lower() or "openrouter"
+    )
 
 
 def tier_for(task: str) -> str:
@@ -158,6 +160,21 @@ def is_openrouter_model(model: str) -> bool:
     return "/" in model
 
 
+# Models that reject the `temperature` request param (newer reasoning models such
+# as Opus 4.8). Sending `temperature` to these returns HTTP 400
+# invalid_request_error ("`temperature` is deprecated for this model"), so
+# scripts.cognition.llm omits the param for them and lets the model use its default.
+TEMPERATURE_UNSUPPORTED: tuple[str, ...] = (
+    "claude-opus-4-8",
+    "anthropic/claude-opus-4-8",
+)
+
+
+def supports_temperature(model: str) -> bool:
+    """False for models that reject the `temperature` request param (e.g. Opus 4.8)."""
+    return not any(model.startswith(p) for p in TEMPERATURE_UNSUPPORTED)
+
+
 def crew_llm(tier: str) -> str:
     """LiteLLM model string for CrewAI agents.
 
@@ -182,6 +199,8 @@ __all__ = [
     "model_for",
     "price_for",
     "is_openrouter_model",
+    "supports_temperature",
+    "TEMPERATURE_UNSUPPORTED",
     "crew_llm",
     "THINKER_COMPLEXITY_MIN",
 ]

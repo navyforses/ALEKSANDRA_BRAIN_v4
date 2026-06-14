@@ -31,6 +31,13 @@
       "parameters": {
         "method": "POST",
         "url": "={{ $env.PERCEPTION_WORKER_URL }}/extraction-tick",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "X-Auth-Token", "value": "={{ $env.PERCEPTION_WORKER_AUTH_TOKEN || $env.PHASE5_WORKER_AUTH_TOKEN || $env.PHASE4_WORKER_AUTH_TOKEN || '' }}" }
+          ]
+        },
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={\"force\": false, \"limit\": null}",

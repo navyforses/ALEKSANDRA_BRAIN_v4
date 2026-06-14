@@ -40,9 +40,12 @@ def test_compose_with_full_data():
     assert isinstance(msg, BriefMessage)
     assert msg.word_count <= WORD_CAP
     assert len(msg.bullets) == 3
-    assert "BMC neurology" in msg.text
-    assert "Vigabatrin" in msg.text
-    assert "2 drafts" in msg.text
+    assert "BMC neurology" in msg.text  # interpolated event title (not translated)
+    assert "Vigabatrin" in msg.text  # interpolated therapy name (not translated)
+    assert "2 მონახაზი" in msg.text  # W1: follow-up line is Georgian
+    # W1: the SENT body must be Georgian (Mkhedruli present), not English
+    assert msg.text.startswith("დილა მშვიდობისა")
+    assert any("Ⴀ" <= ch <= "ჿ" for ch in msg.text)
 
 
 def test_compose_quiet_morning():
@@ -53,9 +56,9 @@ def test_compose_quiet_morning():
         pending_outreach_count=0,
     )
     assert msg.word_count <= WORD_CAP
-    assert "no appointments" in msg.text.lower()
-    assert "quiet last 24h" in msg.text
-    assert "inbox clear" in msg.text
+    assert "შეხვედრები არ არის" in msg.text  # no appointments (ka)
+    assert "მშვიდი ბოლო 24სთ" in msg.text  # quiet last 24h (ka)
+    assert "ფოსტა გასუფთავებულია" in msg.text  # inbox clear (ka)
 
 
 def test_compose_truncates_when_over_50_words():
@@ -84,14 +87,14 @@ def test_compose_singular_vs_plural_drafts():
         top_therapy=None,
         pending_outreach_count=1,
     )
-    assert "1 draft awaiting" in one.text  # singular
+    assert "1 მონახაზი" in one.text  # ka follow-up line carries the count
     two = compose(
         today_events=[],
         last_24h_evidence_count=0,
         top_therapy=None,
         pending_outreach_count=2,
     )
-    assert "2 drafts awaiting" in two.text
+    assert "2 მონახაზი" in two.text
 
 
 def test_word_cap_constant_documented():
@@ -119,4 +122,4 @@ def test_run_dry_run_smoke():
     assert result["briefs_id"] is None
     assert isinstance(result["bullets"], list) and len(result["bullets"]) == 3
     assert result["word_count"] <= WORD_CAP
-    assert result["text"].startswith("Good morning")
+    assert result["text"].startswith("დილა მშვიდობისა")

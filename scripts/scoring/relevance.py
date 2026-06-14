@@ -104,14 +104,28 @@ def _coerce_float_0_1(v: Any) -> float | None:
     return max(0.0, min(1.0, f))
 
 
+def _en(value: Any) -> str:
+    """Coerce a possibly-bilingual JSONB field to a plain (English) string.
+
+    papers.title / papers.abstract became JSONB ``{en, ka}`` after migration 012,
+    so a raw PostgREST row value may be a ``dict`` rather than ``str``. Calling
+    ``.strip()`` on a dict raises ``AttributeError`` and crashed the whole
+    relevance backfill on the first new paper (P-1). Return the English half
+    (the scorer's prompt + abstract are English), falling back to ka, then "".
+    """
+    if isinstance(value, dict):
+        return (value.get("en") or value.get("ka") or "").strip()
+    return (value or "").strip()
+
+
 def score(title: str, abstract: str) -> RelevanceResult:
     """
     Send one classification request. Never raises — failures return a
     RelevanceResult with score=None so the caller can persist NULL and
     move on (OR-2 fallback contract).
     """
-    title = (title or "").strip()
-    abstract = (abstract or "").strip()
+    title = _en(title)
+    abstract = _en(abstract)
     if not title and not abstract:
         return RelevanceResult(
             score=None,

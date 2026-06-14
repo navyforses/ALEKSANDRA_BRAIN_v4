@@ -36,7 +36,7 @@ import feedparser
 from scripts.ledger import (
     compute_hash,
     insert_ledger_row,
-    is_known_source,
+    known_sources,
     load_env,
     upload_artifact,
 )
@@ -115,7 +115,10 @@ def _entry_to_metadata(entry: dict[str, Any], doi: str) -> dict[str, Any]:
         plain = re.sub(r"<[^>]+>", " ", summary)
         plain = re.sub(r"\s+", " ", plain).strip()
         if plain:
-            meta["abstract_excerpt"] = plain[:300]
+            meta["abstract_full"] = (
+                plain  # full text → papers.abstract (process_ledger)
+            )
+            meta["abstract_excerpt"] = plain[:300]  # kept for list-view previews
             meta["abstract_chars"] = len(plain)
     return meta
 
@@ -164,6 +167,13 @@ def run(max_per_feed: int = 10, *, mode: str = "positive") -> dict[str, int]:
             continue
 
         entries = feed.entries[:max_per_feed]
+        # P-4: one batch dedup query per feed (fail-open) instead of one GET per
+        # entry. _extract_doi is pure parsing, so re-deriving the list is cheap.
+        already = known_sources(
+            [d for d in (_extract_doi(e) for e in entries) if d],
+            source_type,
+            mode=mode,
+        )
         new_for_feed = 0
         for entry in entries:
             counts["entries_seen"] += 1
@@ -171,7 +181,7 @@ def run(max_per_feed: int = 10, *, mode: str = "positive") -> dict[str, int]:
             if not doi:
                 counts["no_doi"] += 1
                 continue
-            if is_known_source(doi, source_type, mode=mode):
+            if doi in already:
                 counts["duplicates"] += 1
                 continue
             try:

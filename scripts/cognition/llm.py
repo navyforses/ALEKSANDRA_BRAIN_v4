@@ -179,8 +179,11 @@ def _openrouter_complete(
         "model": model,
         "messages": messages,
         "max_tokens": max_tokens,
-        "temperature": temperature,
     }
+    # Opus 4.8 and other newer models reject `temperature` (HTTP 400). Omit it for
+    # those — the gateway/model uses its default. See models.supports_temperature.
+    if models.supports_temperature(model):
+        body["temperature"] = temperature
     if response_format is not None:
         body["response_format"] = response_format
     r = httpx.post(
@@ -289,9 +292,12 @@ def _run_anthropic(
     kwargs: dict[str, Any] = {
         "model": model,
         "max_tokens": max_tokens,
-        "temperature": temperature,
         "messages": [{"role": "user", "content": prompt}],
     }
+    # Opus 4.8 and other newer models reject `temperature` (HTTP 400). Omit it
+    # for those — the model uses its own default. See models.supports_temperature.
+    if models.supports_temperature(model):
+        kwargs["temperature"] = temperature
     if system is not None:
         kwargs["system"] = system
 
@@ -365,9 +371,7 @@ def call_llm(
     """
     load_env()
     resolved = model or (
-        models.model_for(task, complexity=complexity)
-        if task
-        else "claude-sonnet-4-5"
+        models.model_for(task, complexity=complexity) if task else "claude-sonnet-4-5"
     )
 
     # Daily-budget gate — defence-in-depth alongside the n8n cron gate. Raises

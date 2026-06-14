@@ -27,6 +27,7 @@ from __future__ import annotations
 import argparse
 import sys
 import time
+from datetime import datetime, timedelta, timezone
 from typing import Any
 from xml.etree import ElementTree as ET
 
@@ -34,9 +35,12 @@ from Bio import Entrez
 
 from scripts.ledger import (
     compute_hash,
+    get_state,
     insert_ledger_row,
-    is_known_source,
+    known_sources,
     load_env,
+    query_watermark_key,
+    set_state,
     upload_artifact,
 )
 
@@ -105,8 +109,18 @@ def configure_entrez() -> bool:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-def _esearch_pmids(query: str, retmax: int) -> list[str]:
-    handle = Entrez.esearch(db="pubmed", term=query, retmax=retmax, sort="date")
+def _esearch_pmids(query: str, retmax: int, mindate: str | None = None) -> list[str]:
+    kwargs: dict[str, Any] = {
+        "db": "pubmed",
+        "term": query,
+        "retmax": retmax,
+        "sort": "date",
+    }
+    if mindate:
+        # P-3: restrict to records ADDED since the watermark (edat = the Entrez
+        # date a record entered PubMed). maxdate far ahead = "up to now".
+        kwargs.update(datetype="edat", mindate=mindate, maxdate="3000")
+    handle = Entrez.esearch(**kwargs)
     record = Entrez.read(handle)
     handle.close()
     return list(record.get("IdList", []))
@@ -165,7 +179,10 @@ def _xml_to_metadata(xml: bytes, pmid: str) -> dict[str, Any]:
             abstract_parts.append(ab.text.strip())
     if abstract_parts:
         full_abstract = " ".join(abstract_parts)
-        meta["abstract_excerpt"] = full_abstract[:300]
+        meta["abstract_full"] = (
+            full_abstract  # full text → papers.abstract (process_ledger)
+        )
+        meta["abstract_excerpt"] = full_abstract[:300]  # kept for list-view previews
         meta["abstract_chars"] = len(full_abstract)
 
     # DOI is in ArticleIdList
@@ -213,17 +230,29 @@ def run(
 
     for q in queries:
         counts["queries_run"] += 1
+        # P-3: ask PubMed only for records added since the last successful tick
+        # for this query. The watermark carries a small lookback so a day that
+        # adds more than `retmax` papers is re-examined, never permanently lost.
+        mindate: str | None = None
         try:
-            pmids = _esearch_pmids(q, retmax=retmax)
+            wm = get_state(query_watermark_key(q, mode=mode))
+            mindate = (wm or {}).get("last_edat")
+        except Exception:
+            mindate = None
+        try:
+            pmids = _esearch_pmids(q, retmax=retmax, mindate=mindate)
         except Exception as e:
             print(f"  [err] esearch failed for {q!r}: {e}")
             counts["errors"] += 1
             continue
         counts["pmids_found"] += len(pmids)
+        # P-4: one batch dedup query instead of one GET per PMID (fail-open: a
+        # Supabase blip returns an empty set, so we re-fetch rather than skip).
+        already = known_sources(pmids, "pubmed", mode=mode)
+        counts["duplicates"] += len(already)
         new_for_q = 0
         for pmid in pmids:
-            if is_known_source(pmid, "pubmed", mode=mode):
-                counts["duplicates"] += 1
+            if pmid in already:
                 continue
             try:
                 xml = _efetch_xml(pmid)
@@ -250,6 +279,18 @@ def run(
             except Exception as e:
                 print(f"  [err] efetch/ledger failed for PMID {pmid}: {e}")
                 counts["errors"] += 1
+        # P-3: advance the watermark only after a clean esearch (we got here),
+        # with a 2-day lookback (edat is day-granular + inclusive) so a busy day
+        # is re-examined next run; the batch dedup makes that cheap.
+        try:
+            now = datetime.now(timezone.utc)
+            floor = (now - timedelta(days=2)).strftime("%Y/%m/%d")
+            set_state(
+                query_watermark_key(q, mode=mode),
+                {"last_edat": floor, "updated_at": now.isoformat()},
+            )
+        except Exception:
+            pass
         print(f"  query: {q[:48]:<48} found={len(pmids):3d} new={new_for_q}")
 
     return counts

@@ -39,6 +39,7 @@ Deploy on Railway:
 
 from __future__ import annotations
 
+import hmac
 import json
 import logging
 import os
@@ -47,7 +48,11 @@ import traceback
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
 
-from scripts.cognition.budget import BudgetExceeded, check_daily_budget
+from scripts.cognition.budget import (
+    DEFAULT_DAILY_BUDGET_USD,
+    BudgetExceeded,
+    check_daily_budget,
+)
 from scripts.ledger import load_env
 
 LOG = logging.getLogger("perception_worker")
@@ -110,6 +115,32 @@ class _Handler(BaseHTTPRequestHandler):
             return
         _json_response(self, 404, {"error": "not_found", "path": self.path})
 
+    def _require_auth(self) -> bool:
+        """OPS-7: enforce a shared secret, but only when one is configured.
+
+        Accepts any of the historical env names so neither the already-deployed
+        PHASE5 manager routes nor the PHASE4 digest workflow break. When no
+        token is set, returns True — the pre-OPS-7 open-relay behavior — so a
+        single env var flips enforcement on with no coordinated deploy. The
+        comparison is constant-time (hmac.compare_digest).
+        """
+        expected = ""
+        for _name in (
+            "PERCEPTION_WORKER_AUTH_TOKEN",
+            "PHASE5_WORKER_AUTH_TOKEN",
+            "PHASE4_WORKER_AUTH_TOKEN",
+        ):
+            expected = (os.environ.get(_name) or "").strip()
+            if expected:
+                break
+        if not expected:
+            return True
+        got = (self.headers.get("X-Auth-Token") or "").strip()
+        if hmac.compare_digest(got, expected):
+            return True
+        _json_response(self, 401, {"error": "unauthorized"})
+        return False
+
     def do_POST(self) -> None:  # noqa: N802
         # Four POST endpoints. The first three sit behind a budget gate
         # because they trigger LLM-using pipelines. The fourth
@@ -121,6 +152,7 @@ class _Handler(BaseHTTPRequestHandler):
             "/chunking-tick",
             "/extraction-tick",
             "/analysis-tick",
+            "/hypothesis-tick",
             "/daily-spend-report",
             "/voice-transcribe",
             "/apply-actions",
@@ -131,6 +163,12 @@ class _Handler(BaseHTTPRequestHandler):
             "/render-weekly-brief",
         ):
             _json_response(self, 404, {"error": "not_found", "path": self.path})
+            return
+
+        # OPS-7: one auth gate for EVERY worker endpoint. Open relay until a
+        # shared secret is configured (see _require_auth), so nothing breaks
+        # before Shako sets the token; once set, every POST needs X-Auth-Token.
+        if not self._require_auth():
             return
 
         # /voice-transcribe is multipart/form-data, not JSON. Handle it
@@ -180,8 +218,12 @@ class _Handler(BaseHTTPRequestHandler):
             return
 
         # Defence-in-depth budget gate (HC-2/HC-4) BEFORE any pipeline.
+        # OPS-3: use the single env-resolved cap (DAILY_BUDGET_USD or the $5.00
+        # default) — not a worker-local $12 literal that silently overrode the
+        # cap the rest of the system (budget.py, daily-budget-gate.json) enforces.
+        cap_usd = float(os.environ.get("DAILY_BUDGET_USD") or DEFAULT_DAILY_BUDGET_USD)
         try:
-            today_spend, over = check_daily_budget(threshold_usd=12.0)
+            today_spend, over = check_daily_budget()
         except Exception as e:
             LOG.exception("budget check failed open")
             today_spend, over = 0.0, False
@@ -193,7 +235,7 @@ class _Handler(BaseHTTPRequestHandler):
                 {
                     "error": "budget_exceeded",
                     "today_spend_usd": today_spend,
-                    "cap_usd": 12.0,
+                    "cap_usd": cap_usd,
                 },
             )
             return
@@ -206,6 +248,8 @@ class _Handler(BaseHTTPRequestHandler):
             self._handle_extraction(body)
         elif self.path == "/analysis-tick":
             self._handle_analysis(body)
+        elif self.path == "/hypothesis-tick":
+            self._handle_hypothesis_tick(body)
 
     def _parse_body(self) -> dict[str, Any] | None:
         body: dict[str, Any] = {}
@@ -291,6 +335,25 @@ class _Handler(BaseHTTPRequestHandler):
                     "detail": f"{type(e).__name__}: {e}",
                     "trace": traceback.format_exc(limit=5),
                 },
+            )
+            return
+        _json_response(self, 200, result)
+
+    def _handle_hypothesis_tick(self, body: dict[str, Any]) -> None:
+        """COG-1. Run the GoT hypothesis leg, gated on the new-evidence count so
+        it only spends LLM budget when enough new rows have landed since the last
+        tick. Sits behind the budget gate above (hypothesis generation is
+        LLM-using)."""
+        max_hyp = int(body.get("max_hypotheses", 5))
+        min_new = int(body.get("min_new_entities", 5))
+        try:
+            from scripts.hypothesis.got_pipeline import run_first_gated
+
+            result = run_first_gated(max_hypotheses=max_hyp, min_new_entities=min_new)
+        except Exception as e:
+            LOG.exception("hypothesis-tick failed")
+            _json_response(
+                self, 500, {"error": "hypothesis_tick_failed", "detail": str(e)[:300]}
             )
             return
         _json_response(self, 200, result)
@@ -431,13 +494,6 @@ class _Handler(BaseHTTPRequestHandler):
 
     def _handle_voice_transcribe(self) -> None:
         """Phase 5 MNG-04. Multipart audio → Whisper → redacted transcript."""
-        # Optional shared-secret auth so the Railway URL isn't an open relay.
-        expected_token = os.environ.get("PHASE5_WORKER_AUTH_TOKEN", "").strip()
-        if expected_token:
-            got = (self.headers.get("X-Auth-Token") or "").strip()
-            if got != expected_token:
-                _json_response(self, 401, {"error": "unauthorized"})
-                return
 
         content_type = self.headers.get("Content-Type") or ""
         if "multipart/form-data" not in content_type:
@@ -510,12 +566,6 @@ class _Handler(BaseHTTPRequestHandler):
 
     def _handle_apply_actions(self, body: dict[str, Any]) -> None:
         """Phase 5 MNG-07. Apply N approved ActionCards atomically."""
-        expected_token = os.environ.get("PHASE5_WORKER_AUTH_TOKEN", "").strip()
-        if expected_token:
-            got = (self.headers.get("X-Auth-Token") or "").strip()
-            if got != expected_token:
-                _json_response(self, 401, {"error": "unauthorized"})
-                return
 
         cards = body.get("cards")
         if not isinstance(cards, list) or not cards:
@@ -570,12 +620,6 @@ class _Handler(BaseHTTPRequestHandler):
 
     def _handle_undo_action(self, body: dict[str, Any]) -> None:
         """Phase 5 MNG-09. Reverse one manager_actions row."""
-        expected_token = os.environ.get("PHASE5_WORKER_AUTH_TOKEN", "").strip()
-        if expected_token:
-            got = (self.headers.get("X-Auth-Token") or "").strip()
-            if got != expected_token:
-                _json_response(self, 401, {"error": "unauthorized"})
-                return
 
         manager_action_id = body.get("manager_action_id")
         manager_user_id = body.get("manager_user_id")
@@ -634,12 +678,6 @@ class _Handler(BaseHTTPRequestHandler):
 
     def _handle_morning_briefing(self, body: dict[str, Any]) -> None:
         """Phase 5 MNG-10. Compose + send the Sunday morning briefing."""
-        expected_token = os.environ.get("PHASE5_WORKER_AUTH_TOKEN", "").strip()
-        if expected_token:
-            got = (self.headers.get("X-Auth-Token") or "").strip()
-            if got != expected_token:
-                _json_response(self, 401, {"error": "unauthorized"})
-                return
         dry_run = bool(body.get("dry_run", False))
         try:
             from scripts.manager.briefing import run as briefing_run  # noqa: PLC0415
@@ -657,12 +695,6 @@ class _Handler(BaseHTTPRequestHandler):
 
     def _handle_email_intent(self, body: dict[str, Any]) -> None:
         """Phase 5 MNG-11. Parse 'write to X about Y' -> Gmail draft."""
-        expected_token = os.environ.get("PHASE5_WORKER_AUTH_TOKEN", "").strip()
-        if expected_token:
-            got = (self.headers.get("X-Auth-Token") or "").strip()
-            if got != expected_token:
-                _json_response(self, 401, {"error": "unauthorized"})
-                return
         text = (body.get("text") or "").strip()
         dry_run = bool(body.get("dry_run", False))
         if not text:

@@ -24,7 +24,7 @@
         "headerParameters": {
           "parameters": [
             { "name": "Content-Type", "value": "application/json" },
-            { "name": "X-Auth-Token", "value": "={{ $env.PHASE4_WORKER_AUTH_TOKEN }}" }
+            { "name": "X-Auth-Token", "value": "={{ $env.PERCEPTION_WORKER_AUTH_TOKEN || $env.PHASE5_WORKER_AUTH_TOKEN || $env.PHASE4_WORKER_AUTH_TOKEN || '' }}" }
           ]
         },
         "sendBody": true,
