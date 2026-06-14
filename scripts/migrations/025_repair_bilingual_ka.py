@@ -101,7 +101,50 @@ TABLES: dict[str, dict] = {
             {"name": "abstract", "kind": "prose", "strategy": "auto"},
         ],
     },
+    # W4: briefs.sections is one nested JSONB document (not a flat column), so it
+    # is walked leaf-by-leaf and PATCHed whole. Non-bilingual metadata (dates,
+    # citation_id, status, citations[]) is never touched. The four flat tables
+    # above are unchanged.
+    "briefs": {
+        "id_col": "id",
+        "column": "sections",
+        "jsonb_walk": True,
+    },
 }
+
+# W4: which bilingual leaves live inside briefs.sections, and their kind. Mirrors
+# BriefSections.to_dict() in scripts/communicator/weekly_brief.py. summary_lines is
+# handled separately (it is a top-level list of {en, ka} pairs, not list-of-objects).
+_BRIEF_LEAVES: list[tuple[str, str, str]] = [
+    ("papers", "title", "title"),
+    ("hypotheses", "title", "title"),
+    ("therapies", "name", "title"),
+    ("outreach", "subject", "title"),
+    ("questions", "question", "prose"),
+    ("questions", "context", "prose"),
+]
+
+
+def _walk_sections(sections: object):
+    """Yield (container, key, value, kind) for every bilingual leaf in a
+    briefs.sections document. `container[key] = ...` writes the repaired value
+    straight back into `sections`, leaving all sibling metadata untouched.
+    """
+    if not isinstance(sections, dict):
+        return
+    summary = sections.get("summary_lines")
+    if isinstance(summary, list):
+        for i, item in enumerate(summary):
+            if isinstance(item, dict):
+                yield summary, i, item, "prose"
+    for list_key, field_key, kind in _BRIEF_LEAVES:
+        arr = sections.get(list_key)
+        if not isinstance(arr, list):
+            continue
+        for item in arr:
+            if isinstance(item, dict) and field_key in item:
+                yield item, field_key, item.get(field_key), kind
+
 
 TITLE_MAX_TOKENS = 256
 PROSE_MAX_TOKENS = 4096  # headroom so long abstracts are never truncated mid-sentence
@@ -422,6 +465,119 @@ def _process_field(
     }
 
 
+def _process_briefs(
+    *, table: str, base: str, key: str, apply_changes: bool, limit: int | None
+) -> dict:
+    """Repair every bilingual leaf inside briefs.sections (a nested JSONB doc).
+
+    Reuses decide()/_clean_ka/_coerce_en_ka exactly as the flat tables do, then
+    PATCHes the WHOLE sections object back so untouched leaves + non-bilingual
+    metadata are preserved verbatim. Budget- and refusal-safe like _process_field.
+    """
+    id_col = TABLES[table]["id_col"]
+    col = TABLES[table]["column"]
+    rows = _rest("GET", f"{table}?select={id_col},{col}&limit=5000", base, key)
+
+    plan = {"keep": 0, "translate": 0, "flag": 0}
+    per_row: list[tuple] = []  # (row, sections, [(container, k, action, en, ka, kind)])
+    for r in rows:
+        sections = r.get(col)
+        leaves = []
+        for container, k, value, kind in _walk_sections(sections):
+            action, en, ka_keep = decide(value, kind, "auto")
+            if action == "skip":
+                continue
+            if action == "flag":
+                plan["flag"] += 1
+                continue
+            # no-op keep: stored leaf already equals the clean {en, ka} target.
+            if action == "keep" and container[k] == {"en": en, "ka": ka_keep}:
+                continue
+            plan[action] += 1
+            leaves.append((container, k, action, en, ka_keep, kind))
+        if leaves:
+            per_row.append((r, sections, leaves))
+
+    print(
+        f"\n=== {table}.{col} [jsonb_walk] ({len(rows)} rows, "
+        f"{len(per_row)} to patch) ==="
+    )
+    print(f"  keep={plan['keep']} translate={plan['translate']} flag={plan['flag']}")
+
+    if not apply_changes:
+        print("  (dry run — no writes)")
+        return {
+            "keep": plan["keep"],
+            "translate": plan["translate"],
+            "flag": plan["flag"],
+            "patched": 0,
+            "failures": 0,
+            "failed": [],
+        }
+
+    from scripts.cognition.budget import BudgetExceeded
+
+    patched = translated = kept = failures = count = 0
+    failed: list[str] = []
+    stop = False
+    for r, sections, leaves in per_row:
+        if stop:
+            break
+        rid = str(r[id_col])
+        changed = False
+        for container, k, action, en, ka_keep, kind in leaves:
+            if limit and count >= limit:
+                stop = True
+                break
+            try:
+                if action == "translate":
+                    ka_final = (
+                        translate_title(en) if kind == "title" else translate_prose(en)
+                    )
+                    translated += 1
+                else:  # keep (normalize cosmetic markdown losslessly)
+                    ka_final = ka_keep
+                    kept += 1
+            except BudgetExceeded:
+                sys.stderr.write(
+                    f"[025] BUDGET EXCEEDED at {table}.{col} row {rid[:8]} — "
+                    f"stop (resume-safe)\n"
+                )
+                stop = True
+                break
+            except TranslationFailed as e:
+                failures += 1
+                failed.append(rid[:8])
+                sys.stderr.write(f"  [{rid[:8]}] {e}\n")
+                continue
+            container[k] = {"en": en, "ka": ka_final}
+            changed = True
+            count += 1
+        if changed:
+            _rest(
+                "PATCH",
+                f"{table}?{id_col}=eq.{urllib.parse.quote(rid)}",
+                base,
+                key,
+                {col: sections},
+            )
+            patched += 1
+            print(f"  [{rid[:8]}] sections patched", flush=True)
+
+    print(
+        f"  --> patched={patched} (translated={translated} kept={kept}) "
+        f"failures={failures}"
+    )
+    return {
+        "keep": kept,
+        "translate": translated,
+        "flag": plan["flag"],
+        "patched": patched,
+        "failures": failures,
+        "failed": failed,
+    }
+
+
 def run(
     *,
     table: str | None,
@@ -452,6 +608,18 @@ def run(
         if tname not in TABLES:
             sys.stderr.write(f"unknown table {tname}\n")
             return 2
+        # W4: nested-JSONB tables (briefs.sections) are walked whole, not per flat
+        # field; --field does not apply to them.
+        if TABLES[tname].get("jsonb_walk"):
+            res = _process_briefs(
+                table=tname,
+                base=base,
+                key=key,
+                apply_changes=apply_changes,
+                limit=limit,
+            )
+            overall_fail += res["failures"]
+            continue
         for f in TABLES[tname]["fields"]:
             if field and f["name"] != field:
                 continue

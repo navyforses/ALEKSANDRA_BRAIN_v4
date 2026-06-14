@@ -482,6 +482,8 @@ function humanizeKey(key: string, locale: Locale): string {
     questions: { en: "Questions for the clinician", ka: "კითხვები ექიმთან" },
     actions: { en: "Suggested next steps", ka: "შემდეგი ნაბიჯები" },
     risks: { en: "Risks and limits", ka: "რისკები და ლიმიტები" },
+    outreach: { en: "Outreach queue", ka: "საკონტაქტო რიგი" },
+    summary_lines: { en: "This week, in short", ka: "ამ კვირას, მოკლედ" },
   };
   const hit = map[key.toLowerCase()];
   if (hit) return locale === "ka" ? hit.ka : hit.en;

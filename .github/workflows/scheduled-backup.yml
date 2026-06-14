@@ -1,0 +1,82 @@
+# OPS-5 — weekly offsite backup of the two stateful stores to Cloudflare R2.
+#
+# Supabase Postgres (pg_dump) + Neo4j AuraDB (JSON export) -> R2 under a
+# TIMESTAMPED key, so a failed/partial run can never clobber the last-good
+# object. The job is INERT until secrets exist: the Preconditions step exits 0
+# (a notice, not a failure) when R2 / DB creds are absent, so an un-provisioned
+# repo does not get a weekly red-X email.
+#
+# Restore is manual + reviewed: scripts/restore_neo4j.py (Neo4j) and psql for the
+# Supabase .sql dump. Restore is intentionally NOT automated.
+
+name: Scheduled backup (Supabase + Neo4j -> R2)
+
+on:
+  schedule:
+    - cron: "0 4 * * 0" # weekly, Sunday 04:00 UTC
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dump + size only, skip R2 upload"
+        required: false
+        default: "false"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: scheduled-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      NEO4J_URI: ${{ secrets.NEO4J_URI }}
+      NEO4J_USERNAME: ${{ secrets.NEO4J_USERNAME }}
+      NEO4J_PASSWORD: ${{ secrets.NEO4J_PASSWORD }}
+      CLOUDFLARE_R2_ENDPOINT: ${{ secrets.CLOUDFLARE_R2_ENDPOINT }}
+      CLOUDFLARE_R2_ACCESS_KEY_ID: ${{ secrets.CLOUDFLARE_R2_ACCESS_KEY_ID }}
+      CLOUDFLARE_R2_SECRET_ACCESS_KEY: ${{ secrets.CLOUDFLARE_R2_SECRET_ACCESS_KEY }}
+      CLOUDFLARE_R2_BUCKET: ${{ secrets.CLOUDFLARE_R2_BUCKET }}
+      PYTHONUTF8: "1"
+      PYTHONIOENCODING: "utf-8"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install pg_dump + Python deps
+        run: |
+          set -uo pipefail
+          # pg_dump for the Supabase dump; neo4j + boto3 for the graph export + R2.
+          sudo apt-get update -qq || true
+          sudo apt-get install -y --no-install-recommends postgresql-client || true
+          python -m pip install --upgrade pip
+          pip install neo4j boto3 botocore httpx || true
+
+      - name: Preconditions (inert until secrets exist)
+        id: pre
+        run: |
+          set -uo pipefail
+          missing=""
+          [ -z "${CLOUDFLARE_R2_ENDPOINT:-}" ] && missing="$missing R2"
+          [ -z "${SUPABASE_DB_URL:-}" ] && [ -z "${NEO4J_URI:-}" ] && missing="$missing source"
+          if [ -n "$missing" ]; then
+            echo "::notice::backup secrets absent ($missing) — nothing to back up, exiting clean"
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Back up Supabase + Neo4j -> R2
+        if: steps.pre.outputs.ready == 'true'
+        run: |
+          set -uo pipefail
+          FLAGS=""
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then FLAGS="--dry-run"; fi
+          python -m scripts.backup_to_r2 $FLAGS

@@ -43,8 +43,13 @@ from datetime import datetime, timezone
 import httpx
 from neo4j import GraphDatabase
 
+from brain.common.phi_guard import redact_phi
 from scripts.cognition import models
 from scripts.cognition.llm import call_llm
+from scripts.hypothesis.backfill_supporting_papers import (
+    _load_paper_index,
+    _resolve_papers,
+)
 from scripts.hypothesis.validate import validate
 from scripts.ledger import (
     _supabase_creds,
@@ -275,6 +280,17 @@ def _insert_hypotheses(rows: list[dict], *, generated_by: str) -> list[str]:
     promoted = 0
     now = datetime.now(timezone.utc).isoformat()
 
+    # COG-2: build the PMID/NCT/DOI -> papers.id index once. Fail-open — a network
+    # blip leaves supporting_papers empty (old behaviour), never blocks a lead.
+    try:
+        paper_index = _load_paper_index()
+    except Exception as e:
+        print(
+            f"  [warn] paper index load failed ({type(e).__name__}); "
+            f"supporting_papers left empty"
+        )
+        paper_index = None
+
     for h in rows:
         htype = h.get("hypothesis_type") or "other"
         if htype not in ALLOWED_HYPOTHESIS_TYPES:
@@ -286,11 +302,6 @@ def _insert_hypotheses(rows: list[dict], *, generated_by: str) -> list[str]:
         if urg not in ALLOWED_URGENCY:
             urg = "medium_term"
 
-        # supporting_papers is UUID[]; the LLM returned source_id strings, not
-        # UUIDs. We store the source_id strings in ai_reasoning JSON and leave
-        # supporting_papers empty for now — Phase 2.5 will join source_ids
-        # back to papers.id and rewrite the array.
-        #
         # COG-3: gate the row. With no ledger_ids/entity_match available at
         # insert time, only the 3 text rules can pass; >=3/5 -> surface as
         # 'under_review', else hold as 'new' for later review.
@@ -298,12 +309,40 @@ def _insert_hypotheses(rows: list[dict], *, generated_by: str) -> list[str]:
         status = "under_review" if verdict["passing"] else "new"
         if status == "under_review":
             promoted += 1
+
+        # ai_reasoning payload doubles as the COG-2 resolver input.
+        reasoning_payload: dict = {
+            "reasoning": h.get("ai_reasoning") or "",
+            "discovery_method": h.get("discovery_method") or "",
+            "supporting_source_ids": h.get("supporting_source_ids") or [],
+        }
+        # COG-2: resolve cited PMID/NCT/DOI -> papers.id UUID[] (correct FK, not
+        # evidence_ledger.id). Empty when nothing matches — identical to the old
+        # behaviour, never a wrong id.
+        resolved_papers = (
+            _resolve_papers(paper_index, reasoning_payload) if paper_index else []
+        )
+        # COG-4: PHI awareness on the family-visible fields ONLY (title +
+        # description). Doctor names / emails legitimately live in
+        # recommended_action / contact_researcher — that IS the lead — so this is
+        # log-and-flag, never redact-or-drop; the row is always inserted.
+        _, phi_hits = redact_phi(
+            f"{h.get('title') or ''}\n{h.get('description') or ''}"
+        )
+        reasoning_payload["phi_review"] = sorted({m.split(":", 1)[0] for m in phi_hits})
+        if reasoning_payload["phi_review"]:
+            print(
+                f"  [phi] hypothesis flagged for review "
+                f"(patterns={reasoning_payload['phi_review']}); "
+                f"inserting (lead preserved)"
+            )
+
         body = {
             "id": str(uuid.uuid4()),
             "title": (h.get("title") or "")[:300],
             "description": (h.get("description") or "")[:4000],
             "hypothesis_type": htype,
-            "supporting_papers": [],
+            "supporting_papers": resolved_papers,
             "contradicting_papers": [],
             "related_therapies": [],
             "related_pathways": [],
@@ -314,13 +353,7 @@ def _insert_hypotheses(rows: list[dict], *, generated_by: str) -> list[str]:
                 0.0, min(1.0, float(h.get("feasibility_score") or 0.5))
             ),
             "urgency": urg,
-            "ai_reasoning": json.dumps(
-                {
-                    "reasoning": h.get("ai_reasoning") or "",
-                    "discovery_method": h.get("discovery_method") or "",
-                    "supporting_source_ids": h.get("supporting_source_ids") or [],
-                }
-            ),
+            "ai_reasoning": json.dumps(reasoning_payload),
             "discovery_method": (h.get("discovery_method") or "")[:300],
             "recommended_action": (h.get("recommended_action") or "")[:2000],
             "contact_researcher": (h.get("contact_researcher") or "")[:200],

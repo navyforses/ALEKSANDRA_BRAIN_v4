@@ -33,6 +33,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import sys
 from dataclasses import dataclass
@@ -138,6 +139,20 @@ def score(title: str, abstract: str) -> RelevanceResult:
 
     prompt = f"## Title\n{title}\n\n## Abstract\n{abstract or '(no abstract available)'}\n\nReturn the JSON."
 
+    # P-6: request native JSON mode from providers that support it (worker tier =
+    # DeepSeek via OpenRouter). Opt-in + default OFF so the Core Value scoring path
+    # stays byte-identical until the live provider is confirmed to accept the param
+    # (a provider that 400s on response_format would degrade scores to NULL). The
+    # downstream parser already salvages fenced/embedded JSON, so this is pure upside
+    # once enabled via ALEKSANDRA_RELEVANCE_JSON_MODE=1.
+    response_format = None
+    if os.environ.get("ALEKSANDRA_RELEVANCE_JSON_MODE", "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+    ):
+        response_format = {"type": "json_object"}
+
     try:
         raw = call_llm(
             prompt=prompt,
@@ -146,6 +161,7 @@ def score(title: str, abstract: str) -> RelevanceResult:
             system=SYSTEM_PROMPT,
             max_tokens=MAX_TOKENS,
             temperature=TEMPERATURE,
+            response_format=response_format,
         )
     except Exception as e:
         # call_llm already wrote a failed-status `runs` row before re-raising.
