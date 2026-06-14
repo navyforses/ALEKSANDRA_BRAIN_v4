@@ -99,6 +99,13 @@ TABLES: dict[str, dict] = {
         "fields": [
             {"name": "title", "kind": "title", "strategy": "auto"},
             {"name": "abstract", "kind": "prose", "strategy": "auto"},
+            # Migration 026 made these two JSONB {en, ka}. 026 does the one-time
+            # FREE ka backfill from the family digest cache; this auto pass keeps
+            # them current afterwards — for new papers the worker writes ka=null,
+            # so 026's cache miss is translated here. It is a no-op (keep) for the
+            # 158 rows 026 already filled, so scheduled runs stay near-zero cost.
+            {"name": "ai_summary", "kind": "prose", "strategy": "auto"},
+            {"name": "ai_aleksandra_implications", "kind": "prose", "strategy": "auto"},
         ],
     },
     # W4: briefs.sections is one nested JSONB document (not a flat column), so it

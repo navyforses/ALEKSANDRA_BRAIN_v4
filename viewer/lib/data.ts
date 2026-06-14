@@ -185,9 +185,12 @@ interface PaperRow {
   journal?: string;
   publication_year?: number;
   relevance_score?: number;
-  ai_summary?: string;
+  // Bilingual JSONB {en, ka} since migration 026 (was TEXT). flatten() already
+  // renders {en, ka} and falls back across locales; typed as BilingualField so
+  // a plain string from a not-yet-backfilled row is still accepted.
+  ai_summary?: BilingualField;
   ai_key_findings?: unknown;
-  ai_aleksandra_implications?: string;
+  ai_aleksandra_implications?: BilingualField;
   confidence_level?: string;
   source?: string;
   source_url?: string;
