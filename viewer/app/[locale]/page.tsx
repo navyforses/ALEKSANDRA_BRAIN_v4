@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
-import KindBadge from "@/components/KindBadge";
-import SourceTag from "@/components/SourceTag";
+import AttentionList from "@/components/today/AttentionList";
 import IntakeHero from "@/components/intake/IntakeHero";
 import { IconBrain, IconResearch } from "@/components/shell/icons";
 import { fetchToday, formatDate } from "@/lib/data";
@@ -83,32 +82,7 @@ export default async function TodayPage({
             <p className="mt-1 text-xs text-faint">{t("attentionEmptyNote")}</p>
           </div>
         ) : (
-          <ul className="mt-4 space-y-3">
-            {attention.map((item) => (
-              <li key={`${item.kind}-${item.id}`} className="card p-5">
-                <div className="flex flex-wrap items-center gap-2">
-                  <KindBadge kind={item.kind} />
-                </div>
-                <h3 className="mt-3 font-serif text-lg leading-snug text-ink">{item.title}</h3>
-                {item.note ? (
-                  <p className="mt-1.5 line-clamp-3 text-sm leading-relaxed text-muted">
-                    {item.note}
-                  </p>
-                ) : null}
-                <div className="mt-3.5">
-                  <SourceTag source={item.source} url={item.url} />
-                </div>
-              </li>
-            ))}
-            <li className="pt-1">
-              <Link
-                href="/research"
-                className="text-sm font-medium text-accent-ink hover:underline"
-              >
-                {t("seeAllResearch")} →
-              </Link>
-            </li>
-          </ul>
+          <AttentionList items={attention} seeAllLabel={t("seeAllResearch")} />
         )}
       </section>
 
