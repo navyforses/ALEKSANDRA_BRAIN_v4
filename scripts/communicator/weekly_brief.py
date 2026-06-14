@@ -62,6 +62,7 @@ from reportlab.platypus import (
     TableStyle,
 )
 
+from scripts.communicator._bilingual_read import display_field_py
 from scripts.communicator.phi_redactor import ConsentFlags, redact
 from scripts.ledger import load_env
 
@@ -115,14 +116,23 @@ def _bilingual_line(key: str, *, n: int) -> dict[str, str]:
     }
 
 
-def _bilingual_mirror(value: str | None) -> dict[str, str]:
-    """Mirror a single English string into {en, ka} with both halves identical.
+def _bilingual_mirror(value: str | dict | None) -> dict[str, str]:
+    """Coerce a per-row title/name field to a flat {en, ka} pair.
 
-    Used for per-row title/name fields inside briefs.sections that originate
-    from already-stored DB rows. Once those source tables go through migration
-    012 + the Communicator's compose_bilingual write path, this mirror becomes
-    a safety net (returns whatever upstream already bilingualized).
+    W3: papers.title (migration 017), hypotheses.title (012) and therapies.name
+    (025) are JSONB at rest, so a live SELECT hands psycopg2 a {en, ka} dict — not
+    a string. The old mirror double-wrapped that dict ({en:{...},ka:{...}}). Now:
+      - a {en, ka} dict is read verbatim (normalized via display_field_py, ka
+        falling back to en),
+      - a legacy plain string is mirrored into both halves.
+    Either way the result is always a flat {en, ka} of strings, the shape
+    briefs.sections JSONB expects.
     """
+    if isinstance(value, dict):
+        return {
+            "en": display_field_py(value, "en"),
+            "ka": display_field_py(value, "ka"),
+        }
     s = value or ""
     return {"en": s, "ka": s}
 
@@ -132,7 +142,10 @@ def _bilingual_mirror(value: str | None) -> dict[str, str]:
 # ---------------------------------------------------------------------------
 @dataclass
 class PaperRow:
-    title: str
+    # W3: title is JSONB at rest (migration 017) -> a live SELECT yields a {en, ka}
+    # dict; legacy rows are still plain str. display_field_py / _bilingual_mirror
+    # tolerate both shapes.
+    title: str | dict
     citation_id: str  # PMID:..., DOI:..., NCT:..., URL or ledger:...
     ingested_at: str
     relevance_score: float | None
@@ -140,7 +153,7 @@ class PaperRow:
 
 @dataclass
 class HypothesisRow:
-    title: str
+    title: str | dict  # JSONB at rest (migration 012); str for legacy rows
     status: str
     confidence: str | None
     reviewed_at: str | None
@@ -149,7 +162,7 @@ class HypothesisRow:
 
 @dataclass
 class TherapyRow:
-    name: str
+    name: str | dict  # JSONB at rest (migration 025); str for legacy rows
     therapy_type: str | None
     aleksandra_status: str | None
     evidence_in_hie: str | None
@@ -632,7 +645,7 @@ def render_pdf(sections: BriefSections, output_path: Path) -> Path:
         "New evidence",
         sections.papers,
         lambda p, s: Paragraph(
-            f"• <b>{p.title}</b> "
+            f"• <b>{display_field_py(p.title, 'en')}</b> "
             f"[{p.citation_id}, relevance={p.relevance_score if p.relevance_score is not None else 'n/a'}]",
             s["BodyText"],
         ),
@@ -643,7 +656,7 @@ def render_pdf(sections: BriefSections, output_path: Path) -> Path:
         "Hypothesis updates",
         sections.hypotheses,
         lambda h, s: Paragraph(
-            f"• <b>{h.title}</b> — status={h.status}, "
+            f"• <b>{display_field_py(h.title, 'en')}</b> — status={h.status}, "
             f"confidence={h.confidence or 'n/a'}, "
             f"supporting={len(h.supporting)} citation(s)",
             s["BodyText"],
@@ -655,7 +668,7 @@ def render_pdf(sections: BriefSections, output_path: Path) -> Path:
         "Repurposing watch",
         sections.therapies,
         lambda t, s: Paragraph(
-            f"• <b>{t.name}</b> — type={t.therapy_type or 'n/a'}, "
+            f"• <b>{display_field_py(t.name, 'en')}</b> — type={t.therapy_type or 'n/a'}, "
             f"status={t.aleksandra_status or 'n/a'}, "
             f"HIE evidence={t.evidence_in_hie or 'n/a'}",
             s["BodyText"],
@@ -732,7 +745,9 @@ def render_pdf(sections: BriefSections, output_path: Path) -> Path:
             summary_strings.append(line.get("ka", ""))
         else:
             summary_strings.append(str(line))
-    flat = "\n".join([*summary_strings, *(p.title for p in sections.papers)])
+    flat = "\n".join(
+        [*summary_strings, *(display_field_py(p.title, "en") for p in sections.papers)]
+    )
     safety = redact(flat, consent=ConsentFlags())
     if safety.blocked:
         # If the safety net trips, remove the PDF and refuse — caller must
