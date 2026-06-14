@@ -28,15 +28,6 @@ export interface ResearchItem {
   date?: string; // ISO, for sorting
 }
 
-export interface AttentionItem {
-  id: string;
-  kind: ResearchKind;
-  title: string;
-  note: string;
-  source: string | null;
-  url?: string;
-}
-
 export interface WorkingStatus {
   configured: boolean;
   scanning: boolean;
@@ -384,7 +375,7 @@ export async function fetchResearch(locale: Locale): Promise<ResearchView> {
 
 export interface TodayView {
   status: WorkingStatus;
-  attention: AttentionItem[];
+  attention: ResearchItem[];
   brief: BriefDoc | null;
 }
 
@@ -438,20 +429,12 @@ export async function fetchToday(locale: Locale): Promise<TodayView> {
   // "What needs you" — only genuinely high-signal items, each provenance-
   // bound. If nothing qualifies, we return an empty list and the surface
   // says so calmly rather than inventing urgency.
-  const attention: AttentionItem[] = [];
+  const attention: ResearchItem[] = [];
 
   for (const row of papers.rows) {
     if (attention.filter((a) => a.kind === "paper").length >= 3) break;
     if ((row.relevance_score ?? 0) >= 0.75) {
-      const mapped = mapPaper(row, locale);
-      attention.push({
-        id: mapped.id,
-        kind: "paper",
-        title: mapped.title,
-        note: mapped.implication || mapped.summary,
-        source: mapped.source,
-        url: mapped.url,
-      });
+      attention.push(mapPaper(row, locale));
     }
   }
   for (const row of hypotheses.rows) {
@@ -459,28 +442,14 @@ export async function fetchToday(locale: Locale): Promise<TodayView> {
     const status_ = (row.status || "").toLowerCase();
     const conf = (row.confidence_level || "").toLowerCase();
     if (["promising", "pursuing"].includes(status_) || conf === "high") {
-      const mapped = mapHypothesis(row, locale);
-      attention.push({
-        id: mapped.id,
-        kind: "hypothesis",
-        title: mapped.title,
-        note: mapped.implication || mapped.summary,
-        source: mapped.source,
-      });
+      attention.push(mapHypothesis(row, locale));
     }
   }
   for (const row of therapies.rows) {
     if (attention.some((a) => a.kind === "therapy")) break;
     const st = (row.aleksandra_status || "").toLowerCase();
     if (["active", "eligible", "considering", "pursuing"].includes(st)) {
-      const mapped = mapTherapy(row, locale);
-      attention.push({
-        id: mapped.id,
-        kind: "therapy",
-        title: mapped.title,
-        note: mapped.implication || mapped.summary,
-        source: mapped.source,
-      });
+      attention.push(mapTherapy(row, locale));
     }
   }
 
