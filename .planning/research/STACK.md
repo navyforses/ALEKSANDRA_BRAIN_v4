@@ -6,6 +6,25 @@
 
 ---
 
+## ⚠️ Implementation Delta (updated 2026-06-13)
+
+> This document is a **research snapshot (2026-05-13)**. The project diverged from a few of its
+> recommendations during implementation, and this source file was never updated. **Where this banner
+> (or `AGENTS.md`) conflicts with the tables below, the banner wins** — the body is kept verbatim as
+> the historical research record, not as live config.
+
+| Topic | Snapshot says (below) | Current / canonical | Source |
+|---|---|---|---|
+| **NiiVue viewer** | `@niivue/niivue` 0.49 + `@niivue/nvreact` as the React binding | **NiiVue raw core 0.69**; `@niivue/nvreact` **REJECTED** (Proprietary license; `1.0.0-rc` hard-pins the core off the stable 0.69 line). Raw core mounted via `next/dynamic({ssr:false})`. | Phase 11 (2026-05-31) |
+| **Cloudflare Workers KV** | hot cache for n8n state / dedup keys / budget | **DEPRECATED 2026-05-21** — Supabase Postgres absorbed all three (URL dedup via `papers` UNIQUE, state via `runs`, budget via `runs.cost_usd`); ghost worker `aleksandrabrane4` deleted 2026-05-30 | CLAUDE.md / AGENTS.md |
+| **Next.js / React** | `next@14` + `react@18` | viewer ships on **Next.js 16 + React 19** (next-intl 4.12, `viewer/proxy.ts`, `app/[locale]/*`) | Phase 6 + 11 |
+| **Default model** | Sonnet 4.5 default / 4.6 escalation | **Sonnet 4.6** (`claude-sonnet-4-6`) default · **Opus 4.8** for hard cases (Sonnet 4.5 retires 2026-09-29) | AGENTS.md |
+
+R3F is still pinned at **9.6.x** (snapshot and reality agree — no delta). Re-verify the rest at each
+milestone transition (see the closing note).
+
+---
+
 ## Executive Stance
 
 The user's CLAUDE.md stack is, in 2026 terms, **largely correct and unusually well-chosen** for the problem. This research validates ~85% of it and recommends only **five concrete changes**:
