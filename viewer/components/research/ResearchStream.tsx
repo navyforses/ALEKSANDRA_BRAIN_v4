@@ -17,7 +17,7 @@ type Lens = "all" | ResearchKind;
 // How many items fill one page of the stream. A short page keeps the column
 // readable and stops the list from running the full height of the document;
 // the numbered switcher below grows automatically as more papers land.
-const PAGE_SIZE = 8;
+const PAGE_SIZE = 5;
 
 // Page numbers to render, windowed around the current page with ellipses so a
 // large corpus shows e.g. "1 … 7 8 9 … 24" instead of every number. -1 marks
