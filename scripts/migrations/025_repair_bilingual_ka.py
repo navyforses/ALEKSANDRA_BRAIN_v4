@@ -78,6 +78,9 @@ TABLES: dict[str, dict] = {
             # already applied 2026-06-13; pass --retranslate-names to force it.
             {"name": "name", "kind": "title", "strategy": "auto"},
             {"name": "evidence_summary", "kind": "prose", "strategy": "auto"},
+            # Migration 027 made this JSONB {en, ka}; keep its ka current here too
+            # (auto = only translates a blank/mirror ka, idempotent for filled rows).
+            {"name": "mechanism_of_action", "kind": "prose", "strategy": "auto"},
         ],
     },
     "hypotheses": {
