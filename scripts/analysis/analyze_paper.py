@@ -8,10 +8,13 @@ pubmed_validation.py). Every other paper sits as a raw abstract — no
 
 Writes back to the `papers` table (columns from scripts/schema.sql):
 
-  ai_summary                  TEXT       plain-language 3-4 sentence summary
+  ai_summary                  JSONB      {en, ka} plain-language 3-4 sentence
+                                         summary (migration 026 made this
+                                         bilingual; we write en, ka backfilled
+                                         from the digest cache / migration 025)
   ai_key_findings             TEXT[]     PICO-aware key findings (population /
                                          intervention / outcome / study type)
-  ai_aleksandra_implications  TEXT       "what this means for Aleksandra",
+  ai_aleksandra_implications  JSONB      {en, ka} "what this means for Aleksandra",
                                          non-prescriptive, honest about limits
   evidence_level              INT 1-7    GRADE-like tier (1 = meta-analysis …
                                          7 = single anecdote / unverified)
@@ -319,12 +322,19 @@ def _patch_paper(paper_id: str, body: dict[str, Any]) -> bool:
 
 def _build_patch_body(result: AnalysisResult) -> dict[str, Any]:
     """Only include fields the analysis actually produced — never NULL a column
-    we couldn't fill."""
-    body: dict[str, Any] = {"ai_summary": result.summary}
+    we couldn't fill.
+
+    ai_summary / ai_aleksandra_implications are JSONB {en, ka} since migration
+    026 (mirroring title/abstract). We write the English we just produced and
+    leave ka NULL — the ka slot is filled by the digest-cache backfill in
+    migration 026 and kept current by migration 025's auto pass. flatten() in
+    the viewer falls back to en until ka lands, so the family site never blanks.
+    """
+    body: dict[str, Any] = {"ai_summary": {"en": result.summary, "ka": None}}
     if result.key_findings:
         body["ai_key_findings"] = result.key_findings  # JSON array -> Postgres text[]
     if result.implications:
-        body["ai_aleksandra_implications"] = result.implications
+        body["ai_aleksandra_implications"] = {"en": result.implications, "ka": None}
     if result.evidence_level is not None:
         body["evidence_level"] = result.evidence_level
     if result.confidence_level is not None:
