@@ -5,7 +5,7 @@ Google's newest GA model, **gemini-3.5-flash**. Used by the scheduled repair
 (025_repair_bilingual_ka.py) and available to any caller that needs clean
 bilingual output.
 
-Two gateways, picked automatically:
+Three gateways, tried in order until one yields text:
   1. OpenRouter (the project "writer" tier via scripts.cognition.llm.call_llm)
      when OPENROUTER_API_KEY is present — instrumented + daily-budget-gated.
      This is what the Railway worker uses in production.
@@ -14,8 +14,16 @@ Two gateways, picked automatically:
      provisioned. `thinkingBudget: 0` is set so the token budget goes to the
      translation, not Gemini-3.x internal reasoning (which otherwise truncates
      short titles).
+  3. Claude (Anthropic SDK, ANTHROPIC_API_KEY) — a LAST-RESORT fallback used
+     only when both Gemini gateways are unavailable (e.g. a Google free-tier
+     HTTP 429 / daily-quota exhaustion). It reuses the same faithful _PROSE /
+     _TITLE system prompt, so it adds no glosses. Note: Claude's safety
+     classifier refuses some benign clinical phrasings that Gemini translates
+     (e.g. gene-therapy text → stop_reason="refusal" → empty), so this is a
+     resilience net for the majority of texts, not a full replacement — a
+     refused text returns "" and the caller keeps the English.
 
-Both gateways hit the same gemini-3.5-flash model, so output is equivalent.
+Gateways 1+2 hit the same gemini-3.5-flash model, so their output is equivalent.
 
 Quality contract (same for both gateways):
   - title  → one Mkhedruli line, no markdown/commentary/quotes.
@@ -50,6 +58,12 @@ class TranslationFailed(RuntimeError):
 # Google AI Studio model list + a live translation test). Overridable from env.
 DIRECT_MODEL = os.environ.get("GEMINI_DIRECT_MODEL", "gemini-3.5-flash")
 _GOOGLE_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models"
+
+# Last-resort Claude fallback model (gateway 3). Used only when both Gemini
+# gateways are unavailable. Overridable from env.
+ANTHROPIC_FALLBACK_MODEL = os.environ.get(
+    "KA_ANTHROPIC_FALLBACK_MODEL", "claude-sonnet-4-5"
+)
 
 TITLE_MAX_TOKENS = 512
 PROSE_MAX_TOKENS = 8192
@@ -205,8 +219,38 @@ def _via_google(prompt: str, system: str, max_tokens: int) -> str:
     raise TranslationFailed(f"google api unavailable after retries ({last_err})")
 
 
+def _via_anthropic(prompt: str, system: str, max_tokens: int) -> str:
+    """Last-resort Claude gateway (gateway 3). Returns '' on a refusal/empty
+    completion or when ANTHROPIC_API_KEY is absent — the caller's guard then
+    rejects it and keeps the English. Reuses the faithful _PROSE/_TITLE system
+    prompt, so no glosses are added (parity with Gemini). BudgetExceeded and
+    real API errors propagate to the caller."""
+    if not os.environ.get("ANTHROPIC_API_KEY", "").strip():
+        return ""
+    from scripts.cognition.llm import call_llm
+
+    # Explicit claude-* model → routes to the Anthropic SDK regardless of the
+    # configured translate tier (which is a Gemini slug). _run_anthropic returns
+    # "" when Claude refuses (stop_reason="refusal", no text blocks).
+    return (
+        call_llm(
+            prompt=prompt,
+            agent_id="ka_translator_bot",
+            model=ANTHROPIC_FALLBACK_MODEL,
+            system=system,
+            max_tokens=max_tokens,
+            temperature=0.2,
+        )
+        or ""
+    )
+
+
 def _generate(prompt: str, system: str, max_tokens: int) -> str:
-    """Prefer OpenRouter (production); fall back to direct Google (local/CI)."""
+    """Translate via the first gateway that yields text:
+    1. OpenRouter Gemini (production), 2. direct Google Gemini (local/CI),
+    3. Claude (last resort, only when Gemini is unavailable e.g. a 429).
+    """
+    # 1. OpenRouter Gemini
     if _openrouter_ready():
         try:
             out = _via_openrouter(prompt, system, max_tokens)
@@ -214,7 +258,31 @@ def _generate(prompt: str, system: str, max_tokens: int) -> str:
                 return out
         except RuntimeError:  # missing key / gateway issue → try Google
             pass
-    return _via_google(prompt, system, max_tokens)
+
+    # 2. Direct Google Gemini
+    gemini_err = "empty response"
+    try:
+        out = _via_google(prompt, system, max_tokens)
+        if out:
+            return out
+    except BudgetExceeded:
+        raise
+    except TranslationFailed as e:  # no key / 429-after-retries / 4xx
+        gemini_err = str(e)
+
+    # 3. Claude fallback — only reached when Gemini gave nothing. Best-effort:
+    # a refusal/missing-key returns "", a real error is swallowed so the caller
+    # sees Gemini's failure reason, not the fallback's.
+    try:
+        out = _via_anthropic(prompt, system, max_tokens)
+        if out:
+            return out
+    except BudgetExceeded:
+        raise
+    except Exception:  # noqa: BLE001 — fallback is best-effort
+        pass
+
+    raise TranslationFailed(f"all gateways failed (gemini: {gemini_err})")
 
 
 # --------------------------------------------------------------------------- #
