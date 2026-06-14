@@ -1,0 +1,63 @@
+# OPS-4 — worker-independent literature fallback.
+#
+# The Core Value pipeline normally runs on the Railway worker via n8n. If that
+# goes down, this GitHub Actions job still pulls PubMed / ClinicalTrials.gov /
+# preprints / negative-evidence once a day, using the SAME budget gate + dedup
+# ledger (so it is idempotent with the n8n path). It runs perception_tick with
+# --no-gap because the Crawl4AI/Playwright gap-fill pass is too heavy for CI;
+# abstracts still flow, which is what "never miss a lead" needs.
+#
+# Inert until secrets exist: the run step exits 0 if SUPABASE_URL is unset.
+
+name: Perception fallback (worker-independent)
+
+on:
+  schedule:
+    - cron: "0 5 * * *" # daily 05:00 UTC (offset from the 07:00 nightly repair)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: perception-fallback
+  cancel-in-progress: false
+
+jobs:
+  fallback:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      NCBI_EMAIL: ${{ secrets.NCBI_EMAIL }}
+      NCBI_API_KEY: ${{ secrets.NCBI_API_KEY }}
+      CLOUDFLARE_R2_ENDPOINT: ${{ secrets.CLOUDFLARE_R2_ENDPOINT }}
+      CLOUDFLARE_R2_ACCESS_KEY_ID: ${{ secrets.CLOUDFLARE_R2_ACCESS_KEY_ID }}
+      CLOUDFLARE_R2_SECRET_ACCESS_KEY: ${{ secrets.CLOUDFLARE_R2_SECRET_ACCESS_KEY }}
+      CLOUDFLARE_R2_BUCKET: ${{ secrets.CLOUDFLARE_R2_BUCKET }}
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      DAILY_BUDGET_USD: ${{ secrets.DAILY_BUDGET_USD }}
+      PYTHONUTF8: "1"
+      PYTHONIOENCODING: "utf-8"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Core Value deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install biopython httpx feedparser boto3 botocore || true
+
+      - name: Run perception_tick (no gap-fill)
+        run: |
+          set -uo pipefail
+          if [ -z "${SUPABASE_URL:-}" ] || [ -z "${SUPABASE_SERVICE_ROLE_KEY:-}" ]; then
+            echo "::notice::Supabase secrets absent — fallback is inert, nothing to run"
+            exit 0
+          fi
+          python -m scripts.perception_tick --no-gap

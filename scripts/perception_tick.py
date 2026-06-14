@@ -153,7 +153,7 @@ def _safe_run(label: str, fn, **kwargs):
         return {"error": f"{type(e).__name__}: {e}"}
 
 
-def run(*, small: bool = False) -> dict:
+def run(*, small: bool = False, no_gap: bool = False) -> dict:
     load_env()
     start = datetime.now(timezone.utc)
     print(f"perception_tick start: {start.isoformat()}")
@@ -180,7 +180,6 @@ def run(*, small: bool = False) -> dict:
     from scripts.fetch_negative import run as fetch_negative_run
     from scripts.fetch_preprints import run as fetch_preprints_run
     from scripts.fetch_pubmed import run as fetch_pubmed_run
-    from scripts.gap_filler import run as gap_filler_run
 
     if small:
         pubmed_kwargs = {"retmax": 3, "queries": [], "mode": "positive"}
@@ -211,9 +210,18 @@ def run(*, small: bool = False) -> dict:
     counts["preprints"] = _safe_run(
         "bioRxiv + medRxiv RSS (PRC-03)", fetch_preprints_run, **preprints_kwargs
     )
-    counts["gap_filler"] = _safe_run(
-        "Crawl4AI gap-fill (PRC-04+05)", gap_filler_run, **gap_kwargs
-    )
+    if no_gap:
+        # OPS-4: the worker-independent GitHub Actions fallback skips gap-fill —
+        # Crawl4AI/Playwright are too heavy for CI; PubMed/CTgov/preprints still
+        # flow so the Core Value pipeline survives a Railway outage.
+        counts["gap_filler"] = {"skipped": "no_gap"}
+        print("\n=== Crawl4AI gap-fill (PRC-04+05) === skipped (--no-gap)")
+    else:
+        from scripts.gap_filler import run as gap_filler_run
+
+        counts["gap_filler"] = _safe_run(
+            "Crawl4AI gap-fill (PRC-04+05)", gap_filler_run, **gap_kwargs
+        )
     counts["negative"] = _safe_run(
         "Negative-evidence branch (PRC-06)", fetch_negative_run, **neg_kwargs
     )
@@ -269,6 +277,11 @@ def main() -> int:
         action="store_true",
         help="Skip Telegram summary (testing only)",
     )
+    ap.add_argument(
+        "--no-gap",
+        action="store_true",
+        help="Skip the Crawl4AI gap-fill pass (worker-independent CI fallback)",
+    )
     args = ap.parse_args()
 
     if args.no_telegram:
@@ -278,7 +291,7 @@ def main() -> int:
         def _telegram(_msg: str) -> None:
             return
 
-    result = run(small=args.small)
+    result = run(small=args.small, no_gap=args.no_gap)
     return 0 if result["exit_status"] == "completed" else 1
 
 

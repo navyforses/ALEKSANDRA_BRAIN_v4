@@ -1,0 +1,60 @@
+# OPS-6 — CI gate on the Core Value path.
+#
+# verify_all.yml only runs the v7 verifiers; nothing import-checks the worker or
+# the perception pipeline, so a hidden ImportError (the worker uses lazy
+# per-endpoint imports) ships green and only 500s at 3am. This adds two cheap
+# gates with NO "|| true" so a real break fails loudly:
+#
+#   compile_floor — zero-dep py_compile (always valid; catches syntax breaks)
+#   import_gate    — installs ONLY the module-load deps the Core Value path
+#                    imports, then imports it (catches hidden import coupling)
+
+name: Core Value import gate
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compile_floor:
+    name: py_compile (zero-dep syntax floor)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Compile the Core Value path (no deps, no '|| true')
+        run: |
+          set -euo pipefail
+          python -m py_compile \
+            scripts/perception_worker.py \
+            scripts/perception_tick.py \
+            scripts/cognition/budget.py \
+            scripts/ledger.py \
+            scripts/fetch_pubmed.py \
+            scripts/fetch_ctgov.py \
+            scripts/fetch_preprints.py
+
+  import_gate:
+    name: import Core Value modules
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install the module-load deps the Core Value path imports
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          pip install biopython httpx feedparser boto3 botocore
+      - name: Import (no '|| true' — a hidden import error fails the gate)
+        run: |
+          set -euo pipefail
+          python -c "import scripts.perception_worker, scripts.perception_tick, scripts.cognition.budget"
