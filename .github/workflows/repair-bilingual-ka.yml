@@ -16,6 +16,9 @@
 #   SUPABASE_SERVICE_ROLE_KEY    — service-role key (RLS-bypassing writes)
 #   GEMINI_API_KEY               — Google AI Studio key (already in local .env)
 #   OPENROUTER_API_KEY           — OPTIONAL; if set the bot uses OpenRouter
+#                                  (paid Gemini, no free-tier 429) as the primary
+#   ANTHROPIC_API_KEY            — OPTIONAL; last-resort Claude fallback when both
+#                                  Gemini gateways are unavailable
 
 name: Repair bilingual ka (nightly)
 
@@ -46,6 +49,7 @@ jobs:
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       PYTHONUTF8: "1"
       PYTHONIOENCODING: "utf-8"
 
