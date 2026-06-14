@@ -108,6 +108,14 @@
     "noMatch": "Nothing matches that search.",
     "noDetail": "No further detail recorded.",
     "implication": "What this could mean for Aleksandra",
+    "pagination": {
+      "label": "Pages",
+      "prev": "Previous",
+      "next": "Next",
+      "page": "Page {n}",
+      "current": "Page {n}, current",
+      "showing": "Showing {from}–{to} of {total}"
+    },
     "kind": {
       "paper": "Paper",
       "hypothesis": "Hypothesis",
