@@ -73,8 +73,11 @@ function flatten(value: unknown, locale: Locale): string {
       (trimmed.startsWith("[") && trimmed.endsWith("]"))
     ) {
       try {
-        const rendered = flatten(JSON.parse(trimmed), locale);
-        if (rendered) return rendered;
+        // Valid JSON: trust the structured render. If the object carries no
+        // human-readable text (e.g. a metadata blob like therapies.ai_assessment
+        // = {source_hypothesis_id, target_pathway, …}), return "" — NEVER fall
+        // through to dumping the raw JSON at the reader (CLAUDE.md: no metadata).
+        return flatten(JSON.parse(trimmed), locale);
       } catch {
         /* only looked like JSON — keep the text */
       }
@@ -218,15 +221,16 @@ interface HypothesisRow {
 
 interface TherapyRow {
   id: string;
-  name?: string;
+  name?: BilingualField;
   therapy_type?: string;
-  mechanism_of_action?: string;
+  // JSONB {en, ka} (mechanism_of_action since migration 027); evidence_summary
+  // already JSONB. flatten() tolerates a plain string too, for not-yet-migrated rows.
+  mechanism_of_action?: BilingualField;
   evidence_in_hie?: string;
-  evidence_summary?: string;
+  evidence_summary?: BilingualField;
   clinical_status?: string;
   aleksandra_status?: string;
   aleksandra_notes?: string;
-  ai_assessment?: string;
   confidence_level?: string;
   updated_at?: string;
   created_at?: string;
@@ -307,15 +311,16 @@ function mapHypothesis(row: HypothesisRow, locale: Locale): ResearchItem {
 function mapTherapy(row: TherapyRow, locale: Locale): ResearchItem {
   const mechanism = flatten(row.mechanism_of_action, locale);
   const evidence = flatten(row.evidence_summary ?? row.evidence_in_hie, locale);
-  const assessment = flatten(row.ai_assessment, locale);
+  // ai_assessment holds pipeline metadata ({source_hypothesis_id, …}), not prose
+  // — it is deliberately NOT surfaced to the reader.
   const notes = flatten(row.aleksandra_notes, locale);
   const hasProvenance = Boolean(row.evidence_in_hie || row.evidence_summary || row.clinical_status);
   return {
     id: row.id,
     kind: "therapy",
     title: cleanTitle(row.name, locale) || "—",
-    summary: mechanism || evidence || assessment || "",
-    detail: [mechanism, evidence, assessment].filter(Boolean).join("\n\n"),
+    summary: mechanism || evidence || "",
+    detail: [mechanism, evidence].filter(Boolean).join("\n\n"),
     implication: notes || undefined,
     meta: joinMeta([
       row.therapy_type,
@@ -360,7 +365,7 @@ export async function fetchResearch(locale: Locale): Promise<ResearchView> {
     }),
     getRows<TherapyRow>("therapies", {
       select:
-        "id,name,therapy_type,mechanism_of_action,evidence_in_hie,evidence_summary,clinical_status,aleksandra_status,aleksandra_notes,ai_assessment,confidence_level,updated_at,created_at",
+        "id,name,therapy_type,mechanism_of_action,evidence_in_hie,evidence_summary,clinical_status,aleksandra_status,aleksandra_notes,confidence_level,updated_at,created_at",
       order: "updated_at.desc",
       limit: 30,
     }),

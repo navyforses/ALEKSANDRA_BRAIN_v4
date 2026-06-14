@@ -27,7 +27,7 @@ export default function SourceTag({
 
   const inner = (
     <>
-      <span className="text-faint">{t("source")}</span>
+      <span className="text-faint">{t("source")}</span>{" "}
       <span className="text-muted">{source}</span>
     </>
   );

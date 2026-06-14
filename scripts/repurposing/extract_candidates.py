@@ -137,7 +137,12 @@ def _insert_therapy(cand: dict, hyp_id: str) -> str | None:
         "name": (cand.get("name") or "").strip()[:200],
         "name_aliases": cand.get("name_aliases") or [],
         "therapy_type": ttype,
-        "mechanism_of_action": (cand.get("mechanism_hint") or "")[:1000],
+        # JSONB {en, ka} since migration 027; ka backfilled by migration 025's
+        # nightly auto pass. flatten() in the viewer falls back to en until then.
+        "mechanism_of_action": {
+            "en": (cand.get("mechanism_hint") or "")[:1000],
+            "ka": None,
+        },
         "evidence_in_hie": "theoretical",
         "evidence_summary": f"Surfaced from hypothesis {hyp_id} by {MODEL}",
         "clinical_status": "preclinical",
