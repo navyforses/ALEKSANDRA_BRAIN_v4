@@ -341,8 +341,13 @@ export async function fetchResearch(locale: Locale): Promise<ResearchView> {
     getRows<PaperRow>("papers", {
       select:
         "id,title,abstract,journal,publication_year,relevance_score,ai_summary,ai_key_findings,ai_aleksandra_implications,confidence_level,source,source_url,pmid,doi,ingested_at,updated_at,created_at",
-      order: "ingested_at.desc",
-      limit: 30,
+      // Surface the most clinically relevant, ANALYSED papers first — not the
+      // most recently ingested, which buried the real findings under newest-first
+      // noise and made the stream read as irrelevant.
+      relevance_score: "gte.0.5",
+      ai_summary: "not.is.null",
+      order: "relevance_score.desc.nullslast",
+      limit: 60,
     }),
     getRows<HypothesisRow>("hypotheses", {
       select:
@@ -389,8 +394,11 @@ export async function fetchToday(locale: Locale): Promise<TodayView> {
       getRows<PaperRow>("papers", {
         select:
           "id,title,relevance_score,ai_summary,ai_aleksandra_implications,source,source_url,pmid,doi,ingested_at",
-        order: "ingested_at.desc",
-        limit: 8,
+        // Attention is chosen by relevance below, so fetch by relevance too —
+        // otherwise a high-relevance paper ingested earlier never reaches the
+        // home surface (it fell outside the newest-8 window).
+        order: "relevance_score.desc.nullslast",
+        limit: 12,
       }),
       getRows<HypothesisRow>("hypotheses", {
         select: "id,title,description,status,confidence_level,recommended_action,created_at",
