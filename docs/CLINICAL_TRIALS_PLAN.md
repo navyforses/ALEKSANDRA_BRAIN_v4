@@ -4,6 +4,7 @@
 > A: matcher + verifier + `/research/trials` (live on Vercel). seed 117 ctgov → **31 eligible / 28 needs-review / 58 ineligible**; verifier 6/6. commits `7b02fb4` + `8dc3fa4`.
 > B: new-eligible Telegram alerts + status monitoring + matcher wired into perception_tick (6h) + clinical-trials section in Weekly Brief. commits `6095c33` + `cc87044`.
 > C: full ctgov data from R2 (brief/detailed description, full eligibility, all locations, contacts, conditions, dates) + bilingual {en,ka} translation via `build_bilingual` (like papers; 59 shown trials, 221 ka fields) + migration 028 (text→JSONB) + **structured single-trial detail page** `/research/trials/[nctId]`. commits `c1b821e` + `9f66b4c` + `d2f9abf`. (backfill spend ~$9.90 that day; future translations self-heal cheaply.)
+> D: list **country/location filter + sort** (multi-select country chips US-first; sort US-first/country A–Z/soonest-start/recently-checked) + card surfaces where-conducted / start-date / contact (mailto) + KA country-name map. commit `5bba37f`. (frontend-only, no DB change.)
 > Seed for a future GSD phase (mirrors how `docs/I18N_PLAN.md` seeded Phase 6).
 > Author context: codebase research 2026-06-15 (two Explore passes over `viewer/` + `scripts/`).
 
