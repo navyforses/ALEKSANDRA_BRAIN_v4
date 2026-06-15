@@ -94,6 +94,7 @@ SUMMARY_TEMPLATES_KA: dict[str, str] = {
     "therapies": "{n} თერაპიის კანდიდატი აქტიური მონიტორინგის ქვეშ.",
     "outreach_pending": "{n} გასაგზავნი მონახაზი მიმოხილვისთვის.",
     "open_questions": "{n} ღია ოჯახური კითხვა.",
+    "trials": "{n} შესაფერისი კლინიკური კვლევა ალექსანდრასთვის.",
 }
 
 SUMMARY_TEMPLATES_EN: dict[str, str] = {
@@ -102,6 +103,7 @@ SUMMARY_TEMPLATES_EN: dict[str, str] = {
     "therapies": "{n} therapy candidates under active monitoring.",
     "outreach_pending": "{n} outreach drafts pending review.",
     "open_questions": "{n} open family questions.",
+    "trials": "{n} eligible clinical trial(s) for Aleksandra.",
 }
 
 
@@ -169,6 +171,27 @@ class TherapyRow:
 
 
 @dataclass
+class TrialRow:
+    """One eligible clinical trial for Aleksandra (Phase B B3).
+
+    title is English source text from ClinicalTrials.gov — rendered as-is
+    (no fabricated Georgian translation; the viewer handles bilingual display).
+    nct_link is pre-built as https://clinicaltrials.gov/study/{nct_id} so the
+    render path never re-derives it from nct_id.
+    new_this_week is True when created_at >= the brief's week_start (freshly
+    surfaced lead — the whole point of the weekly cadence).
+    """
+
+    nct_id: str
+    title: str
+    overall_status: str | None
+    phase: str | None
+    intervention_name: str | None
+    nct_link: str
+    new_this_week: bool
+
+
+@dataclass
 class OutreachRow:
     subject: str
     language: str
@@ -199,6 +222,7 @@ class BriefSections:
     papers: list[PaperRow] = field(default_factory=list)
     hypotheses: list[HypothesisRow] = field(default_factory=list)
     therapies: list[TherapyRow] = field(default_factory=list)
+    trials: list[TrialRow] = field(default_factory=list)
     outreach: list[OutreachRow] = field(default_factory=list)
     questions: list[QuestionRow] = field(default_factory=list)
     citations: list[str] = field(default_factory=list)  # appendix rows
@@ -247,6 +271,21 @@ class BriefSections:
                     "evidence_in_hie": t.evidence_in_hie,
                 }
                 for t in self.therapies
+            ],
+            # Phase B B3 — clinical trials section.
+            # title is English-source public data; nct_link + nct_id are
+            # metadata scalars (not family-visible prose so no bilingual wrap).
+            "trials": [
+                {
+                    "nct_id": tr.nct_id,
+                    "title": {"en": tr.title, "ka": tr.title},
+                    "overall_status": tr.overall_status,
+                    "phase": tr.phase,
+                    "intervention_name": tr.intervention_name,
+                    "nct_link": tr.nct_link,
+                    "new_this_week": tr.new_this_week,
+                }
+                for tr in self.trials
             ],
             "outreach": [
                 {
@@ -366,6 +405,17 @@ def collect_sections(
                 evidence_in_hie="promising",
             )
         ]
+        sections.trials = [
+            TrialRow(
+                nct_id="NCT00000001",
+                title="Fixture trial — cord blood for severe HIE (placeholder)",
+                overall_status="RECRUITING",
+                phase="Phase 2",
+                intervention_name="Autologous cord blood (placeholder)",
+                nct_link="https://clinicaltrials.gov/study/NCT00000001",
+                new_this_week=True,
+            )
+        ]
         sections.outreach = [
             OutreachRow(
                 subject="Fixture outreach subject",
@@ -476,6 +526,57 @@ def collect_sections(
                     )
                 )
 
+            # Phase B B3 — eligible clinical trials for Aleksandra.
+            # Trials are public data (no PHI). Ordered by created_at desc so
+            # the most-recently-surfaced leads appear first. Limit 8 keeps the
+            # brief compact — the full list lives at /research/trials.
+            try:
+                cur.execute(
+                    """
+                    SELECT
+                      nct_id,
+                      title,
+                      overall_status,
+                      phase,
+                      intervention_name,
+                      created_at
+                    FROM clinical_trials
+                    WHERE aleksandra_status = 'identified'
+                    ORDER BY created_at DESC
+                    LIMIT 8
+                    """
+                )
+                week_start_dt = datetime.combine(
+                    week_start, datetime.min.time(), timezone.utc
+                )
+                for (
+                    nct_id,
+                    title,
+                    overall_status,
+                    phase,
+                    intervention,
+                    created_at,
+                ) in cur.fetchall():
+                    nct_str = nct_id or ""
+                    sections.trials.append(
+                        TrialRow(
+                            nct_id=nct_str,
+                            title=title or "(untitled trial)",
+                            overall_status=overall_status,
+                            phase=phase,
+                            intervention_name=intervention,
+                            nct_link=f"https://clinicaltrials.gov/study/{nct_str}"
+                            if nct_str
+                            else "",
+                            new_this_week=(
+                                created_at is not None
+                                and created_at.astimezone(timezone.utc) >= week_start_dt
+                            ),
+                        )
+                    )
+            except Exception:  # noqa: BLE001 — trials section never crashes the brief
+                pass  # leave sections.trials = [] (empty-state renders gracefully)
+
             # Outreach drafts in the window
             cur.execute(
                 """
@@ -518,6 +619,7 @@ def collect_sections(
         _bilingual_line("papers", n=len(sections.papers)),
         _bilingual_line("hypotheses", n=len(sections.hypotheses)),
         _bilingual_line("therapies", n=len(sections.therapies)),
+        _bilingual_line("trials", n=len(sections.trials)),
         _bilingual_line("outreach_pending", n=pending_outreach),
         _bilingual_line("open_questions", n=len(sections.questions)),
     ]
@@ -674,6 +776,26 @@ def render_pdf(sections: BriefSections, output_path: Path) -> Path:
             s["BodyText"],
         ),
     )
+    # Phase B B3 — Clinical trials for Aleksandra.
+    # Heading is bilingual (EN / KA) per AGENTS.md section-heading convention.
+    # Trials are public, English-source data; title rendered as-is (no
+    # fabricated Georgian — only the heading string is translated).
+    # PDF renders English; .ka is in briefs.sections JSONB for Telegram.
+    _section(
+        body,
+        styles,
+        "Clinical trials for Aleksandra / სამედიცინო კვლევები ალექსანდრასთვის",
+        sections.trials,
+        lambda tr, s: Paragraph(
+            f"• <b>{tr.title}</b>"
+            + (" [NEW THIS WEEK]" if tr.new_this_week else "")
+            + f" — status={tr.overall_status or 'n/a'}"
+            + (f", phase={tr.phase}" if tr.phase else "")
+            + (f", intervention={tr.intervention_name}" if tr.intervention_name else "")
+            + (f" | {tr.nct_link}" if tr.nct_link else ""),
+            s["BodyText"],
+        ),
+    )
     _section(
         body,
         styles,
@@ -827,6 +949,7 @@ __all__ = [
     "PaperRow",
     "HypothesisRow",
     "TherapyRow",
+    "TrialRow",
     "OutreachRow",
     "QuestionRow",
     "collect_sections",

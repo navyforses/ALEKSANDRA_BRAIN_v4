@@ -169,6 +169,19 @@ def render_body(
             f"{t.aleksandra_status or 'n/a'} / HIE evidence {t.evidence_in_hie or 'n/a'}"
         ),
     )
+    # Phase B B3 — Clinical trials for Aleksandra (public data, no PHI).
+    # Trial titles are English source text; rendered as-is (no fabricated KA).
+    _section(
+        "Clinical trials for Aleksandra",
+        sections.trials,
+        lambda tr: (
+            f"{tr.title}"
+            + (" [NEW THIS WEEK]" if tr.new_this_week else "")
+            + f" — status={tr.overall_status or 'n/a'}"
+            + (f", phase={tr.phase}" if tr.phase else "")
+            + (f" | {tr.nct_link}" if tr.nct_link else "")
+        ),
+    )
     _section(
         "Outreach queue",
         sections.outreach,
@@ -477,6 +490,7 @@ def _bilingual_dryrun_sections() -> BriefSections:
         PaperRow,
         QuestionRow,
         TherapyRow,
+        TrialRow,
     )
 
     today = date.today()
@@ -523,6 +537,18 @@ def _bilingual_dryrun_sections() -> BriefSections:
                 therapy_type="anticonvulsant",
                 aleksandra_status="evaluating",
                 evidence_in_hie="moderate",
+            ),
+        ],
+        trials=[
+            # Phase B B3 fixture: English-source title, no KA fabrication.
+            TrialRow(
+                nct_id="NCT00000001",
+                title="Fixture trial — cord blood for severe HIE (placeholder)",
+                overall_status="RECRUITING",
+                phase="Phase 2",
+                intervention_name="Autologous cord blood (placeholder)",
+                nct_link="https://clinicaltrials.gov/study/NCT00000001",
+                new_this_week=True,
             ),
         ],
         outreach=[
