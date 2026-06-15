@@ -17,9 +17,13 @@ Checks
   TRIALS-07  title + brief_summary stored as JSONB {en,..} for shown trials
   TRIALS-08  detailed_description present (non-null) for >=1 shown trial
   TRIALS-09  >=1 shown trial has a non-empty ka in title (translation works)
+  TRIALS-10  every row has a populated registry; >=1 non-ctgov trial after seed
+  TRIALS-11  no duplicate (registry, registry_id) pair
 
 "Shown" trials = aleksandra_status in {identified, evaluating} (the rows the
 viewer surfaces). TRIALS-07..09 are Phase C (full ctgov detail + bilingual).
+TRIALS-10..11 are Phase E (multi-registry: EU CTIS + UK ISRCTN + cross-registry
+dedup).
 
 Usage
 -----
@@ -101,7 +105,8 @@ def _fetch_all_rows() -> list[dict]:
         params={
             "select": (
                 "nct_id,title,aleksandra_status,aleksandra_eligible,"
-                "brief_summary,detailed_description"
+                "brief_summary,detailed_description,"
+                "registry,registry_id,secondary_ids"
             ),
             "limit": "10000",
         },
@@ -176,6 +181,8 @@ def run_checks(report: Report) -> None:
         ("TRIALS-07", "title + brief_summary stored as JSONB for shown trials"),
         ("TRIALS-08", "detailed_description present for >=1 shown trial"),
         ("TRIALS-09", "at least one shown trial has a non-empty ka title"),
+        ("TRIALS-10", "registry populated for all rows; >=1 non-ctgov trial"),
+        ("TRIALS-11", "no duplicate (registry, registry_id) pair"),
     )
 
     if not check_reachable(report):
@@ -299,6 +306,45 @@ def run_checks(report: Report) -> None:
             "at least one shown trial has a non-empty ka title",
             len(with_ka_title) >= 1,
             f"{len(with_ka_title)}/{n_shown} shown titles have ka",
+        )
+    )
+
+    # TRIALS-10 (Phase E) — every row has a populated registry, AND >=1 non-ctgov
+    # trial exists after seed (proves the EU CTIS / UK ISRCTN sources landed).
+    null_registry = [r for r in rows if not (r.get("registry") or "").strip()]
+    by_registry: dict[str, int] = {}
+    for r in rows:
+        reg = (r.get("registry") or "(null)").strip() or "(null)"
+        by_registry[reg] = by_registry.get(reg, 0) + 1
+    non_ctgov = sum(v for k, v in by_registry.items() if k not in ("ctgov", "(null)"))
+    report.add(
+        Check(
+            "TRIALS-10",
+            "registry populated for all rows; >=1 non-ctgov trial",
+            len(null_registry) == 0 and total > 0 and non_ctgov >= 1,
+            f"null_registry={len(null_registry)}; non_ctgov={non_ctgov}; "
+            f"breakdown={by_registry}",
+        )
+    )
+
+    # TRIALS-11 (Phase E) — no duplicate (registry, registry_id) pair (the partial
+    # dedup natural key must be unique; cross-registry dedup must not double-write).
+    seen: dict[tuple[str, str], int] = {}
+    for r in rows:
+        reg = (r.get("registry") or "").strip()
+        rid = (r.get("registry_id") or "").strip()
+        if not reg or not rid:
+            continue
+        key = (reg, rid)
+        seen[key] = seen.get(key, 0) + 1
+    dupes = {k: n for k, n in seen.items() if n > 1}
+    report.add(
+        Check(
+            "TRIALS-11",
+            "no duplicate (registry, registry_id) pair",
+            len(dupes) == 0 and total > 0,
+            f"distinct_keys={len(seen)}; duplicate_pairs={len(dupes)}"
+            + (f" e.g. {next(iter(dupes))}" if dupes else ""),
         )
     )
 

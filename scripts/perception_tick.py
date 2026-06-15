@@ -1,12 +1,17 @@
 """
 perception_tick.py — Phase 1 orchestrator.
 
-Runs all five perception passes in sequence:
-  1. fetch_pubmed       (PRC-01)
-  2. fetch_ctgov        (PRC-02)
-  3. fetch_preprints    (PRC-03)
-  4. gap_filler         (PRC-04 + PRC-05)
-  5. fetch_negative     (PRC-06)
+Runs all perception passes in sequence:
+  1. fetch_pubmed                (PRC-01)
+  2. fetch_ctgov                 (PRC-02)
+  3. perception.sources.ctis     (Phase E — EU CTIS)
+  4. perception.sources.isrctn   (Phase E — UK ISRCTN)
+  5. fetch_preprints             (PRC-03)
+  6. gap_filler                  (PRC-04 + PRC-05)
+  7. fetch_negative              (PRC-06)
+Then the trials eligibility matcher runs, ingesting ctgov + ctis + isrctn from
+evidence_ledger (cross-registry dedup + bilingual build) — see
+docs/CLINICAL_TRIALS_SOURCES_RESEARCH.md.
 
 Before any HTTP call: budget gate check against Supabase `runs` for a
 recent `budget_lock` / `killed_by_budget_gate` row. If one exists,
@@ -192,20 +197,35 @@ def run(*, small: bool = False, no_gap: bool = False) -> dict:
         from scripts.fetch_ctgov import QUERY_SETS
 
         ctgov_kwargs["queries"] = QUERY_SETS[:2]
+        # Phase E: tight caps for the new registry fetchers in --small dev runs.
+        ctis_kwargs = {"size": 5, "max_pages": 1}
+        isrctn_kwargs = {"limit": 25, "max_offset": 0}
         preprints_kwargs = {"max_per_feed": 3}
         gap_kwargs = {"hours": 6, "limit": 3}
         neg_kwargs = {"retmax": 2, "therapies_limit": 2}
     else:
         pubmed_kwargs = {"retmax": 10}
         ctgov_kwargs = {"page_size": 10}
+        ctis_kwargs = {"size": 20, "max_pages": 3}
+        isrctn_kwargs = {"limit": 100, "max_offset": 100}
         preprints_kwargs = {"max_per_feed": 10}
         gap_kwargs = {"hours": 6, "limit": 20}
         neg_kwargs = {"retmax": 2, "therapies_limit": 0}
+
+    # Phase E: lazy-import the pluggable registry fetchers (isolation — a syntax
+    # error in one source must not block the others at module-load time).
+    from scripts.perception.sources.ctis import run as fetch_ctis_run
+    from scripts.perception.sources.isrctn import run as fetch_isrctn_run
 
     counts: dict[str, dict[str, int]] = {}
     counts["pubmed"] = _safe_run("PubMed (PRC-01)", fetch_pubmed_run, **pubmed_kwargs)
     counts["ctgov"] = _safe_run(
         "ClinicalTrials.gov (PRC-02)", fetch_ctgov_run, **ctgov_kwargs
+    )
+    # Phase E: EU CTIS + UK ISRCTN — each isolated; one failure != whole tick.
+    counts["ctis"] = _safe_run("EU CTIS (Phase E)", fetch_ctis_run, **ctis_kwargs)
+    counts["isrctn"] = _safe_run(
+        "UK ISRCTN (Phase E)", fetch_isrctn_run, **isrctn_kwargs
     )
     counts["preprints"] = _safe_run(
         "bioRxiv + medRxiv RSS (PRC-03)", fetch_preprints_run, **preprints_kwargs
@@ -249,10 +269,12 @@ def run(*, small: bool = False, no_gap: bool = False) -> dict:
 
     pubmed_n = _g("pubmed", "ledger_inserted")
     ctgov_n = _g("ctgov", "ledger_inserted")
+    ctis_n = _g("ctis", "ledger_inserted")
+    isrctn_n = _g("isrctn", "ledger_inserted")
     preprints_n = _g("preprints", "ledger_inserted")
     gap_n = _g("gap_filler", "ledger_inserted")
     neg_n = _g("negative", "ledger_inserted")
-    total = pubmed_n + ctgov_n + preprints_n + gap_n + neg_n
+    total = pubmed_n + ctgov_n + ctis_n + isrctn_n + preprints_n + gap_n + neg_n
 
     # Phase B: surface the trials match outcome on the summary line.
     tm = counts.get("trials_match", {}) or {}
@@ -269,8 +291,8 @@ def run(*, small: bool = False, no_gap: bool = False) -> dict:
 
     summary_line = (
         f"🕷️ perception_tick OK  +{total} rows in {dt_seconds}s\n"
-        f"  pubmed={pubmed_n}  ctgov={ctgov_n}  preprints={preprints_n}\n"
-        f"  gap-fill={gap_n}  negative={neg_n}\n"
+        f"  pubmed={pubmed_n}  ctgov={ctgov_n}  ctis={ctis_n}  isrctn={isrctn_n}\n"
+        f"  preprints={preprints_n}  gap-fill={gap_n}  negative={neg_n}\n"
         f"  trials: new={new_leads}  closed={closed_leads}"
     )
 

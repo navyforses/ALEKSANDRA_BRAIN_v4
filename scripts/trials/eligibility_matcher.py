@@ -350,6 +350,115 @@ def extract_full_fields(study: dict[str, Any]) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
+# Phase E — multi-registry full-field extractors (ctis / isrctn)
+# ---------------------------------------------------------------------------
+# The registry fetchers (scripts/perception/sources/{ctis,isrctn}.py) already
+# parsed the FULL R2 record at fetch time and stored the rich fields under
+# source-specific keys in payload_metadata (ctis_* / isrctn_*). So the matcher's
+# per-source "full" extractor just lifts those into the SAME shape
+# extract_full_fields (ctgov) produces — no R2 re-parse needed for the new
+# registries (their raw artifact is still in R2 for provenance/audit).
+SOURCE_TYPES = ("ctgov", "ctis", "isrctn")
+
+
+def extract_full_fields_ctis(payload: dict[str, Any]) -> dict[str, Any]:
+    """Build the rich `full` dict for a CTIS trial from its payload_metadata.
+
+    Mirrors extract_full_fields (ctgov) output keys so map_and_evaluate works
+    unchanged. CTIS exposes countries (not facilities), so `locations` is a list
+    of {country} dicts and `locations_sample` keeps the "(Country)" shape
+    location_flags() reads. Contacts are sponsor-level only (CTIS rarely lists a
+    PI email), so pi_* / coordinator_* are None.
+    """
+    payload = payload or {}
+    locations_sample = payload.get("locations_sample") or []
+    locations = [
+        {
+            "facility": None,
+            "city": None,
+            "state": None,
+            "country": _country_of(str(s)) or None,
+            "status": None,
+        }
+        for s in locations_sample
+    ]
+    return {
+        "brief_summary": payload.get("ctis_objective") or None,
+        "detailed_description": None,
+        "eligibility_criteria": payload.get("ctis_eligibility_criteria") or None,
+        "conditions": payload.get("ctis_conditions") or [],
+        "locations": locations,
+        "locations_sample": locations_sample,
+        "pi_name": None,
+        "pi_email": None,
+        "coordinator_name": payload.get("ctis_sponsor") or None,
+        "coordinator_email": None,
+        "start_date": _normalize_date(payload.get("start_date")),
+        "estimated_completion": _normalize_date(payload.get("completion_date")),
+        "last_updated": None,
+    }
+
+
+def extract_full_fields_isrctn(payload: dict[str, Any]) -> dict[str, Any]:
+    """Build the rich `full` dict for an ISRCTN trial from its payload_metadata.
+
+    ISRCTN carries facility names (trialCentres) so `locations` keeps the
+    facility + country, and `locations_sample` is the "Facility (Country)" shape.
+    """
+    payload = payload or {}
+    locations_sample = payload.get("locations_sample") or []
+    locations: list[dict[str, Any]] = []
+    for s in locations_sample:
+        s = str(s)
+        country = _country_of(s) or None
+        # "Facility (Country)" → facility is everything before the trailing paren.
+        facility = re.sub(r"\s*\([^)]*\)\s*$", "", s).strip() or None
+        locations.append(
+            {
+                "facility": facility,
+                "city": None,
+                "state": None,
+                "country": country,
+                "status": None,
+            }
+        )
+    return {
+        "brief_summary": payload.get("isrctn_brief_summary") or None,
+        "detailed_description": None,
+        "eligibility_criteria": payload.get("isrctn_eligibility_criteria") or None,
+        "conditions": payload.get("isrctn_conditions") or [],
+        "locations": locations,
+        "locations_sample": locations_sample,
+        "pi_name": None,
+        "pi_email": None,
+        "coordinator_name": None,
+        "coordinator_email": None,
+        "start_date": _normalize_date(payload.get("start_date")),
+        "estimated_completion": _normalize_date(payload.get("completion_date")),
+        "last_updated": _normalize_date(payload.get("isrctn_last_updated")),
+    }
+
+
+def extract_full_for(
+    source_type: str, payload: dict[str, Any], raw_artifact_url: str | None
+) -> dict[str, Any]:
+    """Dispatch to the per-source full-field extractor.
+
+    ctgov  → read the FULL study JSON from R2 (unchanged Phase C path).
+    ctis   → lift the rich fields the fetcher stored in payload_metadata.
+    isrctn → lift the rich fields the fetcher stored in payload_metadata.
+    Unknown source_type → {} (matcher then degrades to the thin payload).
+    """
+    if source_type == "ctgov":
+        return extract_full_fields(fetch_full_study(raw_artifact_url) or {})
+    if source_type == "ctis":
+        return extract_full_fields_ctis(payload or {})
+    if source_type == "isrctn":
+        return extract_full_fields_isrctn(payload or {})
+    return {}
+
+
+# ---------------------------------------------------------------------------
 # Bilingual {en, ka} field helpers (Phase C — mirrors papers)
 # ---------------------------------------------------------------------------
 def _ka_of(value: Any) -> str:
@@ -505,6 +614,19 @@ def map_and_evaluate(
     )
     overall_status = payload.get("overall_status") or None
 
+    # --- Phase E: registry identity ---
+    # registry defaults to ctgov for legacy rows that predate the registry field.
+    registry = (payload.get("registry") or "ctgov").strip().lower()
+    registry_id = (payload.get("registry_id") or source_id or nct_id or "").strip()
+    secondary_ids = [
+        str(s).strip() for s in (payload.get("secondary_ids") or []) if str(s).strip()
+    ]
+    # ctgov rows keep nct_id == the real NCT; CTIS/ISRCTN have no NCT, so nct_id
+    # is the native id placeholder the fetcher stored (ctNumber / ISRCTNnnn) and
+    # must NOT be treated as a real NCT by downstream consumers — registry/
+    # registry_id disambiguate. eu_ctr_id is the natural home for the CTIS number.
+    eu_ctr_id = registry_id if registry == "ctis" else None
+
     phase = _join_list(payload.get("phases"))
     study_type = _join_list(payload.get("study_type"))
     intervention_name = _join_list(payload.get("interventions"), limit=5)
@@ -606,6 +728,11 @@ def map_and_evaluate(
 
     rec: dict[str, Any] = {
         "nct_id": nct_id,
+        # Phase E registry identity (NEW columns from migration 029).
+        "registry": registry,
+        "registry_id": registry_id,
+        "secondary_ids": secondary_ids,
+        "eu_ctr_id": eu_ctr_id,
         "title": title,
         "brief_summary": brief_summary,
         "detailed_description": detailed_description,
@@ -646,38 +773,78 @@ def map_and_evaluate(
 # ---------------------------------------------------------------------------
 # Supabase I/O
 # ---------------------------------------------------------------------------
-def fetch_ctgov_rows(limit: int = 1000) -> list[dict[str, Any]]:
-    """Read all evidence_ledger ctgov rows.
+def fetch_ledger_rows(
+    source_types: tuple[str, ...] = SOURCE_TYPES, limit: int = 5000
+) -> list[dict[str, Any]]:
+    """Read all evidence_ledger rows for the given source_types (Phase E).
 
-    Selects ``raw_artifact_url`` too (Phase C) so the matcher can fetch the FULL
-    study JSON from R2 for each trial.
+    Selects ``source_type`` (to dispatch the per-source normalizer) and
+    ``raw_artifact_url`` (Phase C — ctgov reads its FULL study JSON from R2).
+    Paginated so we are never silently truncated by the PostgREST row cap.
     """
     url, key = _supabase_creds()
-    r = httpx.get(
-        f"{url}/rest/v1/evidence_ledger",
-        params={
-            "source_type": "eq.ctgov",
-            "select": "source_id,payload_metadata,raw_artifact_url",
-            "limit": str(limit),
-        },
-        headers=_supabase_headers(key, prefer="count=none"),
-        timeout=30,
-    )
-    if r.status_code != 200:
-        raise RuntimeError(
-            f"fetch_ctgov_rows failed: HTTP {r.status_code}: {r.text[:300]}"
+    quoted = ",".join(f'"{s}"' for s in source_types)
+    out: list[dict[str, Any]] = []
+    page = 0
+    page_size = 1000
+    while len(out) < limit:
+        r = httpx.get(
+            f"{url}/rest/v1/evidence_ledger",
+            params={
+                "source_type": f"in.({quoted})",
+                "mode": "eq.positive",
+                "select": "source_id,source_type,payload_metadata,raw_artifact_url",
+                "order": "source_id.asc",
+                "limit": str(page_size),
+                "offset": str(page * page_size),
+            },
+            headers=_supabase_headers(key, prefer="count=none"),
+            timeout=30,
         )
-    return r.json()
+        if r.status_code != 200:
+            raise RuntimeError(
+                f"fetch_ledger_rows failed: HTTP {r.status_code}: {r.text[:300]}"
+            )
+        rows = r.json()
+        out.extend(rows)
+        if len(rows) < page_size:
+            break
+        page += 1
+    return out[:limit]
+
+
+# Backwards-compat alias: any Phase A/B caller importing fetch_ctgov_rows still
+# works, now returning ctgov rows only (with the source_type column added).
+def fetch_ctgov_rows(limit: int = 1000) -> list[dict[str, Any]]:
+    """Deprecated (Phase E): use fetch_ledger_rows. Returns ctgov rows only."""
+    return fetch_ledger_rows(source_types=("ctgov",), limit=limit)
+
+
+def identity_key(row: dict[str, Any]) -> str:
+    """Stable per-trial key for prior-state lookup across registries.
+
+    Uses ``registry:registry_id`` when present (Phase E), else falls back to
+    ``nct_id`` (legacy ctgov rows). This is the same key the matcher builds for a
+    freshly-computed record, so prior-state diffing and ka-reuse line up across
+    all three registries.
+    """
+    reg = (row.get("registry") or "").strip().lower()
+    rid = (row.get("registry_id") or "").strip()
+    if reg and rid:
+        return f"{reg}:{rid}"
+    nct = (row.get("nct_id") or "").strip()
+    return nct or rid or reg
 
 
 def fetch_prior_rows() -> dict[str, dict[str, Any]]:
     """Read existing clinical_trials rows' bilingual fields for self-healing.
 
-    Returns ``{nct_id: {title, brief_summary, detailed_description,
-    eligibility_criteria}}`` so bilingual_field() can REUSE a good ka without
-    re-translating (cost-stable convergence over the 6h tick). Fails SOFT: on
-    any error returns {} (every field is then treated as having no prior ka, so
-    translation simply runs — never a crash, never a silent lost lead).
+    Returns ``{identity_key: {registry, registry_id, secondary_ids, title,
+    brief_summary, detailed_description, eligibility_criteria, locations}}`` so
+    bilingual_field() can REUSE a good ka without re-translating (cost-stable
+    convergence over the 6h tick) AND cross-registry dedup can union locations /
+    secondary ids. Fails SOFT: on any error returns {} (translation simply runs;
+    never a crash, never a silent lost lead).
     """
     try:
         url, key = _supabase_creds()
@@ -688,8 +855,9 @@ def fetch_prior_rows() -> dict[str, dict[str, Any]]:
                 f"{url}/rest/v1/clinical_trials",
                 params={
                     "select": (
-                        "nct_id,title,brief_summary,"
-                        "detailed_description,eligibility_criteria"
+                        "nct_id,registry,registry_id,secondary_ids,eu_ctr_id,"
+                        "title,brief_summary,detailed_description,"
+                        "eligibility_criteria,locations,aleksandra_status"
                     ),
                     "order": "nct_id.asc",
                     "limit": "1000",
@@ -706,9 +874,9 @@ def fetch_prior_rows() -> dict[str, dict[str, Any]]:
                 return out
             rows = r.json()
             for row in rows:
-                nct = (row.get("nct_id") or "").strip()
-                if nct:
-                    out[nct] = row
+                k = identity_key(row)
+                if k:
+                    out[k] = row
             if len(rows) < 1000:
                 break
             page += 1
@@ -719,50 +887,75 @@ def fetch_prior_rows() -> dict[str, dict[str, Any]]:
 
 
 def upsert_trials(records: list[dict[str, Any]]) -> int:
-    """Batch UPSERT records into clinical_trials on conflict nct_id.
+    """Batch UPSERT records into clinical_trials, keyed by registry (Phase E).
 
-    Strips the internal underscore-prefixed helper keys before writing.
-    Returns the number of rows the server echoed back.
+    PostgREST resolves conflicts against ONE index per request, so the batch is
+    split by conflict target:
+      * ctgov rows  → on_conflict=nct_id            (unchanged Phase A path)
+      * ctis/isrctn → on_conflict=registry,registry_id (the partial unique index
+                       ux_trials_registry from migration 029)
+    Strips internal underscore-prefixed helper keys before writing. Returns the
+    total number of rows the server echoed back across both upserts.
     """
     if not records:
         return 0
     url, key = _supabase_creds()
-    clean = [{k: v for k, v in rec.items() if not k.startswith("_")} for rec in records]
-    r = httpx.post(
-        f"{url}/rest/v1/clinical_trials",
-        params={"on_conflict": "nct_id"},
-        json=clean,
-        headers=_supabase_headers(
-            key, prefer="resolution=merge-duplicates,return=representation"
-        ),
-        timeout=60,
-    )
-    if r.status_code not in (200, 201):
-        raise RuntimeError(
-            f"upsert_trials failed: HTTP {r.status_code}: {r.text[:500]}"
+
+    ctgov_recs: list[dict[str, Any]] = []
+    registry_recs: list[dict[str, Any]] = []
+    for rec in records:
+        clean = {k: v for k, v in rec.items() if not k.startswith("_")}
+        if (clean.get("registry") or "ctgov") == "ctgov":
+            ctgov_recs.append(clean)
+        else:
+            registry_recs.append(clean)
+
+    written = 0
+    for batch, conflict in (
+        (ctgov_recs, "nct_id"),
+        (registry_recs, "registry,registry_id"),
+    ):
+        if not batch:
+            continue
+        r = httpx.post(
+            f"{url}/rest/v1/clinical_trials",
+            params={"on_conflict": conflict},
+            json=batch,
+            headers=_supabase_headers(
+                key, prefer="resolution=merge-duplicates,return=representation"
+            ),
+            timeout=60,
         )
-    try:
-        return len(r.json())
-    except ValueError:
-        return len(clean)
+        if r.status_code not in (200, 201):
+            raise RuntimeError(
+                f"upsert_trials ({conflict}) failed: "
+                f"HTTP {r.status_code}: {r.text[:500]}"
+            )
+        try:
+            written += len(r.json())
+        except ValueError:
+            written += len(batch)
+    return written
 
 
 def fetch_prior_state() -> dict[str, dict[str, Any]]:
     """Read the current clinical_trials rows we care about for diffing.
 
-    Returns ``{nct_id: {"aleksandra_status": ..., "overall_status": ...}}``.
-    Used to detect (B2) newly-eligible trials and (B4) overall_status
-    transitions before we upsert the freshly-computed records. On any error
-    we fail SOFT: an empty dict means "no prior knowledge", which makes the
-    very first automated run treat everything as known-baseline-only (the
-    Phase A seed already populated the table), avoiding notification spam.
+    Returns ``{identity_key: {"aleksandra_status": ..., "overall_status": ...}}``
+    (registry-aware key — Phase E). Used to detect (B2) newly-eligible trials and
+    (B4) overall_status transitions before we upsert the freshly-computed records.
+    On any error we fail SOFT: an empty dict means "no prior knowledge", which
+    makes the very first automated run treat everything as known-baseline-only
+    (the seed already populated the table), avoiding notification spam.
     """
     try:
         url, key = _supabase_creds()
         r = httpx.get(
             f"{url}/rest/v1/clinical_trials",
             params={
-                "select": "nct_id,aleksandra_status,overall_status",
+                "select": (
+                    "nct_id,registry,registry_id,aleksandra_status,overall_status"
+                ),
                 "limit": "10000",
             },
             headers=_supabase_headers(key, prefer="count=none"),
@@ -776,10 +969,10 @@ def fetch_prior_state() -> dict[str, dict[str, Any]]:
             return {}
         out: dict[str, dict[str, Any]] = {}
         for row in r.json():
-            nct = (row.get("nct_id") or "").strip()
-            if not nct:
+            k = identity_key(row)
+            if not k:
                 continue
-            out[nct] = {
+            out[k] = {
                 "aleksandra_status": row.get("aleksandra_status"),
                 "overall_status": row.get("overall_status"),
             }
@@ -901,6 +1094,185 @@ def _print_summary(summary: dict[str, Any], *, dry_run: bool, written: int) -> N
 
 
 # ---------------------------------------------------------------------------
+# Cross-registry dedup (Phase E)
+# ---------------------------------------------------------------------------
+# The SAME trial can appear in CTIS AND ISRCTN (proven: ACUMEN is CTIS
+# 2025-520538-49-00 AND ISRCTN 61218504). Strategy (research doc):
+#   * ID-BASED merge ONLY — two records merge iff one's native id (registry:rid
+#     or nct_id) appears in the other's secondary_ids, or they share a secondary
+#     id. Never fuzzy-merge on title alone (over-merge would DROP a location/lead).
+#   * Source precedence for the displayed record: ctgov > ctis > isrctn.
+#   * Always UNION locations + secondary_ids across merged records (a UK site from
+#     ISRCTN + an EU country from CTIS is strictly better for the family).
+#   * The merged record's status is the MOST-OPEN across sources (identified >
+#     evaluating > ineligible) so a registry that knows the trial is recruiting is
+#     never overridden by one that lacks status — but if sources DISAGREE on
+#     openness the merged trial is kept at >= evaluating (never silently dropped).
+SOURCE_PRECEDENCE = {"ctgov": 0, "ctis": 1, "isrctn": 2}
+_STATUS_RANK = {"identified": 0, "evaluating": 1, "ineligible": 2}
+
+
+def _native_ids(rec: dict[str, Any]) -> set[str]:
+    """Every id token that identifies a record (native + secondaries), normalized
+    for comparison (case-insensitive, whitespace-stripped)."""
+    ids: set[str] = set()
+
+    def norm(x: Any) -> str:
+        return str(x).strip().lower()
+
+    reg = (rec.get("registry") or "").strip().lower()
+    rid = (rec.get("registry_id") or "").strip()
+    if rid:
+        ids.add(norm(rid))
+        if reg:
+            ids.add(norm(f"{reg}:{rid}"))
+    nct = (rec.get("nct_id") or "").strip()
+    if nct:
+        ids.add(norm(nct))
+    eu = (rec.get("eu_ctr_id") or "").strip()
+    if eu:
+        ids.add(norm(eu))
+    for s in rec.get("secondary_ids") or []:
+        s = str(s).strip()
+        if not s:
+            continue
+        ids.add(norm(s))
+        # secondary ids are often "TYPE:value" (e.g. "iras:1011409"); index the
+        # bare value too so an ISRCTN registry_id "61218504" matches a CTIS
+        # secondary "ISRCTN61218504".
+        if ":" in s:
+            ids.add(norm(s.split(":", 1)[1]))
+        m = re.search(r"(\d{5,})", s)
+        if m:
+            ids.add(norm(m.group(1)))
+    return ids
+
+
+def _shared_id(a: dict[str, Any], b: dict[str, Any]) -> bool:
+    """True iff records a and b share any identifying id (id-based merge only)."""
+    return bool(_native_ids(a) & _native_ids(b))
+
+
+def _merge_locations(primary: dict[str, Any], other: dict[str, Any]) -> list[Any]:
+    """Union locations across two records (de-duped by (facility,country))."""
+    seen: set[tuple] = set()
+    merged: list[Any] = []
+    for rec in (primary, other):
+        locs = rec.get("locations") or []
+        if not isinstance(locs, list):
+            continue
+        for loc in locs:
+            if isinstance(loc, dict):
+                k = (
+                    (loc.get("facility") or "").strip().lower(),
+                    (loc.get("country") or "").strip().lower(),
+                )
+            else:
+                k = (str(loc).strip().lower(), "")
+            if k in seen:
+                continue
+            seen.add(k)
+            merged.append(loc)
+    return merged
+
+
+def dedup_records(records: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], int]:
+    """Collapse cross-registry duplicates by SHARED ID (never by title).
+
+    Returns (deduped_records, n_merges). Records that share an id are merged into
+    the highest-precedence record (ctgov > ctis > isrctn); locations + secondary
+    ids are unioned; the merged status is the most-open of the group (and forced
+    to >= evaluating when sources disagree, so a lead is never silently dropped).
+    """
+    n = len(records)
+    parent = list(range(n))
+
+    def find(i: int) -> int:
+        while parent[i] != i:
+            parent[i] = parent[parent[i]]
+            i = parent[i]
+        return i
+
+    def union(i: int, j: int) -> None:
+        ri, rj = find(i), find(j)
+        if ri != rj:
+            parent[ri] = rj
+
+    # O(n^2) id-overlap — n is small (hundreds), so this is fine and exact.
+    for i in range(n):
+        for j in range(i + 1, n):
+            if _shared_id(records[i], records[j]):
+                union(i, j)
+
+    groups: dict[int, list[int]] = {}
+    for i in range(n):
+        groups.setdefault(find(i), []).append(i)
+
+    out: list[dict[str, Any]] = []
+    merges = 0
+    for members in groups.values():
+        if len(members) == 1:
+            out.append(records[members[0]])
+            continue
+        merges += len(members) - 1
+        # primary = highest precedence (ctgov < ctis < isrctn rank); tie → first.
+        members.sort(
+            key=lambda idx: SOURCE_PRECEDENCE.get(
+                (records[idx].get("registry") or "ctgov"), 9
+            )
+        )
+        primary = dict(records[members[0]])
+        statuses = [records[idx].get("aleksandra_status") for idx in members]
+        all_sec: list[str] = []
+        eligible_flags = []
+        for idx in members:
+            other = records[idx]
+            if idx != members[0]:
+                primary["locations"] = _merge_locations(primary, other)
+            for s in other.get("secondary_ids") or []:
+                if s and s not in all_sec:
+                    all_sec.append(str(s))
+            # surface the sibling registry's native id as a secondary too.
+            sib = (other.get("registry_id") or "").strip()
+            sib_reg = (other.get("registry") or "").strip()
+            if sib and sib_reg and idx != members[0]:
+                tag = f"{sib_reg}:{sib}"
+                if tag not in all_sec:
+                    all_sec.append(tag)
+            eligible_flags.append(other.get("aleksandra_eligible"))
+        # merge secondary ids into the primary's own set
+        for s in primary.get("secondary_ids") or []:
+            if s and s not in all_sec:
+                all_sec.append(str(s))
+        primary["secondary_ids"] = all_sec
+
+        # most-open status across the group; if sources disagree on openness,
+        # keep at >= evaluating (never drop a lead because one registry lacks data)
+        ranks = [_STATUS_RANK.get(s, 1) for s in statuses if s]
+        best = min(ranks) if ranks else 1
+        distinct_open = {(_STATUS_RANK.get(s, 1) == 0) for s in statuses if s}
+        if best == 0:
+            primary["aleksandra_status"] = "identified"
+            primary["aleksandra_eligible"] = True
+        elif len(distinct_open) > 1 or best == 1:
+            # disagreement or ambiguity → human review, never silent ineligible
+            primary["aleksandra_status"] = "evaluating"
+            primary["aleksandra_eligible"] = False
+        else:
+            primary["aleksandra_status"] = "ineligible"
+            primary["aleksandra_eligible"] = False
+
+        # record the merge provenance in eligibility_issues (informational)
+        issues = list(primary.get("eligibility_issues") or [])
+        regs = sorted({records[idx].get("registry") or "ctgov" for idx in members})
+        issues.append(f"cross-registry merge of {regs} (shared id)")
+        primary["eligibility_issues"] = issues
+        out.append(primary)
+
+    return out, merges
+
+
+# ---------------------------------------------------------------------------
 # Run
 # ---------------------------------------------------------------------------
 def run(
@@ -935,13 +1307,15 @@ def run(
     # C2: existing rows' bilingual fields, for self-healing ka reuse.
     prior_rows = fetch_prior_rows()
 
-    rows = fetch_ctgov_rows()
+    # Phase E: read ctgov + ctis + isrctn ledger rows (one normalizer per source).
+    rows = fetch_ledger_rows()
     if limit and limit > 0:
         rows = rows[:limit]
 
     records: list[dict[str, Any]] = []
     newly_eligible: list[dict[str, Any]] = []
     status_changes: list[dict[str, Any]] = []
+    by_registry: dict[str, int] = {}
 
     # C2: translation coverage stats over the DISPLAYED (translated) fields.
     BILINGUAL_FIELDS = (
@@ -953,22 +1327,35 @@ def run(
     xlate = {"ka_filled": 0, "en_only": 0, "r2_full": 0, "r2_fallback": 0}
 
     for row in rows:
-        full = extract_full_fields(fetch_full_study(row.get("raw_artifact_url")) or {})
+        source_type = (row.get("source_type") or "ctgov").strip().lower()
+        payload = row.get("payload_metadata") or {}
+        by_registry[source_type] = by_registry.get(source_type, 0) + 1
+
+        # Per-source full-field extraction (ctgov reads R2 JSON; ctis/isrctn lift
+        # the rich fields the fetcher already parsed into payload_metadata).
+        full = extract_full_for(source_type, payload, row.get("raw_artifact_url"))
         if full.get("brief_summary") or full.get("eligibility_criteria"):
             xlate["r2_full"] += 1
         else:
             xlate["r2_fallback"] += 1
 
+        # registry-aware identity key for prior-row reuse (matches identity_key).
+        reg = (payload.get("registry") or source_type or "ctgov").strip().lower()
+        rid = (
+            payload.get("registry_id")
+            or payload.get("nct_id")
+            or row.get("source_id")
+            or ""
+        ).strip()
+        prior_key = f"{reg}:{rid}" if reg and rid else (rid or reg)
+
         rec = map_and_evaluate(
             source_id=row.get("source_id", ""),
-            payload=row.get("payload_metadata") or {},
+            payload=payload,
             age_months=age_months,
             now_iso=now_iso,
             full=full,
-            prior_row=prior_rows.get(
-                (row.get("payload_metadata") or {}).get("nct_id")
-                or row.get("source_id")
-            ),
+            prior_row=prior_rows.get(prior_key),
         )
 
         # Tally ka coverage for displayed trials only (ineligible are en-only by
@@ -986,7 +1373,7 @@ def run(
         nct = rec["nct_id"]
         new_status = rec["aleksandra_status"]
         new_overall = (rec.get("overall_status") or "").strip().upper() or None
-        prev = prior.get(nct)
+        prev = prior.get(identity_key(rec))
         prev_alek = prev.get("aleksandra_status") if prev else None
         prev_overall = (
             ((prev.get("overall_status") or "").strip().upper() or None)
@@ -1030,6 +1417,10 @@ def run(
 
         records.append(rec)
 
+    # Phase E: cross-registry dedup (id-based merge; union locations; never
+    # fuzzy-merge). Runs BEFORE upsert so a CTIS+ISRCTN duplicate becomes one row.
+    records, merges = dedup_records(records)
+
     summary = summarize(records)
     written = 0
     if not dry_run:
@@ -1044,6 +1435,8 @@ def run(
         f"  ka fields filled   {xlate['ka_filled']}  "
         f"(en-only/fallback: {xlate['en_only']})"
     )
+    print(f"  per-registry (ledger) {by_registry}")
+    print(f"  cross-registry merges {merges}")
 
     # --- Telegram notify (B2/B4) ---
     notified = False
@@ -1071,6 +1464,9 @@ def run(
         "written": written,
         "notified": notified,
         "translation": xlate,
+        # Phase E
+        "by_registry": by_registry,
+        "merges": merges,
         # kept for backwards-compat with any Phase A caller
         "summary": summary,
         "records": records,
@@ -1267,6 +1663,101 @@ def _self_test() -> int:
     )
     assert closed is not None
     assert "NCT3" in closed and "აღარ მონაბირებს" in closed
+
+    # --- Phase E: identity_key (registry-aware) ---
+    assert identity_key({"registry": "ctis", "registry_id": "2025-1"}) == "ctis:2025-1"
+    assert identity_key({"nct_id": "NCT9"}) == "NCT9"
+    assert identity_key({"registry": "ctgov", "registry_id": "NCT9"}) == "ctgov:NCT9"
+
+    # --- Phase E: CTIS/ISRCTN full-field extractors (pure, from payload) ---
+    cf = extract_full_fields_ctis(
+        {
+            "locations_sample": ["(Ireland)", "(United Kingdom)"],
+            "ctis_eligibility_criteria": "Inclusion: baby",
+            "ctis_conditions": ["HIE"],
+            "ctis_sponsor": "UCL",
+            "start_date": "2025-09-12",
+        }
+    )
+    assert cf["eligibility_criteria"] == "Inclusion: baby"
+    assert cf["conditions"] == ["HIE"]
+    assert cf["coordinator_name"] == "UCL"
+    assert cf["locations"][0]["country"] == "ireland"
+    assert cf["start_date"] == "2025-09-12"
+    isf = extract_full_fields_isrctn(
+        {
+            "locations_sample": ["Uclh (United Kingdom)"],
+            "isrctn_eligibility_criteria": "Inclusion: ...",
+            "isrctn_brief_summary": "Plain summary",
+            "isrctn_conditions": ["HIE in newborns"],
+            "start_date": "2025-04-30",
+            "completion_date": "2026-11-30",
+        }
+    )
+    assert isf["brief_summary"] == "Plain summary"
+    assert isf["locations"][0]["facility"] == "Uclh"
+    assert isf["locations"][0]["country"] == "united kingdom"
+    assert isf["estimated_completion"] == "2026-11-30"
+
+    # --- Phase E: _native_ids picks up cross-registry links ---
+    ctis_rec = {
+        "registry": "ctis",
+        "registry_id": "2025-520538-49-00",
+        "secondary_ids": ["ISRCTN61218504", "IRAS:1011409"],
+    }
+    isrctn_rec = {"registry": "isrctn", "registry_id": "61218504", "secondary_ids": []}
+    assert _shared_id(ctis_rec, isrctn_rec), _native_ids(ctis_rec)
+    # unrelated trials never share an id
+    other = {"registry": "isrctn", "registry_id": "99999999", "secondary_ids": []}
+    assert not _shared_id(ctis_rec, other)
+
+    # --- Phase E: dedup_records merges shared-id trials, unions locations ---
+    a = {
+        "registry": "ctis",
+        "registry_id": "2025-520538-49-00",
+        "nct_id": "2025-520538-49-00",
+        "secondary_ids": ["ISRCTN61218504"],
+        "aleksandra_status": "evaluating",
+        "aleksandra_eligible": False,
+        "locations": [{"facility": None, "country": "Ireland"}],
+        "eligibility_issues": [],
+    }
+    b = {
+        "registry": "isrctn",
+        "registry_id": "61218504",
+        "nct_id": "ISRCTN61218504",
+        "secondary_ids": [],
+        "aleksandra_status": "identified",
+        "aleksandra_eligible": True,
+        "locations": [{"facility": "Uclh", "country": "United Kingdom"}],
+        "eligibility_issues": [],
+    }
+    c = {  # unrelated — must NOT merge
+        "registry": "ctgov",
+        "registry_id": "NCT00000001",
+        "nct_id": "NCT00000001",
+        "secondary_ids": [],
+        "aleksandra_status": "identified",
+        "aleksandra_eligible": True,
+        "locations": [{"facility": "Duke", "country": "United States"}],
+        "eligibility_issues": [],
+    }
+    deduped, n_merges = dedup_records([a, b, c])
+    assert n_merges == 1, n_merges
+    assert len(deduped) == 2, [r["registry_id"] for r in deduped]
+    merged = next(r for r in deduped if r["registry_id"] in ("2025-520538-49-00",))
+    # ctis precedes isrctn → ctis is primary; locations unioned (Ireland + UK)
+    assert merged["registry"] == "ctis"
+    countries = {(loc.get("country") or "").lower() for loc in merged["locations"]}
+    assert "ireland" in countries and "united kingdom" in countries, countries
+    # most-open status wins (identified from ISRCTN) — never silently dropped
+    assert merged["aleksandra_status"] == "identified", merged["aleksandra_status"]
+    assert any("cross-registry merge" in i for i in merged["eligibility_issues"])
+    # the unrelated ctgov trial is untouched
+    assert any(r["registry_id"] == "NCT00000001" for r in deduped)
+    # never over-merge: two trials with NO shared id stay separate
+    d2, m2 = dedup_records([a, c])
+    assert m2 == 0 and len(d2) == 2
 
     print("[OK] self-test passed")
     return 0
