@@ -189,4 +189,14 @@ export function IconLock(props: IconProps) {
   );
 }
 
+export function IconTrials(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M9 3h6M10 3v5l-4 9a2 2 0 0 0 1.8 3h8.4a2 2 0 0 0 1.8-3l-4-9V3" />
+      <path d="M7.5 14h9" />
+      <path d="M12 17v1.5" />
+    </svg>
+  );
+}
+
 export type IconComponent = (props: IconProps) => React.ReactElement;

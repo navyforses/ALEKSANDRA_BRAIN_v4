@@ -373,6 +373,106 @@ export async function fetchResearch(locale: Locale): Promise<ResearchView> {
   return { configured, items, updated };
 }
 
+// --- Clinical Trials ---------------------------------------------------------
+
+export interface TrialItem {
+  nctId: string;
+  title: string;
+  summary: string;
+  status: string;
+  phase: string;
+  intervention: string;
+  minAge: string;
+  maxAge: string;
+  locations: string[];
+  isUs: boolean;
+  isInternational: boolean;
+  issues: string[];
+  lastChecked?: string;
+}
+
+export interface TrialsView {
+  configured: boolean;
+  eligible: TrialItem[];
+  needsReview: TrialItem[];
+}
+
+interface TrialRow {
+  nct_id?: string;
+  title?: unknown;
+  brief_summary?: unknown;
+  overall_status?: string;
+  phase?: string;
+  study_type?: string;
+  intervention_name?: string;
+  min_age?: string;
+  max_age?: string;
+  eligibility_criteria?: unknown;
+  locations?: string[] | null;
+  aleksandra_eligible?: boolean;
+  eligibility_issues?: string[] | null;
+  aleksandra_status?: string;
+  last_checked?: string;
+}
+
+// Tokens that indicate a US site in the locations array.
+const US_TOKENS = ["united states", "usa", "u.s."];
+
+function isUsLocation(loc: string): boolean {
+  const lower = loc.toLowerCase();
+  return US_TOKENS.some((t) => lower.includes(t));
+}
+
+function mapTrial(row: TrialRow, locale: Locale): TrialItem {
+  const locations: string[] = Array.isArray(row.locations)
+    ? row.locations.filter((l): l is string => typeof l === "string")
+    : [];
+
+  const hasUs = locations.some(isUsLocation);
+  const hasIntl = locations.some((l) => !isUsLocation(l));
+
+  return {
+    nctId: row.nct_id ?? "",
+    title: cleanTitle(row.title, locale) || "—",
+    summary: flatten(row.brief_summary, locale),
+    status: row.overall_status ?? "",
+    phase: row.phase ?? "",
+    intervention: row.intervention_name ?? "",
+    minAge: row.min_age ?? "",
+    maxAge: row.max_age ?? "",
+    locations,
+    isUs: hasUs,
+    isInternational: hasIntl || (!hasUs && locations.length > 0),
+    issues: Array.isArray(row.eligibility_issues) ? row.eligibility_issues : [],
+    lastChecked: row.last_checked,
+  };
+}
+
+export async function fetchClinicalTrials(locale: Locale): Promise<TrialsView> {
+  const result = await getRows<TrialRow>("clinical_trials", {
+    select:
+      "nct_id,title,brief_summary,overall_status,phase,study_type,intervention_name,min_age,max_age,eligibility_criteria,locations,aleksandra_eligible,eligibility_issues,aleksandra_status,last_checked",
+    aleksandra_status: "in.(identified,evaluating)",
+    order: "last_checked.desc",
+    limit: "200",
+  });
+
+  const configured = result.configured;
+  const eligible: TrialItem[] = [];
+  const needsReview: TrialItem[] = [];
+
+  for (const row of result.rows) {
+    const item = mapTrial(row, locale);
+    if (row.aleksandra_status === "identified") {
+      eligible.push(item);
+    } else if (row.aleksandra_status === "evaluating") {
+      needsReview.push(item);
+    }
+  }
+
+  return { configured, eligible, needsReview };
+}
+
 export interface TodayView {
   status: WorkingStatus;
   attention: ResearchItem[];

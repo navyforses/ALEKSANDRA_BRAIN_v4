@@ -127,6 +127,7 @@
       "label": "Primary",
       "today": "Today",
       "research": "Research",
+      "trials": "Trials",
       "brain": "Brain",
       "brief": "Brief",
       "history": "History"
@@ -139,6 +140,25 @@
       "toLight": "Switch to day",
       "toDark": "Switch to night"
     }
+  },
+  "Trials": {
+    "title": "Clinical Trials",
+    "subtitle": "Active trials Aleksandra may be eligible to join",
+    "eligibleHeading": "Eligible to enroll",
+    "needsReviewHeading": "Needs review",
+    "eligibleCount": "{n} eligible",
+    "ageLabel": "Age range",
+    "phaseLabel": "Phase",
+    "interventionLabel": "Intervention",
+    "locationLabel": "Location",
+    "usBadge": "United States",
+    "intlBadge": "International",
+    "issuesLabel": "Why this needs review",
+    "viewOnCtgov": "View on ClinicalTrials.gov",
+    "backToResearch": "Back to research",
+    "emptyEligible": "No trials currently meet all eligibility criteria. The system checks weekly.",
+    "emptyNeedsReview": "No trials pending review.",
+    "notConfigured": "The database is not connected — clinical trials are not available yet."
   },
   "Today": {
     "statusConnecting": "Connecting to the research store…",

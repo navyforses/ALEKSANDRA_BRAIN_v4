@@ -11,6 +11,7 @@ import {
   IconPlus,
   IconResearch,
   IconToday,
+  IconTrials,
   type IconComponent,
 } from "@/components/shell/icons";
 import { IntakeProvider, useIntake } from "@/components/shell/intake-context";
@@ -18,11 +19,12 @@ import IntakeOverlay from "@/components/intake/IntakeOverlay";
 import LanguageToggle from "@/components/shell/LanguageToggle";
 import ThemeToggle from "@/components/shell/ThemeToggle";
 
-type NavKey = "today" | "research" | "brain" | "brief" | "history";
+type NavKey = "today" | "research" | "brain" | "brief" | "history" | "trials";
 
 const NAV: { key: NavKey; href: string; Icon: IconComponent }[] = [
   { key: "today", href: "/", Icon: IconToday },
   { key: "research", href: "/research", Icon: IconResearch },
+  { key: "trials", href: "/research/trials", Icon: IconTrials },
   { key: "brain", href: "/brain", Icon: IconBrain },
   { key: "brief", href: "/brief", Icon: IconBrief },
   { key: "history", href: "/history", Icon: IconHistory },
