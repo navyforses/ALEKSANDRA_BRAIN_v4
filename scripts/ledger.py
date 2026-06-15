@@ -171,10 +171,12 @@ def upload_artifact(
 # ---------------------------------------------------------------------------
 def _supabase_creds() -> tuple[str, str]:
     load_env()
-    # Strip whitespace: a stray newline in a GitHub secret makes httpx raise
-    # 'Illegal header value' when the key is interpolated into apikey/Authorization.
-    url = os.environ.get("SUPABASE_URL", "").strip().rstrip("/")
-    key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "").strip()
+    # Remove ALL whitespace (including embedded newlines): a secret stored in
+    # GitHub with line-wrapped or trailing newlines makes httpx raise
+    # 'Illegal header value' when interpolated into apikey/Authorization.
+    # "".join(...split()) is safe for JWTs (no spaces) and plain URLs.
+    url = "".join(os.environ.get("SUPABASE_URL", "").split()).rstrip("/")
+    key = "".join(os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "").split())
     if not url or not key:
         raise RuntimeError("SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY missing in .env")
     return url, key
@@ -183,9 +185,9 @@ def _supabase_creds() -> tuple[str, str]:
 def _supabase_headers(
     key: str, *, prefer: str = "return=representation"
 ) -> dict[str, str]:
-    # Strip whitespace: a stray newline in a GitHub secret makes httpx raise
-    # 'Illegal header value' when the key is interpolated into apikey/Authorization.
-    key = key.strip()
+    # Remove ALL whitespace (including embedded newlines) from the key before
+    # using it as an HTTP header value — httpx rejects values containing \n.
+    key = "".join(key.split())
     return {
         "apikey": key,
         "Authorization": f"Bearer {key}",
