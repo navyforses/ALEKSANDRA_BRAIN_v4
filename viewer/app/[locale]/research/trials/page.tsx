@@ -43,6 +43,7 @@ export default async function ClinicalTrialsPage({
     intlBadge: t("intlBadge"),
     issuesLabel: t("issuesLabel"),
     viewOnCtgov: t("viewOnCtgov"),
+    viewOnRegistry: t("viewOnRegistry"),
     detailsLink: t("detailsLink"),
     eligibleHeading: t("eligibleHeading"),
     needsReviewHeading: t("needsReviewHeading"),

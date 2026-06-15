@@ -8,6 +8,7 @@ import { useMemo, useState } from "react";
 import { Link } from "@/i18n/navigation";
 import type { TrialItem } from "@/lib/data";
 import { localizeCountry, sortCountries } from "@/lib/countries";
+import { registryLabel, registryUrl, registryDisplayId } from "@/lib/registries";
 import type { Locale } from "@/lib/seo";
 
 // ---------------------------------------------------------------------------
@@ -22,7 +23,10 @@ interface BrowserLabels {
   usBadge: string;
   intlBadge: string;
   issuesLabel: string;
+  /** @deprecated kept for compat — use viewOnRegistry instead */
   viewOnCtgov: string;
+  /** Phase E: "View on {registry}" template — caller interpolates registry label. */
+  viewOnRegistry: string;
   detailsLink: string;
   eligibleHeading: string;
   needsReviewHeading: string;
@@ -125,9 +129,9 @@ function TrialCard({
         ) : null}
       </div>
 
-      {/* Title */}
-      {item.nctId ? (
-        <Link href={`/research/trials/${item.nctId}`} className="block group">
+      {/* Title — internal link uses registryId (the universal per-registry id) */}
+      {item.registryId ? (
+        <Link href={`/research/trials/${item.registryId}`} className="block group">
           <h3 className="font-serif text-lg leading-snug text-ink group-hover:text-accent group-hover:underline underline-offset-2">
             {item.title}
           </h3>
@@ -226,23 +230,33 @@ function TrialCard({
         </div>
       ) : null}
 
-      {/* Links row */}
-      {item.nctId ? (
+      {/* Links row — registry-aware (Phase E) */}
+      {item.registryId ? (
         <div className="flex flex-wrap items-center gap-4">
+          {/* Registry badge + displayed id */}
+          <span className="inline-flex items-center gap-1.5">
+            <span className="inline-flex items-center rounded-full bg-paper px-2.5 py-0.5 text-[0.72rem] font-medium text-muted">
+              {registryLabel(item.registry)}
+            </span>
+            <span className="font-mono text-[0.72rem] text-faint">
+              {registryDisplayId(item)}
+            </span>
+          </span>
+
           <Link
-            href={`/research/trials/${item.nctId}`}
+            href={`/research/trials/${item.registryId}`}
             className="inline-flex items-center gap-1 text-sm text-ink hover:text-accent hover:underline"
           >
             {labels.detailsLink}
             <span aria-hidden="true">→</span>
           </Link>
           <a
-            href={`https://clinicaltrials.gov/study/${item.nctId}`}
+            href={registryUrl(item)}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1 text-sm text-accent hover:text-accent-ink hover:underline"
           >
-            {labels.viewOnCtgov}
+            {labels.viewOnRegistry.replace("__REGISTRY__", registryLabel(item.registry))}
             <span aria-hidden="true">↗</span>
           </a>
         </div>
@@ -468,7 +482,7 @@ export default function TrialsBrowser({
         ) : (
           <ul className="space-y-3">
             {filteredEligible.map((item) => (
-              <li key={item.nctId}>
+              <li key={item.registryId || item.nctId}>
                 <TrialCard
                   item={item}
                   labels={labels}
@@ -502,7 +516,7 @@ export default function TrialsBrowser({
         ) : (
           <ul className="space-y-3 opacity-80">
             {filteredNeedsReview.map((item) => (
-              <li key={item.nctId}>
+              <li key={item.registryId || item.nctId}>
                 <TrialCard
                   item={item}
                   labels={labels}

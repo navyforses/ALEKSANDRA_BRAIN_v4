@@ -3,6 +3,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { fetchTrialDetail, formatDate } from "@/lib/data";
 import type { TrialDetail, TrialLocation } from "@/lib/data";
+import { registryLabel, registryUrl, registryDisplayId } from "@/lib/registries";
 import { buildCustomMetadata, type Locale } from "@/lib/seo";
 
 // ---------------------------------------------------------------------------
@@ -236,19 +237,35 @@ export default async function TrialDetailPage({
           {trial.isInternational ? (
             <span className="text-[0.8rem] text-muted">{"\u{1F30D}"} {t("intlBadge")}</span>
           ) : null}
-          <span className="text-[0.72rem] text-faint font-mono">{trial.nctId}</span>
+          {/* Phase E: registry badge + id */}
+          <span className="inline-flex items-center gap-1.5">
+            <span className="inline-flex items-center rounded-full bg-paper px-2.5 py-0.5 text-[0.72rem] font-medium text-muted">
+              {registryLabel(trial.registry)}
+            </span>
+            <span className="font-mono text-[0.72rem] text-faint">
+              {registryDisplayId(trial)}
+            </span>
+          </span>
         </div>
 
-        {/* External link to ClinicalTrials.gov */}
-        <a
-          href={`https://clinicaltrials.gov/study/${trial.nctId}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 text-sm text-accent hover:text-accent-ink hover:underline"
-        >
-          {t("viewOnCtgov")}
-          <span aria-hidden="true">↗</span>
-        </a>
+        {/* Phase E: registry-aware external link */}
+        <div className="flex flex-wrap items-center gap-4">
+          <a
+            href={registryUrl(trial)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-sm text-accent hover:text-accent-ink hover:underline"
+          >
+            {t("viewOnRegistry").replace("__REGISTRY__", registryLabel(trial.registry))}
+            <span aria-hidden="true">↗</span>
+          </a>
+          {/* Cross-registry secondary ids — "Also listed as" */}
+          {trial.secondaryIds.length > 0 ? (
+            <span className="text-[0.8rem] text-faint">
+              {t("alsoListedAs")}: {trial.secondaryIds.join(" · ")}
+            </span>
+          ) : null}
+        </div>
       </header>
 
       {/* ------------------------------------------------------------------ */}

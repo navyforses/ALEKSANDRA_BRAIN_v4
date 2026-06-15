@@ -409,6 +409,11 @@ export interface TrialItem {
   coordinatorEmail: string;
   piName: string;
   piEmail: string;
+  // Registry-awareness fields (Phase E)
+  registry: string;       // 'ctgov' | 'ctis' | 'isrctn'
+  registryId: string;     // the id to use for internal routing + display
+  euCtrId: string;        // CTIS ctNumber; empty for non-CTIS rows
+  secondaryIds: string[]; // cross-registry ids for provenance
 }
 
 export interface TrialsView {
@@ -452,6 +457,11 @@ export interface TrialDetail {
   aleksandraStatus: string;
   eligibilityIssues: string[];
   lastChecked: string;
+  // Registry-awareness fields (Phase E)
+  registry: string;
+  registryId: string;
+  euCtrId: string;
+  secondaryIds: string[];
 }
 
 interface TrialRow {
@@ -476,6 +486,11 @@ interface TrialRow {
   coordinator_name?: string;
   coordinator_email?: string;
   start_date?: string;
+  // Phase E: registry-awareness
+  registry?: string;
+  registry_id?: string;
+  eu_ctr_id?: string;
+  secondary_ids?: string[] | null;
 }
 
 // Enriched row shape — all columns from Phase C Wave 1 enrichment.
@@ -504,6 +519,11 @@ interface TrialDetailRow {
   eligibility_issues?: string[] | null;
   aleksandra_status?: string;
   last_checked?: string;
+  // Phase E: registry-awareness
+  registry?: string;
+  registry_id?: string;
+  eu_ctr_id?: string;
+  secondary_ids?: string[] | null;
 }
 
 // Tokens that indicate a US site in the locations array.
@@ -551,6 +571,14 @@ function mapTrial(row: TrialRow, locale: Locale): TrialItem {
   const firstSite = structs[0] ?? null;
   const primary = usSite ?? firstSite;
 
+  // Phase E: resolve registry fields.
+  // registry_id is the canonical per-registry id. For ctgov rows written before
+  // Phase E, registry_id may be null — fall back to nct_id.
+  const registry = row.registry ?? "ctgov";
+  const registryId = row.registry_id ?? row.nct_id ?? "";
+  const euCtrId = row.eu_ctr_id ?? "";
+  const secondaryIds = Array.isArray(row.secondary_ids) ? row.secondary_ids : [];
+
   return {
     nctId: row.nct_id ?? "",
     title: cleanTitle(row.title, locale) || "—",
@@ -573,13 +601,17 @@ function mapTrial(row: TrialRow, locale: Locale): TrialItem {
     coordinatorEmail: row.coordinator_email ?? "",
     piName: row.pi_name ?? "",
     piEmail: row.pi_email ?? "",
+    registry,
+    registryId,
+    euCtrId,
+    secondaryIds,
   };
 }
 
 export async function fetchClinicalTrials(locale: Locale): Promise<TrialsView> {
   const result = await getRows<TrialRow>("clinical_trials", {
     select:
-      "nct_id,title,brief_summary,overall_status,phase,study_type,intervention_name,min_age,max_age,eligibility_criteria,locations,aleksandra_eligible,eligibility_issues,aleksandra_status,last_checked,pi_name,pi_email,coordinator_name,coordinator_email,start_date",
+      "nct_id,title,brief_summary,overall_status,phase,study_type,intervention_name,min_age,max_age,eligibility_criteria,locations,aleksandra_eligible,eligibility_issues,aleksandra_status,last_checked,pi_name,pi_email,coordinator_name,coordinator_email,start_date,registry,registry_id,eu_ctr_id,secondary_ids",
     aleksandra_status: "in.(identified,evaluating)",
     order: "last_checked.desc",
     limit: "200",
@@ -658,6 +690,12 @@ function mapTrialDetail(row: TrialDetailRow, locale: Locale): TrialDetail {
   const hasUs = locations.some((l) => l.isUs);
   const hasIntl = locations.some((l) => !l.isUs);
 
+  // Phase E: resolve registry fields (same logic as mapTrial).
+  const registry = row.registry ?? "ctgov";
+  const registryId = row.registry_id ?? row.nct_id ?? "";
+  const euCtrId = row.eu_ctr_id ?? "";
+  const secondaryIds = Array.isArray(row.secondary_ids) ? row.secondary_ids : [];
+
   return {
     nctId: row.nct_id ?? "",
     title: cleanTitle(row.title, locale) || "—",
@@ -684,24 +722,47 @@ function mapTrialDetail(row: TrialDetailRow, locale: Locale): TrialDetail {
     aleksandraStatus: row.aleksandra_status ?? "",
     eligibilityIssues: Array.isArray(row.eligibility_issues) ? row.eligibility_issues : [],
     lastChecked: row.last_checked ?? "",
+    registry,
+    registryId,
+    euCtrId,
+    secondaryIds,
   };
 }
 
 export async function fetchTrialDetail(
   locale: Locale,
-  nctId: string,
+  trialId: string,
 ): Promise<{ configured: boolean; trial: TrialDetail | null }> {
-  const result = await getRows<TrialDetailRow>("clinical_trials", {
-    select:
-      "nct_id,title,brief_summary,detailed_description,eligibility_criteria,conditions,overall_status,phase,study_type,intervention_name,min_age,max_age,locations,pi_name,pi_email,coordinator_name,coordinator_email,start_date,estimated_completion,last_updated,aleksandra_eligible,eligibility_issues,aleksandra_status,last_checked",
-    nct_id: `eq.${nctId}`,
+  // Phase E: look up by registry_id first (universal), then fall back to nct_id.
+  // This ensures routes built from any registry work, and existing ctgov routes
+  // (where registry_id == nct_id) keep resolving.
+  const selectCols =
+    "nct_id,title,brief_summary,detailed_description,eligibility_criteria,conditions,overall_status,phase,study_type,intervention_name,min_age,max_age,locations,pi_name,pi_email,coordinator_name,coordinator_email,start_date,estimated_completion,last_updated,aleksandra_eligible,eligibility_issues,aleksandra_status,last_checked,registry,registry_id,eu_ctr_id,secondary_ids";
+
+  // Try by registry_id first.
+  const byRegistryId = await getRows<TrialDetailRow>("clinical_trials", {
+    select: selectCols,
+    registry_id: `eq.${trialId}`,
     limit: "1",
   });
 
-  if (!result.configured) {
+  if (!byRegistryId.configured) {
     return { configured: false, trial: null };
   }
-  const row = result.rows[0];
+
+  let row = byRegistryId.rows[0];
+
+  // If not found by registry_id, try nct_id (legacy ctgov rows before Phase E
+  // may not have registry_id backfilled yet).
+  if (!row) {
+    const byNctId = await getRows<TrialDetailRow>("clinical_trials", {
+      select: selectCols,
+      nct_id: `eq.${trialId}`,
+      limit: "1",
+    });
+    row = byNctId.rows[0];
+  }
+
   if (!row) {
     return { configured: true, trial: null };
   }

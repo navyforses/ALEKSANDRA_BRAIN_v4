@@ -155,6 +155,8 @@
     "intlBadge": "საერთაშორისო",
     "issuesLabel": "რატომ საჭიროებს გადამოწმებას",
     "viewOnCtgov": "ნახე ClinicalTrials.gov-ზე",
+    "viewOnRegistry": "ნახე __REGISTRY__-ზე",
+    "alsoListedAs": "ასევე რეგისტრირებულია",
     "backToResearch": "კვლევაზე დაბრუნება",
     "emptyEligible": "ამჟამად ვერცერთი კვლევა ვერ აკმაყოფილებს ყველა კრიტერიუმს. სისტემა ყოველ კვირა ამოწმებს.",
     "emptyNeedsReview": "გადასამოწმებელი კვლევა არ არის.",
