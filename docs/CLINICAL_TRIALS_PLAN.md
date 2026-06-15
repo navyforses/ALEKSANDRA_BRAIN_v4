@@ -5,6 +5,7 @@
 > B: new-eligible Telegram alerts + status monitoring + matcher wired into perception_tick (6h) + clinical-trials section in Weekly Brief. commits `6095c33` + `cc87044`.
 > C: full ctgov data from R2 (brief/detailed description, full eligibility, all locations, contacts, conditions, dates) + bilingual {en,ka} translation via `build_bilingual` (like papers; 59 shown trials, 221 ka fields) + migration 028 (text→JSONB) + **structured single-trial detail page** `/research/trials/[nctId]`. commits `c1b821e` + `9f66b4c` + `d2f9abf`. (backfill spend ~$9.90 that day; future translations self-heal cheaply.)
 > D: list **country/location filter + sort** (multi-select country chips US-first; sort US-first/country A–Z/soonest-start/recently-checked) + card surfaces where-conducted / start-date / contact (mailto) + KA country-name map. commit `5bba37f`. (frontend-only, no DB change.)
+> E: **multi-registry** — pluggable sources `scripts/perception/sources/{ctis,isrctn}.py` (VERIFIED EU CTIS + UK ISRCTN APIs) + migration 029 (registry/registry_id/secondary_ids) + cross-registry dedup + matcher/tick wiring + registry-aware frontend links/badges. live seed: ctgov 117 · ctis 18 · isrctn 90 (225 total, 2 merges); ACUMEN HIE trial (CTIS+ISRCTN) now surfaced — was missing from ctgov-only. verifier 11/11. commits `5ebc3c6`+`ebfaceb`+`cf70809`+`57c86b8`+`04cf701`+`0a114c0`. Research: docs/CLINICAL_TRIALS_SOURCES_RESEARCH.md. (WHO ICTRP/EudraCT/national registries deferred — no free API / ToU; future arbitrary sites via Crawl4AI/Firecrawl scraper pattern.)
 > Seed for a future GSD phase (mirrors how `docs/I18N_PLAN.md` seeded Phase 6).
 > Author context: codebase research 2026-06-15 (two Explore passes over `viewer/` + `scripts/`).
 
@@ -201,11 +202,13 @@ Server component, `getTranslations("Trials")`, `fetchClinicalTrials(locale)` →
 
 ## 13. შემდეგი ნაბიჯი / Next step
 
-**A + B + C ფაზა დასრულდა** (code-complete).
+**A–E ფაზა დასრულდა** (code-complete).
 - A: გვერდი ცოცხლად Vercel-ზე (`/ka/research/trials` · `/en/research/trials`), 31+28 კვლევა.
 - B: matcher ავტომატურად perception_tick-ში (6სთ); ახალ შესაფერის კვლევაზე Telegram + Weekly Brief სექცია; სტატუს-მონიტორინგი (re-fetched trials). Telegram baseline seeded → spam არ იქნება.
 - C: სრული მონაცემი R2-დან + ქართული თარგმანი (build_bilingual, სტატიებივით) + migration 028 (text→JSONB) + დახარისხებული დეტალური გვერდი `/research/trials/[nctId]` (სექციებად: შესაფერისობა · აღწერა · eligibility · ლოკაციები · კონტაქტი · თარიღები). ახალი კვლევები ავტომატურად ითარგმნება tick-ზე (budget-gated, თვით-განკურნება).
+- D: country/location ფილტრი + სორტირება + ბარათზე სად/როდის/კონტაქტი.
+- E: multi-registry — EU CTIS + UK ISRCTN წყაროები (pluggable `scripts/perception/sources/`), migration 029, cross-registry dedup, registry-aware ბმულები/იარლიყები. 225 კვლევა 3 რეგისტრიდან (ctgov 117 · ctis 18 · isrctn 90); ACUMEN HIE კვლევა გამოჩნდა (ctgov-ზე არ იყო).
 
 **B4 limitation:** სრულად დახურული (აღარ-fetch-ვადი) კვლევის სტატუსი ვერ ახლდება ავტომატურად — per-trial re-check ctgov-ზე deferred.
 
-**Deferred / შემდგომი backlog:** B5 PI/coordinator outreach draft (Gmail draft-only, PHI-redacted) · A2 trial აღწერების KA თარგმანი (budget-gated) · EU CTR/სხვა registries.
+**Deferred / შემდგომი backlog:** B5 PI/coordinator outreach draft (Gmail draft-only, PHI-redacted) · WHO ICTRP (paid/ToU) · legacy EudraCT + national registries (no free API → scrape) · CTIS age-code lookup table (currently → evaluating) · არბიტრალური ვებსაიტები Crawl4AI/Firecrawl scraper-პატერნით (კონკრეტული URL-ების მიცემისას).
