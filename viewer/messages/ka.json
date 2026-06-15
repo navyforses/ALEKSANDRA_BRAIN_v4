@@ -181,7 +181,19 @@
     "statusEligible": "შესაფერისი",
     "statusNeedsReview": "გადასამოწმებელი",
     "statusUnknown": "სტატუსი უცნობია",
-    "detailsLink": "დეტალები"
+    "detailsLink": "დეტალები",
+    "filterCountry": "ფილტრი ქვეყნის მიხედვით",
+    "allCountries": "ყველა ქვეყანა",
+    "sortBy": "დალაგება",
+    "sortUsFirst": "აშშ პირველი",
+    "sortCountryAz": "ქვეყანა — ა–ჰ",
+    "sortSoonest": "უახლოეს დაწყება",
+    "sortRecent": "ახლახან შემოწმებული",
+    "startsLabel": "იწყება",
+    "conductedAt": "სად",
+    "moreSites": "კიდევ ადგილი",
+    "contactLabel": "კონტაქტი",
+    "noMatches": "არჩეული ქვეყნებისთვის კვლევა ვერ მოიძებნა."
   },
   "Today": {
     "statusConnecting": "ვუკავშირდები კვლევის ბაზას…",

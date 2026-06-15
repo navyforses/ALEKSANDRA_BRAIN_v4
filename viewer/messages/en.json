@@ -181,7 +181,19 @@
     "statusEligible": "Eligible",
     "statusNeedsReview": "Needs review",
     "statusUnknown": "Status unknown",
-    "detailsLink": "Details"
+    "detailsLink": "Details",
+    "filterCountry": "Filter by country",
+    "allCountries": "All countries",
+    "sortBy": "Sort by",
+    "sortUsFirst": "US first",
+    "sortCountryAz": "Country A–Z",
+    "sortSoonest": "Soonest start",
+    "sortRecent": "Recently checked",
+    "startsLabel": "Starts",
+    "conductedAt": "Where",
+    "moreSites": "more sites",
+    "contactLabel": "Contact",
+    "noMatches": "No trials match the selected countries."
   },
   "Today": {
     "statusConnecting": "Connecting to the research store…",

@@ -375,6 +375,14 @@ export async function fetchResearch(locale: Locale): Promise<ResearchView> {
 
 // --- Clinical Trials ---------------------------------------------------------
 
+export interface TrialLocationSummary {
+  facility: string;
+  city: string;
+  state: string;
+  country: string;
+  status: string;
+}
+
 export interface TrialItem {
   nctId: string;
   title: string;
@@ -384,11 +392,23 @@ export interface TrialItem {
   intervention: string;
   minAge: string;
   maxAge: string;
+  /** Legacy flat-string array retained for backwards compat (LocationLine in page.tsx). */
   locations: string[];
+  /** Structured location objects from the JSONB column. */
+  locationStructs: TrialLocationSummary[];
+  /** Unique non-empty country names for this trial. */
+  countries: string[];
+  /** First (or most representative) site for compact display. */
+  primaryLocation: { city: string; country: string } | null;
   isUs: boolean;
   isInternational: boolean;
   issues: string[];
   lastChecked?: string;
+  startDate: string | null;
+  coordinatorName: string;
+  coordinatorEmail: string;
+  piName: string;
+  piEmail: string;
 }
 
 export interface TrialsView {
@@ -445,11 +465,17 @@ interface TrialRow {
   min_age?: string;
   max_age?: string;
   eligibility_criteria?: unknown;
-  locations?: string[] | null;
+  locations?: unknown;
   aleksandra_eligible?: boolean;
   eligibility_issues?: string[] | null;
   aleksandra_status?: string;
   last_checked?: string;
+  // Phase D additions
+  pi_name?: string;
+  pi_email?: string;
+  coordinator_name?: string;
+  coordinator_email?: string;
+  start_date?: string;
 }
 
 // Enriched row shape — all columns from Phase C Wave 1 enrichment.
@@ -489,12 +515,41 @@ function isUsLocation(loc: string): boolean {
 }
 
 function mapTrial(row: TrialRow, locale: Locale): TrialItem {
-  const locations: string[] = Array.isArray(row.locations)
-    ? row.locations.filter((l): l is string => typeof l === "string")
+  // Parse JSONB locations array (may be structured objects or legacy strings).
+  const structs = parseLocations(row.locations);
+
+  // Unique non-empty country strings — used for the filter chips.
+  const countries = Array.from(
+    new Set(structs.map((l) => l.country).filter(Boolean)),
+  );
+
+  // Legacy flat string array for the existing LocationLine component.
+  const flatLocations: string[] = structs.length > 0
+    ? structs.map((l) =>
+        [l.city, l.state, l.country].filter(Boolean).join(", "),
+      )
     : [];
 
-  const hasUs = locations.some(isUsLocation);
-  const hasIntl = locations.some((l) => !isUsLocation(l));
+  // If no structs, fall back to a flat string array in the raw column
+  // (older rows may store string[] directly).
+  const legacyFlat: string[] = flatLocations.length === 0 && Array.isArray(row.locations)
+    ? (row.locations as unknown[]).filter((l): l is string => typeof l === "string")
+    : [];
+  const allFlat = flatLocations.length > 0 ? flatLocations : legacyFlat;
+
+  const hasUs = structs.length > 0
+    ? structs.some((l) => US_TOKENS.some((t) => l.country.toLowerCase().includes(t)))
+    : allFlat.some(isUsLocation);
+  const hasIntl = structs.length > 0
+    ? structs.some((l) => !US_TOKENS.some((t) => l.country.toLowerCase().includes(t)))
+    : allFlat.some((l) => !isUsLocation(l));
+
+  // Best primary location: prefer US site first, then first entry.
+  const usSite = structs.find((l) =>
+    US_TOKENS.some((t) => l.country.toLowerCase().includes(t)),
+  );
+  const firstSite = structs[0] ?? null;
+  const primary = usSite ?? firstSite;
 
   return {
     nctId: row.nct_id ?? "",
@@ -505,18 +560,26 @@ function mapTrial(row: TrialRow, locale: Locale): TrialItem {
     intervention: row.intervention_name ?? "",
     minAge: row.min_age ?? "",
     maxAge: row.max_age ?? "",
-    locations,
+    locations: allFlat,
+    locationStructs: structs,
+    countries,
+    primaryLocation: primary ? { city: primary.city, country: primary.country } : null,
     isUs: hasUs,
-    isInternational: hasIntl || (!hasUs && locations.length > 0),
+    isInternational: hasIntl || (!hasUs && (structs.length > 0 || allFlat.length > 0)),
     issues: Array.isArray(row.eligibility_issues) ? row.eligibility_issues : [],
     lastChecked: row.last_checked,
+    startDate: row.start_date ?? null,
+    coordinatorName: row.coordinator_name ?? "",
+    coordinatorEmail: row.coordinator_email ?? "",
+    piName: row.pi_name ?? "",
+    piEmail: row.pi_email ?? "",
   };
 }
 
 export async function fetchClinicalTrials(locale: Locale): Promise<TrialsView> {
   const result = await getRows<TrialRow>("clinical_trials", {
     select:
-      "nct_id,title,brief_summary,overall_status,phase,study_type,intervention_name,min_age,max_age,eligibility_criteria,locations,aleksandra_eligible,eligibility_issues,aleksandra_status,last_checked",
+      "nct_id,title,brief_summary,overall_status,phase,study_type,intervention_name,min_age,max_age,eligibility_criteria,locations,aleksandra_eligible,eligibility_issues,aleksandra_status,last_checked,pi_name,pi_email,coordinator_name,coordinator_email,start_date",
     aleksandra_status: "in.(identified,evaluating)",
     order: "last_checked.desc",
     limit: "200",
