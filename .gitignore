@@ -133,3 +133,4 @@ tests/fixtures/test_brain_128_swarm_result.json
 # Migration pre-DDL DB snapshots (generated safety nets; tables are
 # reconstructable from evidence_ledger + R2 — see scripts/migrations/*_runbook.md)
 scripts/migrations/028_trials_backup.json
+scripts/migrations/029_trials_backup.json
