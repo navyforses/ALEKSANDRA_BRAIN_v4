@@ -3,6 +3,7 @@
 > სტატუსი: **A + B ფაზა SHIPPED (code-complete) — 2026-06-15.**
 > A: matcher + verifier + `/research/trials` (live on Vercel). seed 117 ctgov → **31 eligible / 28 needs-review / 58 ineligible**; verifier 6/6. commits `7b02fb4` + `8dc3fa4`.
 > B: new-eligible Telegram alerts + status monitoring + matcher wired into perception_tick (6h) + clinical-trials section in Weekly Brief. commits `6095c33` + `cc87044`.
+> C: full ctgov data from R2 (brief/detailed description, full eligibility, all locations, contacts, conditions, dates) + bilingual {en,ka} translation via `build_bilingual` (like papers; 59 shown trials, 221 ka fields) + migration 028 (text→JSONB) + **structured single-trial detail page** `/research/trials/[nctId]`. commits `c1b821e` + `9f66b4c` + `d2f9abf`. (backfill spend ~$9.90 that day; future translations self-heal cheaply.)
 > Seed for a future GSD phase (mirrors how `docs/I18N_PLAN.md` seeded Phase 6).
 > Author context: codebase research 2026-06-15 (two Explore passes over `viewer/` + `scripts/`).
 
@@ -199,9 +200,10 @@ Server component, `getTranslations("Trials")`, `fetchClinicalTrials(locale)` →
 
 ## 13. შემდეგი ნაბიჯი / Next step
 
-**A + B ფაზა დასრულდა** (code-complete).
+**A + B + C ფაზა დასრულდა** (code-complete).
 - A: გვერდი ცოცხლად Vercel-ზე (`/ka/research/trials` · `/en/research/trials`), 31+28 კვლევა.
 - B: matcher ავტომატურად perception_tick-ში (6სთ); ახალ შესაფერის კვლევაზე Telegram + Weekly Brief სექცია; სტატუს-მონიტორინგი (re-fetched trials). Telegram baseline seeded → spam არ იქნება.
+- C: სრული მონაცემი R2-დან + ქართული თარგმანი (build_bilingual, სტატიებივით) + migration 028 (text→JSONB) + დახარისხებული დეტალური გვერდი `/research/trials/[nctId]` (სექციებად: შესაფერისობა · აღწერა · eligibility · ლოკაციები · კონტაქტი · თარიღები). ახალი კვლევები ავტომატურად ითარგმნება tick-ზე (budget-gated, თვით-განკურნება).
 
 **B4 limitation:** სრულად დახურული (აღარ-fetch-ვადი) კვლევის სტატუსი ვერ ახლდება ავტომატურად — per-trial re-check ctgov-ზე deferred.
 
