@@ -32,6 +32,12 @@ DDL detail (all ADDITIVE — no column is dropped or retyped):
 - backfill: `UPDATE clinical_trials SET registry='ctgov', registry_id=nct_id WHERE registry IS NULL`.
 - `ux_trials_registry` — partial `UNIQUE INDEX (registry, registry_id) WHERE registry IS NOT NULL`.
 
+Also widens two `evidence_ledger` allow-list CHECK constraints (drop + re-add, same
+transaction) so the new fetchers can write provenance rows — ADDITIVE only (no
+existing value removed, every prior row still valid):
+- `evidence_ledger_source_type_chk` += `'ctis'`, `'isrctn'`.
+- `evidence_ledger_retrieval_method_chk` += `'ctis_public_api'`, `'isrctn_query_api'`.
+
 ## Why this is safe to apply live
 
 `clinical_trials` is **fully reconstructable** by re-running the matcher from

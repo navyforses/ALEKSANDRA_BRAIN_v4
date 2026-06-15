@@ -132,6 +132,37 @@ def _index_exists() -> bool:
         conn.close()
 
 
+def _ledger_constraints_widened() -> bool:
+    """True iff evidence_ledger's source_type + retrieval_method CHECK constraints
+    already allow the new registry values ('ctis'/'isrctn', 'ctis_public_api'/
+    'isrctn_query_api'). Lets the orchestrator detect a partially-applied state
+    (columns added on a prior run but constraints not yet widened) and re-run."""
+    import psycopg2
+
+    dsn = os.environ.get("SUPABASE_DB_URL", "")
+    if not dsn:
+        raise RuntimeError("SUPABASE_DB_URL missing — cannot run/verify DDL")
+    conn = psycopg2.connect(dsn, connect_timeout=20)
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "select con.conname, pg_get_constraintdef(con.oid) "
+            "from pg_constraint con join pg_class rel on rel.oid = con.conrelid "
+            "where rel.relname='evidence_ledger' and con.contype='c'"
+        )
+        defs = {name: defn for name, defn in cur.fetchall()}
+        src = defs.get("evidence_ledger_source_type_chk", "")
+        meth = defs.get("evidence_ledger_retrieval_method_chk", "")
+        return (
+            "ctis" in src
+            and "isrctn" in src
+            and "ctis_public_api" in meth
+            and "isrctn_query_api" in meth
+        )
+    finally:
+        conn.close()
+
+
 def _registry_breakdown() -> dict[str, int]:
     """Live registry counts (before/after backfill) straight from the DB."""
     import psycopg2
@@ -158,13 +189,17 @@ def _registry_breakdown() -> dict[str, int]:
 def ddl(apply_changes: bool) -> None:
     cols = _existing_columns()
     idx = _index_exists()
-    print(f"[029] existing registry columns: {sorted(cols)}  index={idx}")
+    chk = _ledger_constraints_widened()
+    print(
+        f"[029] existing registry columns: {sorted(cols)}  index={idx}  "
+        f"ledger_constraints_widened={chk}"
+    )
 
-    fully_migrated = set(NEW_COLUMNS).issubset(cols) and idx
+    fully_migrated = set(NEW_COLUMNS).issubset(cols) and idx and chk
     if fully_migrated:
         print(
-            "[029] ddl: all three columns + ux_trials_registry already present "
-            "— skip (idempotent)"
+            "[029] ddl: columns + ux_trials_registry + widened ledger constraints "
+            "already present — skip (idempotent)"
         )
         return
     if not apply_changes:
@@ -187,7 +222,8 @@ def ddl(apply_changes: bool) -> None:
         conn.close()
     print(
         f"[029] ddl: verified columns -> {sorted(_existing_columns())}  "
-        f"index={_index_exists()}"
+        f"index={_index_exists()}  "
+        f"ledger_constraints_widened={_ledger_constraints_widened()}"
     )
 
 

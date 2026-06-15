@@ -72,6 +72,25 @@ CREATE UNIQUE INDEX IF NOT EXISTS ux_trials_registry
   ON clinical_trials (registry, registry_id)
   WHERE registry IS NOT NULL;
 
+-- ── Broaden the evidence_ledger allow-list CHECK constraints so the new registry
+--    fetchers can write provenance rows. This is ADDITIVE (it only widens an
+--    allow-list) — no existing value is removed, so every prior row still
+--    satisfies the new constraint. Drop-and-re-add is the only way to alter a
+--    CHECK; both are inside this transaction so it is atomic.
+ALTER TABLE evidence_ledger DROP CONSTRAINT IF EXISTS evidence_ledger_source_type_chk;
+ALTER TABLE evidence_ledger ADD CONSTRAINT evidence_ledger_source_type_chk
+  CHECK (source_type = ANY (ARRAY[
+    'pubmed', 'ctgov', 'biorxiv', 'medrxiv', 'crawl4ai', 'firecrawl',
+    'ctis', 'isrctn'
+  ]));
+
+ALTER TABLE evidence_ledger DROP CONSTRAINT IF EXISTS evidence_ledger_retrieval_method_chk;
+ALTER TABLE evidence_ledger ADD CONSTRAINT evidence_ledger_retrieval_method_chk
+  CHECK (retrieval_method = ANY (ARRAY[
+    'eutils', 'ctgov_v2_rest', 'rss', 'crawl4ai', 'firecrawl',
+    'ctis_public_api', 'isrctn_query_api'
+  ]));
+
 COMMIT;
 
 -- Smoke check (run after apply, outside the transaction):
