@@ -122,6 +122,40 @@
       "therapy": "თერაპია"
     }
   },
+  "Activity": {
+    "title": "სიცოცხლის ხაზი",
+    "subtitle": "ყოველი ინფორმაცია, რომელიც სისტემამ შემოიტანა — როდის შემოვიდა და საიდან.",
+    "lastUpdated": "ბოლო განახლება {time}",
+    "totals": "{items} ჩანაწერი {days} დღეში",
+    "liveNow": "ცოცხალი",
+    "notConfigured": "მონაცემთა ბაზა არ არის დაკავშირებული — სიცოცხლის ხაზი ჯერ მიუწვდომელია.",
+    "notConfiguredNote": "სისტემის გაშვების შემდეგ ეს გვერდი შევსება აქტივობით.",
+    "noData": "ჯერ აქტივობა არ არის ჩაწერილი.",
+    "noDataNote": "როცა სისტემა პირველ ნაშრომებს ან კვლევებს შემოიტანს, ისინი აქ გამოჩნდება.",
+    "sourceLabels": {
+      "pubmed": "PubMed",
+      "ctgov": "ClinicalTrials",
+      "ctis": "CTIS (ევრ.)",
+      "isrctn": "ISRCTN (დიდი ბრ.)",
+      "preprint": "პრეპრინტი",
+      "biorxiv": "bioRxiv",
+      "medrxiv": "medRxiv",
+      "trials": "ახალი კვლევები",
+      "unknown": "სხვა"
+    },
+    "milestoneLabels": {
+      "perception_tick": "სისტემის სკანი",
+      "perception_tick_fallback": "სარეზერვო სკანი",
+      "weekly_brief": "კვირის რეზიუმე გაიგზავნა",
+      "weekly_brief_trigger": "რეზიუმე გაშვებულია",
+      "budget_lock": "ბიუჯეტის ბლოკი"
+    },
+    "milestoneStatus": {
+      "ok": "ok",
+      "error": "შეცდომა",
+      "running": "მუშაობს"
+    }
+  },
   "Shell": {
     "nav": {
       "label": "მთავარი",
@@ -130,6 +164,7 @@
       "trials": "კვლევები",
       "brain": "ტვინი",
       "brief": "რეზიუმე",
+      "activity": "სიცოცხლის ხაზი",
       "history": "ისტორია"
     },
     "intake": "შემოტანა",

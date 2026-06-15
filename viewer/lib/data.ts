@@ -769,6 +769,157 @@ export async function fetchTrialDetail(
   return { configured: true, trial: mapTrialDetail(row, locale) };
 }
 
+// --- System Lifeline ---------------------------------------------------------
+// "What did the system ingest, and when?" — a calendar-like view of activity.
+// Primary signal: evidence_ledger.ingested_at + source_type.
+// Secondary: clinical_trials.created_at, milestone runs.
+// No DB group-by via PostgREST; we aggregate in JS.
+
+export interface LifelineDayBucket {
+  date: string; // ISO date "YYYY-MM-DD"
+  total: number;
+  bySource: Record<string, number>; // source_type → count
+  trials: number; // clinical_trials created on this day
+}
+
+export interface LifelineMilestone {
+  ts: string; // ISO timestamp
+  kind: string; // 'perception_tick' | 'weekly_brief' | ...
+  status: string; // exit_status
+  draftLink?: string;
+}
+
+export interface LifelineView {
+  configured: boolean;
+  days: LifelineDayBucket[]; // oldest→newest
+  milestones: LifelineMilestone[];
+  firstDate: string | null;
+  lastDate: string | null;
+  lastUpdated: string | null; // most recent ingested_at
+  totalItems: number;
+}
+
+interface EvidenceLedgerRow {
+  ingested_at?: string;
+  source_type?: string;
+}
+
+interface TrialCreatedRow {
+  created_at?: string;
+}
+
+interface RunRow {
+  kind?: string;
+  start_time?: string;
+  exit_status?: string;
+  draft_link?: string;
+}
+
+function isoDate(ts: string): string {
+  // "2026-06-13T14:22:01Z" → "2026-06-13"
+  return ts.slice(0, 10);
+}
+
+const MILESTONE_KINDS = [
+  "perception_tick",
+  "perception_tick_fallback",
+  "weekly_brief",
+  "weekly_brief_trigger",
+  "budget_lock",
+];
+
+export async function fetchSystemLifeline(): Promise<LifelineView> {
+  const [ledgerResult, trialsResult, runsResult] = await Promise.all([
+    getRows<EvidenceLedgerRow>("evidence_ledger", {
+      select: "ingested_at,source_type",
+      order: "ingested_at.desc",
+      limit: 1500,
+    }),
+    getRows<TrialCreatedRow>("clinical_trials", {
+      select: "created_at",
+      order: "created_at.desc",
+      limit: 500,
+    }),
+    getRows<RunRow>("runs", {
+      select: "kind,start_time,exit_status,draft_link",
+      kind: `in.(${MILESTONE_KINDS.join(",")})`,
+      order: "start_time.desc",
+      limit: 50,
+    }),
+  ]);
+
+  const configured =
+    ledgerResult.configured || trialsResult.configured || runsResult.configured;
+
+  if (!configured) {
+    return {
+      configured: false,
+      days: [],
+      milestones: [],
+      firstDate: null,
+      lastDate: null,
+      lastUpdated: null,
+      totalItems: 0,
+    };
+  }
+
+  // Build day buckets from evidence_ledger
+  const dayMap = new Map<string, LifelineDayBucket>();
+
+  let lastUpdated: string | null = null;
+  for (const row of ledgerResult.rows) {
+    if (!row.ingested_at) continue;
+    if (!lastUpdated || row.ingested_at > lastUpdated) lastUpdated = row.ingested_at;
+    const day = isoDate(row.ingested_at);
+    if (!dayMap.has(day)) {
+      dayMap.set(day, { date: day, total: 0, bySource: {}, trials: 0 });
+    }
+    const bucket = dayMap.get(day)!;
+    bucket.total += 1;
+    const src = row.source_type ?? "unknown";
+    bucket.bySource[src] = (bucket.bySource[src] ?? 0) + 1;
+  }
+
+  // Merge trial created_at counts into the day buckets
+  for (const row of trialsResult.rows) {
+    if (!row.created_at) continue;
+    const day = isoDate(row.created_at);
+    if (!dayMap.has(day)) {
+      dayMap.set(day, { date: day, total: 0, bySource: {}, trials: 0 });
+    }
+    dayMap.get(day)!.trials += 1;
+  }
+
+  // Sort oldest → newest
+  const days = Array.from(dayMap.values()).sort((a, b) =>
+    a.date < b.date ? -1 : a.date > b.date ? 1 : 0,
+  );
+
+  const firstDate = days[0]?.date ?? null;
+  const lastDate = days[days.length - 1]?.date ?? null;
+  const totalItems = days.reduce((sum, d) => sum + d.total + d.trials, 0);
+
+  // Milestones
+  const milestones: LifelineMilestone[] = runsResult.rows
+    .filter((r) => r.start_time)
+    .map((r) => ({
+      ts: r.start_time!,
+      kind: r.kind ?? "unknown",
+      status: r.exit_status ?? "",
+      draftLink: r.draft_link ?? undefined,
+    }));
+
+  return {
+    configured,
+    days,
+    milestones,
+    firstDate,
+    lastDate,
+    lastUpdated,
+    totalItems,
+  };
+}
+
 export interface TodayView {
   status: WorkingStatus;
   attention: ResearchItem[];

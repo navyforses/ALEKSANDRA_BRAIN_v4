@@ -199,4 +199,16 @@ export function IconTrials(props: IconProps) {
   );
 }
 
+export function IconActivity(props: IconProps) {
+  // A vertical rail with nodes — echoes the lifeline metaphor.
+  return (
+    <svg {...base(props)}>
+      <line x1="12" y1="3" x2="12" y2="21" />
+      <circle cx="12" cy="7" r="2" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="13" r="2" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="19" r="1.5" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
 export type IconComponent = (props: IconProps) => React.ReactElement;

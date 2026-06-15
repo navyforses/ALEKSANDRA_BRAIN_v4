@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
 import type { Locale } from "@/lib/seo";
 import {
+  IconActivity,
   IconBrain,
   IconBrief,
   IconHistory,
@@ -19,7 +20,7 @@ import IntakeOverlay from "@/components/intake/IntakeOverlay";
 import LanguageToggle from "@/components/shell/LanguageToggle";
 import ThemeToggle from "@/components/shell/ThemeToggle";
 
-type NavKey = "today" | "research" | "brain" | "brief" | "history" | "trials";
+type NavKey = "today" | "research" | "brain" | "brief" | "history" | "trials" | "activity";
 
 const NAV: { key: NavKey; href: string; Icon: IconComponent }[] = [
   { key: "today", href: "/", Icon: IconToday },
@@ -27,6 +28,7 @@ const NAV: { key: NavKey; href: string; Icon: IconComponent }[] = [
   { key: "trials", href: "/research/trials", Icon: IconTrials },
   { key: "brain", href: "/brain", Icon: IconBrain },
   { key: "brief", href: "/brief", Icon: IconBrief },
+  { key: "activity", href: "/activity", Icon: IconActivity },
   { key: "history", href: "/history", Icon: IconHistory },
 ];
 

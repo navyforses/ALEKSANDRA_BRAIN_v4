@@ -122,6 +122,40 @@
       "therapy": "Therapy"
     }
   },
+  "Activity": {
+    "title": "System Lifeline",
+    "subtitle": "Every piece of information the system has added — when it arrived and where it came from.",
+    "lastUpdated": "Last updated {time}",
+    "totals": "{items} items over {days} days",
+    "liveNow": "live",
+    "notConfigured": "The database is not connected — the lifeline is not available yet.",
+    "notConfiguredNote": "Once the system is running, this page will fill with its activity.",
+    "noData": "No activity recorded yet.",
+    "noDataNote": "When the system ingests its first papers or trials, they will appear here.",
+    "sourceLabels": {
+      "pubmed": "PubMed",
+      "ctgov": "ClinicalTrials",
+      "ctis": "CTIS (EU)",
+      "isrctn": "ISRCTN (UK)",
+      "preprint": "Preprint",
+      "biorxiv": "bioRxiv",
+      "medrxiv": "medRxiv",
+      "trials": "New trials",
+      "unknown": "Other"
+    },
+    "milestoneLabels": {
+      "perception_tick": "System scan",
+      "perception_tick_fallback": "Fallback scan",
+      "weekly_brief": "Weekly brief sent",
+      "weekly_brief_trigger": "Brief triggered",
+      "budget_lock": "Budget lock"
+    },
+    "milestoneStatus": {
+      "ok": "ok",
+      "error": "error",
+      "running": "running"
+    }
+  },
   "Shell": {
     "nav": {
       "label": "Primary",
@@ -130,6 +164,7 @@
       "trials": "Trials",
       "brain": "Brain",
       "brief": "Brief",
+      "activity": "Lifeline",
       "history": "History"
     },
     "intake": "Add",
