@@ -1,6 +1,8 @@
 # Clinical Trials Enrollment Board — გეგმა / Plan
 
-> სტატუსი: **A ფაზა SHIPPED (code-complete) — 2026-06-15.** matcher + verifier + `/research/trials`. seed: 117 ctgov → **31 eligible / 28 needs-review / 58 ineligible**; verifier 6/6; `npm run build` green. commits `7b02fb4` + `8dc3fa4`. **B ფაზა (automation) pending.**
+> სტატუსი: **A + B ფაზა SHIPPED (code-complete) — 2026-06-15.**
+> A: matcher + verifier + `/research/trials` (live on Vercel). seed 117 ctgov → **31 eligible / 28 needs-review / 58 ineligible**; verifier 6/6. commits `7b02fb4` + `8dc3fa4`.
+> B: new-eligible Telegram alerts + status monitoring + matcher wired into perception_tick (6h) + clinical-trials section in Weekly Brief. commits `6095c33` + `cc87044`.
 > Seed for a future GSD phase (mirrors how `docs/I18N_PLAN.md` seeded Phase 6).
 > Author context: codebase research 2026-06-15 (two Explore passes over `viewer/` + `scripts/`).
 
@@ -197,8 +199,10 @@ Server component, `getTranslations("Trials")`, `fetchClinicalTrials(locale)` →
 
 ## 13. შემდეგი ნაბიჯი / Next step
 
-**A ფაზა დასრულდა** (code-complete, ცოცხალ DB-ზე seeded). გვერდის სანახავად: viewer ლოკალურად (`cd viewer; npm run dev` → `/ka/research/trials`) ან Vercel preview (push origin/main).
+**A + B ფაზა დასრულდა** (code-complete).
+- A: გვერდი ცოცხლად Vercel-ზე (`/ka/research/trials` · `/en/research/trials`), 31+28 კვლევა.
+- B: matcher ავტომატურად perception_tick-ში (6სთ); ახალ შესაფერის კვლევაზე Telegram + Weekly Brief სექცია; სტატუს-მონიტორინგი (re-fetched trials). Telegram baseline seeded → spam არ იქნება.
 
-**შემდეგი — B ფაზა (automation):** matcher perception_tick-ში (6სთ) · ახალ-შესაფერისი → Telegram + Weekly Brief · სტატუსის მონიტორინგი (recruiting→closed) · (optional) PI/coordinator outreach draft. იხ. §7.
+**B4 limitation:** სრულად დახურული (აღარ-fetch-ვადი) კვლევის სტატუსი ვერ ახლდება ავტომატურად — per-trial re-check ctgov-ზე deferred.
 
-როცა მზად იქნები B ფაზისთვის — დაწერე **„აშენე B ფაზა"**.
+**Deferred / შემდგომი backlog:** B5 PI/coordinator outreach draft (Gmail draft-only, PHI-redacted) · A2 trial აღწერების KA თარგმანი (budget-gated) · EU CTR/სხვა registries.
