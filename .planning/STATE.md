@@ -4,8 +4,8 @@ milestone: v1.0
 milestone_name: milestone
 status: verifying
 stopped_at: Phase 06.1 CLOSED 2026-05-24 — all 3 plans done; 06.1-03 backfill recovered 57/64 fields (P2 incident, 7 blank rows deferred to user manual rebuild); verify_phase2 JSONB-aware fix landed (migration-012 regression resolved)
-last_updated: "2026-05-24T00:00:00.000Z"
-last_activity: 2026-05-24
+last_updated: "2026-06-15T12:50:36.114Z"
+last_activity: 2026-06-15
 progress:
   total_phases: 9
   completed_phases: 2
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-05-13)
 Phase: 6.1 (inserted) — **CLOSED 2026-05-24** (Bilingual Polish / i18n gap closure)
 Plan: 3/3 complete — 06.1-01 BRAIN panel i18n (Manager namespace + 5 components), 06.1-02 enum-label translation (4 namespaces, 33 leaves added per dictionary), 06.1-03 DB content backfill (57/64 fields recovered to real Mkhedruli via translator primitive — direct anthropic.messages.create — after 013's compose_bilingual misuse corrupted 62 fields; recovery via 014 header-extraction + 015 sonnet-4-6 retry). verify_phase2 patched to handle JSONB shape from migration 012 (was crashing dict.strip()). Cumulative project verifier coverage: 89/89 GREEN modulo pre-existing operational caveat (phase2_5 B.1 n8n perception_tick on Railway not firing in 7d — independent of Phase 6.1 work).
 Status: No active phase. Phase 4 acceptance window monitored to closure (~2026-06-07). Three deferred items: (1) user manual rebuild for 7 fully-blank rows via Phase 5 Manager (hypotheses + therapies); (2) Shako: disconnect Cloudflare aleksandrabrane4 Worker; (3) Shako: restart n8n perception_tick worker on Railway. Two P2 maintenance todos still pending from Phase 6: migration 012 rollback-artifact capture + Georgian lexicon native-speaker re-verify.
-Last activity: 2026-05-21
+Last activity: 2026-06-15 - Completed quick task 260615-ca6: Strip whitespace from Supabase credentials to fix perception-fallback CI "Illegal header value" error
 
 Progress: [█████████░] 89%
 
@@ -161,6 +161,12 @@ Recent decisions affecting current work:
 - NCBI E-utilities `api_key` registration is a Phase 0 task — required before Phase 1.
 - Vigabatrin washout duration is patient-specific — Phase 6 Calendar (v2) reads from a family-editable field.
 - FreeBrowse fork licensing review — v2 Phase 7 prerequisite, not v1 blocking.
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260615-ca6 | Strip whitespace from Supabase credentials to fix perception-fallback CI "Illegal header value" error | 2026-06-15 | 75f8641 | [260615-ca6-strip-whitespace-from-supabase-credentia](./quick/260615-ca6-strip-whitespace-from-supabase-credentia/) |
 
 ## Deferred Items
 
