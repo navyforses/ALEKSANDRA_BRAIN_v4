@@ -171,8 +171,10 @@ def upload_artifact(
 # ---------------------------------------------------------------------------
 def _supabase_creds() -> tuple[str, str]:
     load_env()
-    url = os.environ.get("SUPABASE_URL", "").rstrip("/")
-    key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
+    # Strip whitespace: a stray newline in a GitHub secret makes httpx raise
+    # 'Illegal header value' when the key is interpolated into apikey/Authorization.
+    url = os.environ.get("SUPABASE_URL", "").strip().rstrip("/")
+    key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "").strip()
     if not url or not key:
         raise RuntimeError("SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY missing in .env")
     return url, key
@@ -181,6 +183,9 @@ def _supabase_creds() -> tuple[str, str]:
 def _supabase_headers(
     key: str, *, prefer: str = "return=representation"
 ) -> dict[str, str]:
+    # Strip whitespace: a stray newline in a GitHub secret makes httpx raise
+    # 'Illegal header value' when the key is interpolated into apikey/Authorization.
+    key = key.strip()
     return {
         "apikey": key,
         "Authorization": f"Bearer {key}",
