@@ -14,6 +14,12 @@ Checks
   TRIALS-04  every aleksandra_status is within the allowed enum set
   TRIALS-05  counts reconcile: sum(by status) == total
   TRIALS-06  aleksandra_eligible is non-null for all rows
+  TRIALS-07  title + brief_summary stored as JSONB {en,..} for shown trials
+  TRIALS-08  detailed_description present (non-null) for >=1 shown trial
+  TRIALS-09  >=1 shown trial has a non-empty ka in title (translation works)
+
+"Shown" trials = aleksandra_status in {identified, evaluating} (the rows the
+viewer surfaces). TRIALS-07..09 are Phase C (full ctgov detail + bilingual).
 
 Usage
 -----
@@ -27,10 +33,13 @@ import argparse
 import json
 import sys
 from dataclasses import dataclass, field
+from typing import Any
 
 import httpx
 
 from scripts.ledger import _supabase_creds, _supabase_headers, load_env
+
+SHOWN_STATUS = {"identified", "evaluating"}
 
 ALLOWED_STATUS = {
     "identified",
@@ -90,7 +99,10 @@ def _fetch_all_rows() -> list[dict]:
     r = httpx.get(
         f"{url}/rest/v1/clinical_trials",
         params={
-            "select": "nct_id,title,aleksandra_status,aleksandra_eligible",
+            "select": (
+                "nct_id,title,aleksandra_status,aleksandra_eligible,"
+                "brief_summary,detailed_description"
+            ),
             "limit": "10000",
         },
         headers=_supabase_headers(key, prefer="count=none"),
@@ -99,6 +111,24 @@ def _fetch_all_rows() -> list[dict]:
     if r.status_code != 200:
         raise RuntimeError(f"HTTP {r.status_code}: {r.text[:300]}")
     return r.json()
+
+
+def _is_bilingual(value: Any) -> bool:
+    """True iff `value` is a JSONB {en, ...} object (not plain text / None).
+
+    PostgREST returns a JSONB column as a parsed dict, and a TEXT column as a
+    plain string — so dict-ness is exactly "stored as JSONB". We also require an
+    'en' key so a stray empty {} does not count.
+    """
+    return isinstance(value, dict) and "en" in value
+
+
+def _ka(value: Any) -> str:
+    """Non-empty ka string from a {en, ka} JSONB dict, else ""."""
+    if isinstance(value, dict):
+        ka = value.get("ka")
+        return str(ka).strip() if ka else ""
+    return ""
 
 
 # ---------------------------------------------------------------------------
@@ -137,28 +167,27 @@ def check_reachable(report: Report) -> bool:
 
 
 def run_checks(report: Report) -> None:
+    _DEPENDENT_CHECKS = (
+        ("TRIALS-02", "row count > 0 after seed"),
+        ("TRIALS-03", "every row has non-null nct_id and title"),
+        ("TRIALS-04", "every aleksandra_status within allowed enum"),
+        ("TRIALS-05", "status counts reconcile with total"),
+        ("TRIALS-06", "aleksandra_eligible non-null for all rows"),
+        ("TRIALS-07", "title + brief_summary stored as JSONB for shown trials"),
+        ("TRIALS-08", "detailed_description present for >=1 shown trial"),
+        ("TRIALS-09", "at least one shown trial has a non-empty ka title"),
+    )
+
     if not check_reachable(report):
         # Without reachability the remaining checks cannot run meaningfully.
-        for code, label in (
-            ("TRIALS-02", "row count > 0 after seed"),
-            ("TRIALS-03", "every row has non-null nct_id and title"),
-            ("TRIALS-04", "every aleksandra_status within allowed enum"),
-            ("TRIALS-05", "status counts reconcile with total"),
-            ("TRIALS-06", "aleksandra_eligible non-null for all rows"),
-        ):
+        for code, label in _DEPENDENT_CHECKS:
             report.add(Check(code, label, False, "skipped — table not reachable"))
         return
 
     try:
         rows = _fetch_all_rows()
     except Exception as e:
-        for code, label in (
-            ("TRIALS-02", "row count > 0 after seed"),
-            ("TRIALS-03", "every row has non-null nct_id and title"),
-            ("TRIALS-04", "every aleksandra_status within allowed enum"),
-            ("TRIALS-05", "status counts reconcile with total"),
-            ("TRIALS-06", "aleksandra_eligible non-null for all rows"),
-        ):
+        for code, label in _DEPENDENT_CHECKS:
             report.add(
                 Check(code, label, False, f"fetch failed: {type(e).__name__}: {e}")
             )
@@ -223,6 +252,53 @@ def run_checks(report: Report) -> None:
             "aleksandra_eligible non-null for all rows",
             len(null_elig) == 0 and total > 0,
             f"{total - len(null_elig)}/{total} populated; null={len(null_elig)}",
+        )
+    )
+
+    # "Shown" trials = the rows the viewer surfaces (Phase C checks scope here).
+    shown = [r for r in rows if r.get("aleksandra_status") in SHOWN_STATUS]
+    n_shown = len(shown)
+
+    # TRIALS-07 — title + brief_summary stored as JSONB {en,..} for shown trials.
+    # title is NOT NULL, so every shown title must be JSONB. brief_summary is
+    # nullable, so only the non-null ones are required to be JSONB (a genuinely
+    # missing summary stays NULL — not a defect).
+    bad_title = [r for r in shown if not _is_bilingual(r.get("title"))]
+    bad_summary = [
+        r
+        for r in shown
+        if r.get("brief_summary") is not None
+        and not _is_bilingual(r.get("brief_summary"))
+    ]
+    report.add(
+        Check(
+            "TRIALS-07",
+            "title + brief_summary stored as JSONB for shown trials",
+            n_shown > 0 and not bad_title and not bad_summary,
+            f"shown={n_shown}; title_not_jsonb={len(bad_title)}; "
+            f"summary_not_jsonb={len(bad_summary)}",
+        )
+    )
+
+    # TRIALS-08 — detailed_description present (non-null) for >=1 shown trial.
+    with_detail = [r for r in shown if r.get("detailed_description") is not None]
+    report.add(
+        Check(
+            "TRIALS-08",
+            "detailed_description present for >=1 shown trial",
+            len(with_detail) >= 1,
+            f"{len(with_detail)}/{n_shown} shown trials have detailed_description",
+        )
+    )
+
+    # TRIALS-09 — >=1 shown trial has a non-empty ka in title (translation path).
+    with_ka_title = [r for r in shown if _ka(r.get("title"))]
+    report.add(
+        Check(
+            "TRIALS-09",
+            "at least one shown trial has a non-empty ka title",
+            len(with_ka_title) >= 1,
+            f"{len(with_ka_title)}/{n_shown} shown titles have ka",
         )
     )
 

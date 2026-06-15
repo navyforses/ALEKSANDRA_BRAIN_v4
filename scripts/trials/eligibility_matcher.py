@@ -27,6 +27,27 @@ Phase B wave 1 adds, on top of the Phase A sync:
     `--notify-dry` prints the would-be message without sending. When there
     is nothing new, NOTHING is sent (no spam).
 
+Phase C wave 1 adds FULL data + bilingual translation (mirrors how papers do it):
+  * Full ctgov detail from R2 (C2): fetch_ctgov.py already uploaded the FULL
+    study JSON to R2; its `raw_artifact_url` (s3://bucket/ctgov/<nct>.json) is
+    on the evidence_ledger row. We GET that object and extract the real
+    brief_summary, detailed_description, full eligibility_criteria text,
+    conditions list, ALL locations, and PI / coordinator contacts + dates. On
+    ANY R2 / parse failure we fall back to the thin payload_metadata projection
+    (Phase A behaviour) — the matcher never crashes on a missing artifact.
+  * Bilingual fields (C2): for displayed trials (status in identified /
+    evaluating) the family-facing fields (title, brief_summary,
+    detailed_description, eligibility_criteria) are stored as JSONB {en, ka}
+    via build_bilingual(en) (the EXACT helper papers use — budget-gated,
+    sanitizes ka, en-only fallback). Ineligible trials are stored en-only
+    ({"en": text, "ka": ""}) to avoid translation cost. conditions stay EN
+    (short medical terms; stored as a JSONB array).
+  * Self-healing + cost-stable (C2): build_bilingual is only called for a field
+    when its ka is currently EMPTY/missing in the existing row. If a good ka is
+    already present, it is reused (NO re-translation), so the 6h tick converges
+    translations over time without re-spending. build_bilingual is budget-gated;
+    on BudgetExceeded it falls back to en-only and the next tick retries.
+
 Usage
 -----
     .venv/Scripts/python.exe -m scripts.trials.eligibility_matcher --self-test
@@ -35,11 +56,16 @@ Usage
     .venv/Scripts/python.exe -m scripts.trials.eligibility_matcher --notify-dry
     .venv/Scripts/python.exe -m scripts.trials.eligibility_matcher --notify
     .venv/Scripts/python.exe -m scripts.trials.eligibility_matcher          # live seed
+
+Phase C: requires migration 028 applied first (the family-facing columns must be
+JSONB before the matcher PATCHes {en, ka} into them). Set PYTHONUTF8=1 on Windows
+so Mkhedruli prints. A backfill run needs no --notify.
 """
 
 from __future__ import annotations
 
 import argparse
+import json
 import math
 import os
 import re
@@ -49,7 +75,14 @@ from typing import Any
 
 import httpx
 
-from scripts.ledger import _supabase_creds, _supabase_headers, load_env
+from scripts.extraction.gemini_translator import has_georgian, is_messy
+from scripts.extraction.translate import build_bilingual
+from scripts.ledger import (
+    _get_r2_client,
+    _supabase_creds,
+    _supabase_headers,
+    load_env,
+)
 
 # Family-facing trials page (public viewer). Surfaced in Telegram alerts so
 # the family can jump straight to the list. No PHI — trials are public data.
@@ -156,6 +189,268 @@ def location_flags(locations_sample: list[str] | None) -> tuple[bool, bool]:
 
 
 # ---------------------------------------------------------------------------
+# R2 full-study fetch (Phase C — full ctgov detail)
+# ---------------------------------------------------------------------------
+def _parse_s3_url(url: str) -> tuple[str, str] | None:
+    """Split an ``s3://bucket/key/path`` URL into ``(bucket, key)``.
+
+    Returns None for anything that is not an s3:// URL (e.g. an http URL or an
+    empty/None value). fetch_ctgov writes ``s3://<bucket>/ctgov/<nct_id>.json``.
+    """
+    if not url or not isinstance(url, str):
+        return None
+    s = url.strip()
+    if not s.startswith("s3://"):
+        return None
+    rest = s[len("s3://") :]
+    if "/" not in rest:
+        return None
+    bucket, key = rest.split("/", 1)
+    if not bucket or not key:
+        return None
+    return bucket, key
+
+
+def fetch_full_study(raw_artifact_url: str | None) -> dict[str, Any] | None:
+    """Fetch + parse the FULL ctgov study JSON from R2.
+
+    `raw_artifact_url` is the evidence_ledger.raw_artifact_url
+    (``s3://<bucket>/ctgov/<nct_id>.json``). Returns the parsed study dict, or
+    None on ANY failure (not an s3 url, R2 read error, bad JSON). The caller
+    treats None as "no full record" and falls back to payload_metadata, so a
+    missing / unreadable artifact NEVER crashes the matcher (Core Value: a
+    transient R2 blip must not drop a lead).
+    """
+    parsed = _parse_s3_url(raw_artifact_url or "")
+    if not parsed:
+        return None
+    bucket, key = parsed
+    try:
+        client = _get_r2_client()
+        obj = client.get_object(Bucket=bucket, Key=key)
+        body = obj["Body"].read()
+        return json.loads(body)
+    except Exception as e:  # noqa: BLE001 — full detail is best-effort
+        print(f"  [warn] R2 fetch failed for {key} ({type(e).__name__}: {e})")
+        return None
+
+
+def _normalize_date(d: str | None) -> str | None:
+    """Normalize a ctgov date string to a full ``YYYY-MM-DD`` (PostgreSQL DATE).
+
+    ClinicalTrials.gov frequently returns PARTIAL dates — ``YYYY`` or
+    ``YYYY-MM`` — which Postgres rejects for a DATE column ("invalid input
+    syntax for type date"). We complete them to the first of the period:
+      "2028"       -> "2028-01-01"
+      "2028-03"    -> "2028-03-01"
+      "2028-03-15" -> "2028-03-15"  (unchanged)
+    Anything that does not look like a year-prefixed date returns None (so a
+    junk value never blocks the whole upsert).
+    """
+    if not d:
+        return None
+    s = str(d).strip()
+    if re.fullmatch(r"\d{4}", s):
+        return f"{s}-01-01"
+    if re.fullmatch(r"\d{4}-\d{2}", s):
+        return f"{s}-01"
+    if re.fullmatch(r"\d{4}-\d{2}-\d{2}", s):
+        return s
+    return None
+
+
+def _date_of(struct: Any) -> str | None:
+    """Pull + normalize the `.date` string out of a ctgov *DateStruct dict."""
+    if isinstance(struct, dict):
+        return _normalize_date(struct.get("date"))
+    return None
+
+
+def extract_full_fields(study: dict[str, Any]) -> dict[str, Any]:
+    """Extract the rich Phase C fields from a FULL ctgov study JSON.
+
+    Mirrors fetch_ctgov._study_to_metadata's module layout
+    (protocolSection.*), but pulls the FULL text fields and ALL locations /
+    contacts (not the truncated sample the Phase A projection kept).
+
+    Returns a dict of *English* values:
+      brief_summary, detailed_description, eligibility_criteria : str | None
+      conditions          : list[str]
+      locations           : list[{facility, city, state, country, status}]
+      locations_sample    : list["facility (country)"]  (for location_flags)
+      pi_name, pi_email, coordinator_name, coordinator_email : str | None
+      start_date, estimated_completion, last_updated : str | None
+    """
+    proto = study.get("protocolSection", {}) or {}
+    desc = proto.get("descriptionModule", {}) or {}
+    elig = proto.get("eligibilityModule", {}) or {}
+    cond = proto.get("conditionsModule", {}) or {}
+    contacts = proto.get("contactsLocationsModule", {}) or {}
+    status = proto.get("statusModule", {}) or {}
+
+    # --- locations: ALL of them, structured ---
+    locations: list[dict[str, Any]] = []
+    locations_sample: list[str] = []
+    for loc in contacts.get("locations", []) or []:
+        if not isinstance(loc, dict):
+            continue
+        facility = (loc.get("facility") or "").strip()
+        country = (loc.get("country") or "").strip()
+        locations.append(
+            {
+                "facility": facility or None,
+                "city": (loc.get("city") or "").strip() or None,
+                "state": (loc.get("state") or "").strip() or None,
+                "country": country or None,
+                "status": (loc.get("status") or "").strip() or None,
+            }
+        )
+        # location_flags() reads "facility (country)" — keep that shape working.
+        locations_sample.append(f"{facility} ({country})")
+
+    # --- contacts: PI (overallOfficials) + coordinator (centralContacts) ---
+    pi_name = pi_email = None
+    officials = contacts.get("overallOfficials", []) or []
+    pi = None
+    for off in officials:
+        if isinstance(off, dict) and (off.get("role") or "").upper() == (
+            "PRINCIPAL_INVESTIGATOR"
+        ):
+            pi = off
+            break
+    if pi is None and officials and isinstance(officials[0], dict):
+        pi = officials[0]
+    if isinstance(pi, dict):
+        pi_name = (pi.get("name") or "").strip() or None
+        pi_email = (pi.get("email") or "").strip() or None
+
+    coordinator_name = coordinator_email = None
+    central = contacts.get("centralContacts", []) or []
+    if central and isinstance(central[0], dict):
+        coordinator_name = (central[0].get("name") or "").strip() or None
+        coordinator_email = (central[0].get("email") or "").strip() or None
+
+    conditions = [str(c).strip() for c in (cond.get("conditions") or []) if c]
+
+    return {
+        "brief_summary": (desc.get("briefSummary") or "").strip() or None,
+        "detailed_description": (desc.get("detailedDescription") or "").strip() or None,
+        "eligibility_criteria": (elig.get("eligibilityCriteria") or "").strip() or None,
+        "conditions": conditions,
+        "locations": locations,
+        "locations_sample": locations_sample,
+        "pi_name": pi_name,
+        "pi_email": pi_email,
+        "coordinator_name": coordinator_name,
+        "coordinator_email": coordinator_email,
+        "start_date": _date_of(status.get("startDateStruct")),
+        "estimated_completion": _date_of(status.get("completionDateStruct")),
+        "last_updated": _date_of(status.get("lastUpdatePostDateStruct")),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Bilingual {en, ka} field helpers (Phase C — mirrors papers)
+# ---------------------------------------------------------------------------
+def _ka_of(value: Any) -> str:
+    """Best-effort ka string from an existing row's JSONB/text field value.
+
+    Accepts a {en, ka} dict, a JSON-text string of that shape, or a plain
+    scalar (returns "" — no ka yet). Used to decide whether a field already has
+    a usable ka so we can SKIP re-translation (cost-stable self-healing).
+    """
+    if isinstance(value, dict):
+        ka = value.get("ka")
+        return str(ka).strip() if ka else ""
+    if isinstance(value, str):
+        s = value.strip()
+        if s.startswith("{") and s.endswith("}"):
+            try:
+                d = json.loads(s)
+                if isinstance(d, dict):
+                    return str(d.get("ka") or "").strip()
+            except json.JSONDecodeError:
+                return ""
+    return ""
+
+
+def _en_of(value: Any) -> str:
+    """Best-effort en string from a {en, ka} dict / JSON-text / plain scalar.
+
+    Used for PHI-free Telegram alerts and logs, which want the plain English
+    title rather than the {en, ka} JSONB the row now stores.
+    """
+    if value is None:
+        return ""
+    if isinstance(value, dict):
+        return str(value.get("en") or "").strip()
+    if isinstance(value, str):
+        s = value.strip()
+        if s.startswith("{") and s.endswith("}"):
+            try:
+                d = json.loads(s)
+                if isinstance(d, dict):
+                    return str(d.get("en") or "").strip()
+            except json.JSONDecodeError:
+                return s
+        return s
+    return str(value).strip()
+
+
+def bilingual_field(
+    en_text: str | None,
+    *,
+    translate: bool,
+    prior_value: Any = None,
+) -> dict[str, str] | None:
+    """Build a {en, ka} dict for one family-facing field.
+
+    Parameters
+    ----------
+    en_text      : the authoritative English text (None → None, preserving the
+                   nullable column; "" → {"en": "", "ka": ""}).
+    translate    : whether this trial is DISPLAYED (identified/evaluating). When
+                   False (ineligible) we store en-only ({"en": text, "ka": ""})
+                   to avoid translation cost.
+    prior_value  : the existing row's value for this field (JSONB dict / text).
+                   If it already carries a good ka AND the en is unchanged, we
+                   REUSE that ka (no re-translation) — this makes the 6h tick
+                   converge translations over time without re-spending.
+
+    On budget exhaustion / translator failure, build_bilingual() (the helper
+    papers use) returns en-only; the next tick retries (self-healing).
+    """
+    if en_text is None:
+        return None
+    en = en_text.strip()
+    if not en:
+        return {"en": "", "ka": ""}
+
+    prior_ka = _ka_of(prior_value)
+    # A prior ka is only worth reusing if it is GENUINELY Georgian (Mkhedruli)
+    # and clean. Migration 028 mirrors en→ka (English) so the Georgian site is
+    # not blank pre-backfill; that mirror must NOT be mistaken for a real
+    # translation, or we would store English-as-Georgian and never translate.
+    if prior_ka and has_georgian(prior_ka) and not is_messy(prior_ka):
+        prior_en = ""
+        if isinstance(prior_value, dict):
+            prior_en = str(prior_value.get("en") or "").strip()
+        # Reuse unless the English source changed (then the ka is stale and is
+        # re-translated, but only for displayed trials).
+        if not translate or prior_en == en:
+            return {"en": en, "ka": prior_ka}
+
+    if not translate:
+        return {"en": en, "ka": ""}
+
+    # Translate (budget-gated inside build_bilingual; en-only fallback on failure).
+    out = build_bilingual(en)
+    if out is None:  # only when en is None, which we already handled
+        return {"en": en, "ka": ""}
+    return out
+
+
+# ---------------------------------------------------------------------------
 # Mapping + eligibility decision
 # ---------------------------------------------------------------------------
 def _join_list(value: Any, limit: int | None = None) -> str | None:
@@ -176,19 +471,38 @@ def map_and_evaluate(
     payload: dict[str, Any],
     age_months: int,
     now_iso: str,
+    *,
+    full: dict[str, Any] | None = None,
+    prior_row: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Map one evidence_ledger ctgov payload → a clinical_trials record dict
-    with a computed eligibility decision."""
+    """Map one evidence_ledger ctgov row → a clinical_trials record dict with a
+    computed eligibility decision.
+
+    Parameters
+    ----------
+    payload    : the thin evidence_ledger.payload_metadata projection
+                 (always present; Phase A fallback source).
+    full       : the rich fields extracted from the FULL ctgov study JSON in R2
+                 (extract_full_fields output), or None when the artifact could
+                 not be read — then we degrade to the `payload` projection.
+    prior_row  : the existing clinical_trials row (for self-healing ka reuse and
+                 to avoid wiping a good ka with an empty re-translation).
+
+    Family-facing text fields (title, brief_summary, detailed_description,
+    eligibility_criteria) are stored as JSONB {en, ka}: translated for displayed
+    trials (identified/evaluating), en-only for ineligible ones (cost control).
+    """
     payload = payload or {}
+    full = full or {}
+    prior_row = prior_row or {}
 
     nct_id = (payload.get("nct_id") or source_id or "").strip()
-    title = (
+    title_en = (
         payload.get("title")
         or payload.get("official_title")
         or nct_id
         or "(untitled trial)"
     )
-    brief_summary = payload.get("official_title") or None
     overall_status = payload.get("overall_status") or None
 
     phase = _join_list(payload.get("phases"))
@@ -199,14 +513,31 @@ def map_and_evaluate(
     max_age = payload.get("max_age")
     sex = payload.get("sex")
     hv = payload.get("healthy_volunteers")
-    eligibility_criteria = (
+
+    # --- full ctgov detail (R2), with graceful fallback to the projection ---
+    # brief_summary: full briefSummary if we have it, else the official title.
+    brief_summary_en = (
+        full.get("brief_summary") or payload.get("official_title") or None
+    )
+    detailed_description_en = full.get("detailed_description") or None
+    # eligibility_criteria: the FULL free-text criteria from ctgov if available;
+    # otherwise the thin synthetic age/sex string (Phase A behaviour).
+    eligibility_criteria_en = full.get("eligibility_criteria") or (
         f"Age {min_age or '?'}-{max_age or '?'}; sex={sex or '?'}; "
         f"healthy_volunteers={hv if hv is not None else '?'}"
     )
+    conditions = full.get("conditions") or None
 
-    locations_sample = payload.get("locations_sample") or []
-    if not isinstance(locations_sample, list):
-        locations_sample = [locations_sample]
+    # Locations: prefer the FULL structured list from R2; fall back to the thin
+    # locations_sample. location_flags() works off "facility (country)" strings.
+    if full.get("locations"):
+        locations = full["locations"]
+        locations_sample = full.get("locations_sample") or []
+    else:
+        locations_sample = payload.get("locations_sample") or []
+        if not isinstance(locations_sample, list):
+            locations_sample = [locations_sample]
+        locations = locations_sample
 
     # --- eligibility computation ---
     status_norm = (overall_status or "").strip().upper()
@@ -249,10 +580,36 @@ def map_and_evaluate(
 
     aleksandra_eligible = status == "identified"
 
-    return {
+    # --- bilingual {en, ka} (C2) ---
+    # Displayed trials (identified / evaluating) get a ka translation; ineligible
+    # ones are en-only (cost control). Self-healing: bilingual_field reuses a
+    # good ka from the prior row when the en is unchanged (no re-translation).
+    displayed = status in ("identified", "evaluating")
+    title = bilingual_field(
+        title_en, translate=displayed, prior_value=prior_row.get("title")
+    )
+    brief_summary = bilingual_field(
+        brief_summary_en,
+        translate=displayed,
+        prior_value=prior_row.get("brief_summary"),
+    )
+    detailed_description = bilingual_field(
+        detailed_description_en,
+        translate=displayed,
+        prior_value=prior_row.get("detailed_description"),
+    )
+    eligibility_criteria = bilingual_field(
+        eligibility_criteria_en,
+        translate=displayed,
+        prior_value=prior_row.get("eligibility_criteria"),
+    )
+
+    rec: dict[str, Any] = {
         "nct_id": nct_id,
         "title": title,
         "brief_summary": brief_summary,
+        "detailed_description": detailed_description,
+        "conditions": conditions,
         "overall_status": overall_status,
         "phase": phase,
         "study_type": study_type,
@@ -260,28 +617,47 @@ def map_and_evaluate(
         "min_age": str(min_age) if min_age is not None else None,
         "max_age": str(max_age) if max_age is not None else None,
         "eligibility_criteria": eligibility_criteria,
-        "locations": locations_sample,
+        "locations": locations,
         "aleksandra_eligible": aleksandra_eligible,
         "eligibility_issues": issues,
         "aleksandra_status": status,
         "last_checked": now_iso,
+        # Full ctgov contacts + dates. ALWAYS present (value or None) so every
+        # record in a batch has the SAME key set — PostgREST bulk upsert rejects
+        # a batch whose objects have differing keys (PGRST102 "All object keys
+        # must match"). R2 is the source of truth for these and is re-read every
+        # tick, so writing the fresh value (or NULL when ctgov omitted it) is
+        # correct and idempotent — it never loses data the artifact still holds.
+        "pi_name": full.get("pi_name"),
+        "pi_email": full.get("pi_email"),
+        "coordinator_name": full.get("coordinator_name"),
+        "coordinator_email": full.get("coordinator_email"),
+        "start_date": full.get("start_date"),
+        "estimated_completion": full.get("estimated_completion"),
+        "last_updated": full.get("last_updated"),
         # carry derived flags for the summary printer (NOT a DB column)
         "_is_us": is_us,
         "_is_international": is_international,
     }
+
+    return rec
 
 
 # ---------------------------------------------------------------------------
 # Supabase I/O
 # ---------------------------------------------------------------------------
 def fetch_ctgov_rows(limit: int = 1000) -> list[dict[str, Any]]:
-    """Read all evidence_ledger ctgov rows (source_id + payload_metadata)."""
+    """Read all evidence_ledger ctgov rows.
+
+    Selects ``raw_artifact_url`` too (Phase C) so the matcher can fetch the FULL
+    study JSON from R2 for each trial.
+    """
     url, key = _supabase_creds()
     r = httpx.get(
         f"{url}/rest/v1/evidence_ledger",
         params={
             "source_type": "eq.ctgov",
-            "select": "source_id,payload_metadata",
+            "select": "source_id,payload_metadata,raw_artifact_url",
             "limit": str(limit),
         },
         headers=_supabase_headers(key, prefer="count=none"),
@@ -292,6 +668,54 @@ def fetch_ctgov_rows(limit: int = 1000) -> list[dict[str, Any]]:
             f"fetch_ctgov_rows failed: HTTP {r.status_code}: {r.text[:300]}"
         )
     return r.json()
+
+
+def fetch_prior_rows() -> dict[str, dict[str, Any]]:
+    """Read existing clinical_trials rows' bilingual fields for self-healing.
+
+    Returns ``{nct_id: {title, brief_summary, detailed_description,
+    eligibility_criteria}}`` so bilingual_field() can REUSE a good ka without
+    re-translating (cost-stable convergence over the 6h tick). Fails SOFT: on
+    any error returns {} (every field is then treated as having no prior ka, so
+    translation simply runs — never a crash, never a silent lost lead).
+    """
+    try:
+        url, key = _supabase_creds()
+        out: dict[str, dict[str, Any]] = {}
+        page = 0
+        while True:
+            r = httpx.get(
+                f"{url}/rest/v1/clinical_trials",
+                params={
+                    "select": (
+                        "nct_id,title,brief_summary,"
+                        "detailed_description,eligibility_criteria"
+                    ),
+                    "order": "nct_id.asc",
+                    "limit": "1000",
+                    "offset": str(page * 1000),
+                },
+                headers=_supabase_headers(key, prefer="count=none"),
+                timeout=30,
+            )
+            if r.status_code != 200:
+                print(
+                    f"  [warn] fetch_prior_rows HTTP {r.status_code}; "
+                    "translations will run without ka reuse"
+                )
+                return out
+            rows = r.json()
+            for row in rows:
+                nct = (row.get("nct_id") or "").strip()
+                if nct:
+                    out[nct] = row
+            if len(rows) < 1000:
+                break
+            page += 1
+        return out
+    except Exception as e:  # noqa: BLE001 — best-effort reuse source
+        print(f"  [warn] fetch_prior_rows failed ({type(e).__name__}: {e}); no reuse")
+        return {}
 
 
 def upsert_trials(records: list[dict[str, Any]]) -> int:
@@ -508,6 +932,8 @@ def run(
 
     # B2/B4: snapshot the existing table BEFORE upserting so we can diff.
     prior = fetch_prior_state()
+    # C2: existing rows' bilingual fields, for self-healing ka reuse.
+    prior_rows = fetch_prior_rows()
 
     rows = fetch_ctgov_rows()
     if limit and limit > 0:
@@ -517,13 +943,45 @@ def run(
     newly_eligible: list[dict[str, Any]] = []
     status_changes: list[dict[str, Any]] = []
 
+    # C2: translation coverage stats over the DISPLAYED (translated) fields.
+    BILINGUAL_FIELDS = (
+        "title",
+        "brief_summary",
+        "detailed_description",
+        "eligibility_criteria",
+    )
+    xlate = {"ka_filled": 0, "en_only": 0, "r2_full": 0, "r2_fallback": 0}
+
     for row in rows:
+        full = extract_full_fields(fetch_full_study(row.get("raw_artifact_url")) or {})
+        if full.get("brief_summary") or full.get("eligibility_criteria"):
+            xlate["r2_full"] += 1
+        else:
+            xlate["r2_fallback"] += 1
+
         rec = map_and_evaluate(
             source_id=row.get("source_id", ""),
             payload=row.get("payload_metadata") or {},
             age_months=age_months,
             now_iso=now_iso,
+            full=full,
+            prior_row=prior_rows.get(
+                (row.get("payload_metadata") or {}).get("nct_id")
+                or row.get("source_id")
+            ),
         )
+
+        # Tally ka coverage for displayed trials only (ineligible are en-only by
+        # design, so they would skew the "did translation work?" signal).
+        if rec["aleksandra_status"] in ("identified", "evaluating"):
+            for f in BILINGUAL_FIELDS:
+                val = rec.get(f)
+                if not isinstance(val, dict) or not val.get("en"):
+                    continue
+                if _ka_of(val):
+                    xlate["ka_filled"] += 1
+                else:
+                    xlate["en_only"] += 1
 
         nct = rec["nct_id"]
         new_status = rec["aleksandra_status"]
@@ -540,7 +998,7 @@ def run(
         # A trial is a fresh lead if it is NOW 'identified' and either we have
         # never seen it, or it was something other than 'identified' before.
         if new_status == "identified" and prev_alek != "identified":
-            newly_eligible.append({"nct_id": nct, "title": rec["title"]})
+            newly_eligible.append({"nct_id": nct, "title": _en_of(rec["title"])})
 
         # --- B4: overall_status monitoring ---
         # Only known trials can have a *change*; a brand-new row is not a
@@ -560,7 +1018,7 @@ def run(
             status_changes.append(
                 {
                     "nct_id": nct,
-                    "title": rec["title"],
+                    "title": _en_of(rec["title"]),
                     "old_status": prev_overall,
                     "new_status": new_overall,
                     # A previously-eligible trial that is now ineligible is a
@@ -581,6 +1039,11 @@ def run(
     _print_summary(summary, dry_run=dry_run, written=written)
     print(f"  newly eligible     {len(newly_eligible)}")
     print(f"  status changes     {len(status_changes)}")
+    print(f"  R2 full / fallback {xlate['r2_full']} / {xlate['r2_fallback']}")
+    print(
+        f"  ka fields filled   {xlate['ka_filled']}  "
+        f"(en-only/fallback: {xlate['en_only']})"
+    )
 
     # --- Telegram notify (B2/B4) ---
     notified = False
@@ -607,6 +1070,7 @@ def run(
         "status_changes": status_changes,
         "written": written,
         "notified": notified,
+        "translation": xlate,
         # kept for backwards-compat with any Phase A caller
         "summary": summary,
         "records": records,
@@ -636,6 +1100,130 @@ def _self_test() -> int:
     assert (not us) and intl, (us, intl)
     us, intl = location_flags(["A (United States)", "B (Canada)"])
     assert us and intl, (us, intl)
+
+    # --- Phase C: s3 URL parsing ---
+    assert _parse_s3_url("s3://my-bucket/ctgov/NCT01.json") == (
+        "my-bucket",
+        "ctgov/NCT01.json",
+    )
+    assert _parse_s3_url("https://example.com/x.json") is None
+    assert _parse_s3_url("") is None
+    assert _parse_s3_url(None) is None
+    assert _parse_s3_url("s3://only-bucket") is None
+
+    # --- Phase C: full-study extraction (pure parse, no I/O) ---
+    study = {
+        "protocolSection": {
+            "descriptionModule": {
+                "briefSummary": "Brief here.",
+                "detailedDescription": "Long detail here.",
+            },
+            "eligibilityModule": {
+                "eligibilityCriteria": "Inclusion: ... Exclusion: ..."
+            },
+            "conditionsModule": {"conditions": ["HIE", "Cerebral Palsy"]},
+            "statusModule": {
+                "startDateStruct": {"date": "2025-01-01"},
+                "completionDateStruct": {"date": "2027-12-31"},
+                "lastUpdatePostDateStruct": {"date": "2026-06-01"},
+            },
+            "contactsLocationsModule": {
+                "overallOfficials": [
+                    {
+                        "name": "Dr. Lead",
+                        "role": "PRINCIPAL_INVESTIGATOR",
+                        "email": "lead@x.org",
+                    },
+                    {"name": "Dr. Other", "role": "STUDY_DIRECTOR"},
+                ],
+                "centralContacts": [{"name": "Coord A", "email": "coord@x.org"}],
+                "locations": [
+                    {
+                        "facility": "Duke",
+                        "city": "Durham",
+                        "state": "NC",
+                        "country": "United States",
+                        "status": "RECRUITING",
+                    },
+                    {
+                        "facility": "Charité",
+                        "city": "Berlin",
+                        "country": "Germany",
+                        "status": "RECRUITING",
+                    },
+                ],
+            },
+        }
+    }
+    f = extract_full_fields(study)
+    assert f["brief_summary"] == "Brief here."
+    assert f["detailed_description"] == "Long detail here."
+    assert "Exclusion" in f["eligibility_criteria"]
+    assert f["conditions"] == ["HIE", "Cerebral Palsy"]
+    assert len(f["locations"]) == 2 and f["locations"][0]["facility"] == "Duke"
+    assert f["locations_sample"] == ["Duke (United States)", "Charité (Germany)"]
+    assert f["pi_name"] == "Dr. Lead" and f["pi_email"] == "lead@x.org"
+    assert f["coordinator_name"] == "Coord A"
+    assert f["start_date"] == "2025-01-01"
+    assert f["estimated_completion"] == "2027-12-31"
+    assert f["last_updated"] == "2026-06-01"
+    # location_flags must work off the new richer locations_sample
+    us, intl = location_flags(f["locations_sample"])
+    assert us and intl, (us, intl)
+    # empty study → all-None / empty, never a crash
+    empty = extract_full_fields({})
+    assert empty["brief_summary"] is None and empty["conditions"] == []
+
+    # --- Phase C: partial-date normalization (ctgov returns YYYY / YYYY-MM) ---
+    assert _normalize_date("2028") == "2028-01-01"
+    assert _normalize_date("2028-03") == "2028-03-01"
+    assert _normalize_date("2028-03-15") == "2028-03-15"
+    assert _normalize_date("") is None
+    assert _normalize_date(None) is None
+    assert _normalize_date("garbage") is None
+    # a partial completionDate must flow through extract_full_fields cleanly
+    partial = extract_full_fields(
+        {
+            "protocolSection": {
+                "statusModule": {"completionDateStruct": {"date": "2028-03"}}
+            }
+        }
+    )
+    assert partial["estimated_completion"] == "2028-03-01", partial
+
+    # --- Phase C: _en_of / _ka_of on {en,ka} dict / json-text / scalar ---
+    assert _en_of({"en": "E", "ka": "K"}) == "E"
+    assert _ka_of({"en": "E", "ka": "K"}) == "K"
+    assert _en_of('{"en": "E", "ka": "K"}') == "E"
+    assert _ka_of('{"en": "E", "ka": "K"}') == "K"
+    assert _en_of("plain") == "plain"
+    assert _ka_of("plain") == ""
+    assert _en_of(None) == "" and _ka_of(None) == ""
+
+    # --- Phase C: bilingual_field (no-translate + reuse paths only; no API) ---
+    # None preserves nullable column
+    assert bilingual_field(None, translate=True) is None
+    # empty string → deliberate empty cell
+    assert bilingual_field("", translate=True) == {"en": "", "ka": ""}
+    # ineligible (translate=False) with no prior → en-only
+    assert bilingual_field("Title", translate=False) == {"en": "Title", "ka": ""}
+    # displayed + prior ka present + en unchanged → REUSE (no translation call)
+    reuse = bilingual_field(
+        "Title", translate=True, prior_value={"en": "Title", "ka": "სათაური"}
+    )
+    assert reuse == {"en": "Title", "ka": "სათაური"}, reuse
+    # ineligible but prior ka exists → keep the good ka (don't wipe it)
+    keep = bilingual_field(
+        "Title", translate=False, prior_value={"en": "Title", "ka": "სათაური"}
+    )
+    assert keep == {"en": "Title", "ka": "სათაური"}, keep
+    # the migration's en-mirror ka (English, no Mkhedruli) is NOT a real
+    # translation: for an ineligible (no-translate) trial it must NOT be reused,
+    # so we fall through to en-only rather than storing English-as-Georgian.
+    mirror = bilingual_field(
+        "Title", translate=False, prior_value={"en": "Title", "ka": "Title"}
+    )
+    assert mirror == {"en": "Title", "ka": ""}, mirror
 
     # --- build_notification (B2/B4) ---
     # nothing new → no message (no spam)
