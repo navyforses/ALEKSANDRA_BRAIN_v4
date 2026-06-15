@@ -80,6 +80,7 @@ function TrialCard({
     intlBadge: string;
     issuesLabel: string;
     viewOnCtgov: string;
+    detailsLink: string;
   };
   showIssues: boolean;
 }) {
@@ -95,8 +96,19 @@ function TrialCard({
         ) : null}
       </div>
 
-      {/* Title */}
-      <h3 className="font-serif text-lg leading-snug text-ink">{item.title}</h3>
+      {/* Title — links to internal detail page */}
+      {item.nctId ? (
+        <Link
+          href={`/research/trials/${item.nctId}`}
+          className="block group"
+        >
+          <h3 className="font-serif text-lg leading-snug text-ink group-hover:text-accent group-hover:underline underline-offset-2">
+            {item.title}
+          </h3>
+        </Link>
+      ) : (
+        <h3 className="font-serif text-lg leading-snug text-ink">{item.title}</h3>
+      )}
 
       {/* Summary */}
       {item.summary ? (
@@ -141,17 +153,26 @@ function TrialCard({
         </div>
       ) : null}
 
-      {/* External link */}
+      {/* Links row */}
       {item.nctId ? (
-        <a
-          href={`https://clinicaltrials.gov/study/${item.nctId}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 text-sm text-accent hover:text-accent-ink hover:underline"
-        >
-          {labels.viewOnCtgov}
-          <span aria-hidden="true">↗</span>
-        </a>
+        <div className="flex flex-wrap items-center gap-4">
+          <Link
+            href={`/research/trials/${item.nctId}`}
+            className="inline-flex items-center gap-1 text-sm text-ink hover:text-accent hover:underline"
+          >
+            {labels.detailsLink}
+            <span aria-hidden="true">→</span>
+          </Link>
+          <a
+            href={`https://clinicaltrials.gov/study/${item.nctId}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-sm text-accent hover:text-accent-ink hover:underline"
+          >
+            {labels.viewOnCtgov}
+            <span aria-hidden="true">↗</span>
+          </a>
+        </div>
       ) : null}
     </div>
   );
@@ -178,6 +199,7 @@ export default async function ClinicalTrialsPage({
     intlBadge: t("intlBadge"),
     issuesLabel: t("issuesLabel"),
     viewOnCtgov: t("viewOnCtgov"),
+    detailsLink: t("detailsLink"),
   };
 
   return (

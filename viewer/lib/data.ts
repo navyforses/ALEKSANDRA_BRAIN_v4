@@ -397,6 +397,43 @@ export interface TrialsView {
   needsReview: TrialItem[];
 }
 
+export interface TrialLocation {
+  facility: string;
+  city: string;
+  state: string;
+  country: string;
+  status: string;
+  isUs: boolean;
+}
+
+export interface TrialDetail {
+  nctId: string;
+  title: string;
+  briefSummary: string;
+  detailedDescription: string;
+  eligibilityCriteria: string;
+  conditions: string[];
+  status: string;
+  phase: string;
+  studyType: string;
+  intervention: string;
+  minAge: string;
+  maxAge: string;
+  locations: TrialLocation[];
+  isUs: boolean;
+  isInternational: boolean;
+  piName: string;
+  piEmail: string;
+  coordinatorName: string;
+  coordinatorEmail: string;
+  startDate: string;
+  estimatedCompletion: string;
+  lastUpdated: string;
+  aleksandraStatus: string;
+  eligibilityIssues: string[];
+  lastChecked: string;
+}
+
 interface TrialRow {
   nct_id?: string;
   title?: unknown;
@@ -409,6 +446,34 @@ interface TrialRow {
   max_age?: string;
   eligibility_criteria?: unknown;
   locations?: string[] | null;
+  aleksandra_eligible?: boolean;
+  eligibility_issues?: string[] | null;
+  aleksandra_status?: string;
+  last_checked?: string;
+}
+
+// Enriched row shape — all columns from Phase C Wave 1 enrichment.
+interface TrialDetailRow {
+  nct_id?: string;
+  title?: unknown;
+  brief_summary?: unknown;
+  detailed_description?: unknown;
+  eligibility_criteria?: unknown;
+  conditions?: unknown;
+  overall_status?: string;
+  phase?: string;
+  study_type?: string;
+  intervention_name?: string;
+  min_age?: string;
+  max_age?: string;
+  locations?: unknown;
+  pi_name?: string;
+  pi_email?: string;
+  coordinator_name?: string;
+  coordinator_email?: string;
+  start_date?: string;
+  estimated_completion?: string;
+  last_updated?: string;
   aleksandra_eligible?: boolean;
   eligibility_issues?: string[] | null;
   aleksandra_status?: string;
@@ -471,6 +536,113 @@ export async function fetchClinicalTrials(locale: Locale): Promise<TrialsView> {
   }
 
   return { configured, eligible, needsReview };
+}
+
+function parseLocations(raw: unknown): TrialLocation[] {
+  // Locations stored as JSONB array of {facility, city, state, country, status}
+  // or a plain string array from older rows.
+  if (!raw) return [];
+  const arr = Array.isArray(raw) ? raw : [];
+  return arr
+    .map((entry): TrialLocation | null => {
+      if (entry && typeof entry === "object" && !Array.isArray(entry)) {
+        const obj = entry as Record<string, unknown>;
+        const country = String(obj.country ?? "").trim();
+        return {
+          facility: String(obj.facility ?? "").trim(),
+          city: String(obj.city ?? "").trim(),
+          state: String(obj.state ?? "").trim(),
+          country,
+          status: String(obj.status ?? "").trim(),
+          isUs: US_TOKENS.some((t) => country.toLowerCase().includes(t)),
+        };
+      }
+      // Flat string fallback — treat entire string as country/facility.
+      if (typeof entry === "string" && entry.trim()) {
+        const loc = entry.trim();
+        return {
+          facility: "",
+          city: "",
+          state: "",
+          country: loc,
+          status: "",
+          isUs: US_TOKENS.some((t) => loc.toLowerCase().includes(t)),
+        };
+      }
+      return null;
+    })
+    .filter((l): l is TrialLocation => l !== null);
+}
+
+function parseConditions(raw: unknown, locale: Locale): string[] {
+  // Conditions stored as JSONB array of en strings, or JSONB {en, ka} objects.
+  if (!raw) return [];
+  const arr = Array.isArray(raw) ? raw : [];
+  return arr
+    .map((entry) => {
+      if (typeof entry === "string") return entry.trim();
+      if (entry && typeof entry === "object") {
+        const obj = entry as Record<string, unknown>;
+        return (String(obj[locale] ?? obj.en ?? "")).trim();
+      }
+      return "";
+    })
+    .filter(Boolean);
+}
+
+function mapTrialDetail(row: TrialDetailRow, locale: Locale): TrialDetail {
+  const locations = parseLocations(row.locations);
+  const hasUs = locations.some((l) => l.isUs);
+  const hasIntl = locations.some((l) => !l.isUs);
+
+  return {
+    nctId: row.nct_id ?? "",
+    title: cleanTitle(row.title, locale) || "—",
+    briefSummary: flatten(row.brief_summary, locale),
+    detailedDescription: flatten(row.detailed_description, locale),
+    eligibilityCriteria: flatten(row.eligibility_criteria, locale),
+    conditions: parseConditions(row.conditions, locale),
+    status: row.overall_status ?? "",
+    phase: row.phase ?? "",
+    studyType: row.study_type ?? "",
+    intervention: row.intervention_name ?? "",
+    minAge: row.min_age ?? "",
+    maxAge: row.max_age ?? "",
+    locations,
+    isUs: hasUs,
+    isInternational: hasIntl || (!hasUs && locations.length > 0),
+    piName: row.pi_name ?? "",
+    piEmail: row.pi_email ?? "",
+    coordinatorName: row.coordinator_name ?? "",
+    coordinatorEmail: row.coordinator_email ?? "",
+    startDate: row.start_date ?? "",
+    estimatedCompletion: row.estimated_completion ?? "",
+    lastUpdated: row.last_updated ?? "",
+    aleksandraStatus: row.aleksandra_status ?? "",
+    eligibilityIssues: Array.isArray(row.eligibility_issues) ? row.eligibility_issues : [],
+    lastChecked: row.last_checked ?? "",
+  };
+}
+
+export async function fetchTrialDetail(
+  locale: Locale,
+  nctId: string,
+): Promise<{ configured: boolean; trial: TrialDetail | null }> {
+  const result = await getRows<TrialDetailRow>("clinical_trials", {
+    select:
+      "nct_id,title,brief_summary,detailed_description,eligibility_criteria,conditions,overall_status,phase,study_type,intervention_name,min_age,max_age,locations,pi_name,pi_email,coordinator_name,coordinator_email,start_date,estimated_completion,last_updated,aleksandra_eligible,eligibility_issues,aleksandra_status,last_checked",
+    nct_id: `eq.${nctId}`,
+    limit: "1",
+  });
+
+  if (!result.configured) {
+    return { configured: false, trial: null };
+  }
+  const row = result.rows[0];
+  if (!row) {
+    return { configured: true, trial: null };
+  }
+  return { configured: true, trial: mapTrialDetail(row, locale) };
 }
 
 export interface TodayView {
