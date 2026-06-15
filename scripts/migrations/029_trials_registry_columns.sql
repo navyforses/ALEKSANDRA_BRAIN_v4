@@ -65,12 +65,17 @@ UPDATE clinical_trials
       registry_id = nct_id
   WHERE registry IS NULL;
 
--- ── New natural key for non-NCT registries. Partial so legacy/ctgov-only rows
---    (which set registry='ctgov', registry_id=nct_id during backfill) and any
---    future NULL-registry row never collide.
+-- ── New natural key for non-NCT registries. After the backfill above EVERY row
+--    has a non-NULL registry, so a FULL (non-partial) unique index covers the
+--    same rows a `WHERE registry IS NOT NULL` partial index would, while ALSO
+--    being usable as a PostgREST `on_conflict=registry,registry_id` arbiter
+--    (PostgREST cannot supply a partial index's predicate → 42P10). Postgres
+--    still treats NULLs as DISTINCT in a unique index, so a stray NULL-registry
+--    row could never collide here anyway. We drop any pre-existing partial form
+--    first so re-running converges on the full index.
+DROP INDEX IF EXISTS ux_trials_registry;
 CREATE UNIQUE INDEX IF NOT EXISTS ux_trials_registry
-  ON clinical_trials (registry, registry_id)
-  WHERE registry IS NOT NULL;
+  ON clinical_trials (registry, registry_id);
 
 -- ── Broaden the evidence_ledger allow-list CHECK constraints so the new registry
 --    fetchers can write provenance rows. This is ADDITIVE (it only widens an

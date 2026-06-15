@@ -30,7 +30,14 @@ DDL detail (all ADDITIVE — no column is dropped or retyped):
 - `secondary_ids` TEXT[] ADD — sibling-registry ids for cross-registry dedup
   (e.g. `{'NCT06...','ISRCTN61218504','EudraCT...'}`).
 - backfill: `UPDATE clinical_trials SET registry='ctgov', registry_id=nct_id WHERE registry IS NULL`.
-- `ux_trials_registry` — partial `UNIQUE INDEX (registry, registry_id) WHERE registry IS NOT NULL`.
+- `ux_trials_registry` — `UNIQUE INDEX (registry, registry_id)` (FULL, non-partial).
+  NOTE: a partial `WHERE registry IS NOT NULL` index was tried first but PostgREST
+  cannot supply a partial index's predicate as an `on_conflict` arbiter (it raises
+  42P10), so the matcher's `on_conflict=registry,registry_id` upsert fails. After
+  the backfill every row has a non-NULL registry, so a FULL unique index covers the
+  exact same rows; Postgres still treats NULLs as DISTINCT, so a stray NULL-registry
+  row could never collide here. The orchestrator drops a legacy partial form and
+  re-creates the full index.
 
 Also widens two `evidence_ledger` allow-list CHECK constraints (drop + re-add, same
 transaction) so the new fetchers can write provenance rows — ADDITIVE only (no

@@ -114,6 +114,10 @@ def _existing_columns() -> set[str]:
 
 
 def _index_exists() -> bool:
+    """True iff the ux_trials_registry unique index exists in its FULL (non-partial)
+    form. A pre-existing PARTIAL form (`WHERE registry IS NOT NULL`) returns False
+    so the orchestrator re-runs the SQL to convert it — PostgREST cannot use a
+    partial index as an on_conflict arbiter (42P10)."""
     import psycopg2
 
     dsn = os.environ.get("SUPABASE_DB_URL", "")
@@ -123,11 +127,15 @@ def _index_exists() -> bool:
     try:
         cur = conn.cursor()
         cur.execute(
-            "select 1 from pg_indexes "
+            "select indexdef from pg_indexes "
             "where tablename='clinical_trials' and indexname=%s",
             (REGISTRY_INDEX,),
         )
-        return cur.fetchone() is not None
+        row = cur.fetchone()
+        if not row:
+            return False
+        # full form only — reject the legacy partial predicate.
+        return "where" not in row[0].lower()
     finally:
         conn.close()
 
