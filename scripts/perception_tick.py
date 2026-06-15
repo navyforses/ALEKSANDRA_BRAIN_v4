@@ -226,6 +226,20 @@ def run(*, small: bool = False, no_gap: bool = False) -> dict:
         "Negative-evidence branch (PRC-06)", fetch_negative_run, **neg_kwargs
     )
 
+    # Phase B wave 1: after the fetch passes have refreshed evidence_ledger,
+    # re-run the clinical-trials eligibility matcher so the /research/trials
+    # board stays current and new/closed leads ping Telegram. This makes ZERO
+    # Claude calls (pure DB diff + Telegram), so it sits outside the token
+    # budget and is fine to always run. Wrapped in _safe_run for isolation —
+    # a matcher failure must never kill the tick. notify=True emits a family
+    # alert only when there is something genuinely new (the Phase A seed of 59
+    # trials is already the baseline, so the first automated run stays quiet).
+    from scripts.trials.eligibility_matcher import run as trials_match_run
+
+    counts["trials_match"] = _safe_run(
+        "Trials eligibility match (Phase B)", trials_match_run, notify=True
+    )
+
     end = datetime.now(timezone.utc)
     dt_seconds = int((end - start).total_seconds())
 
@@ -240,10 +254,24 @@ def run(*, small: bool = False, no_gap: bool = False) -> dict:
     neg_n = _g("negative", "ledger_inserted")
     total = pubmed_n + ctgov_n + preprints_n + gap_n + neg_n
 
+    # Phase B: surface the trials match outcome on the summary line.
+    tm = counts.get("trials_match", {}) or {}
+    new_leads = len(tm.get("newly_eligible", []) or []) if isinstance(tm, dict) else 0
+    closed_leads = (
+        sum(
+            1
+            for c in (tm.get("status_changes") or [])
+            if c.get("was_eligible") and c.get("now_ineligible")
+        )
+        if isinstance(tm, dict)
+        else 0
+    )
+
     summary_line = (
         f"🕷️ perception_tick OK  +{total} rows in {dt_seconds}s\n"
         f"  pubmed={pubmed_n}  ctgov={ctgov_n}  preprints={preprints_n}\n"
-        f"  gap-fill={gap_n}  negative={neg_n}"
+        f"  gap-fill={gap_n}  negative={neg_n}\n"
+        f"  trials: new={new_leads}  closed={closed_leads}"
     )
 
     run_id = _write_run(

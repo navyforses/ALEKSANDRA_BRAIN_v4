@@ -14,11 +14,26 @@ outside of. Any ambiguity (unparseable age criteria) routes to
 `evaluating` (needs-review), never silent removal. Location is purely
 informational (D2) and never disqualifies on its own.
 
+Phase B wave 1 adds, on top of the Phase A sync:
+  * New-eligible detection (B2): diff each computed status against the
+    prior clinical_trials row; a trial that is *newly* `identified`
+    (absent before, or previously not `identified`) is a fresh lead.
+  * Status monitoring (B4): if a known trial's `overall_status` changed
+    since last sync, flag the upserted row (`status_changed = true`) and
+    record the transition. A previously-`identified` trial that is now
+    `ineligible` (e.g. became non-recruiting) is a "no longer open" lead.
+  * Telegram alerts: `--notify` sends a PHI-free, family-friendly Georgian
+    ping when there is ≥1 new lead (or ≥1 prior lead now closed);
+    `--notify-dry` prints the would-be message without sending. When there
+    is nothing new, NOTHING is sent (no spam).
+
 Usage
 -----
     .venv/Scripts/python.exe -m scripts.trials.eligibility_matcher --self-test
     .venv/Scripts/python.exe -m scripts.trials.eligibility_matcher --dry-run
     .venv/Scripts/python.exe -m scripts.trials.eligibility_matcher --limit 10
+    .venv/Scripts/python.exe -m scripts.trials.eligibility_matcher --notify-dry
+    .venv/Scripts/python.exe -m scripts.trials.eligibility_matcher --notify
     .venv/Scripts/python.exe -m scripts.trials.eligibility_matcher          # live seed
 """
 
@@ -26,6 +41,7 @@ from __future__ import annotations
 
 import argparse
 import math
+import os
 import re
 import sys
 from datetime import date, datetime, timezone
@@ -34,6 +50,12 @@ from typing import Any
 import httpx
 
 from scripts.ledger import _supabase_creds, _supabase_headers, load_env
+
+# Family-facing trials page (public viewer). Surfaced in Telegram alerts so
+# the family can jump straight to the list. No PHI — trials are public data.
+VIEWER_TRIALS_URL = (
+    "https://viewer-git-main-shakos-projects-82dad3f2.vercel.app/ka/research/trials"
+)
 
 # ---------------------------------------------------------------------------
 # Patient constants — Aleksandra
@@ -301,6 +323,121 @@ def upsert_trials(records: list[dict[str, Any]]) -> int:
         return len(clean)
 
 
+def fetch_prior_state() -> dict[str, dict[str, Any]]:
+    """Read the current clinical_trials rows we care about for diffing.
+
+    Returns ``{nct_id: {"aleksandra_status": ..., "overall_status": ...}}``.
+    Used to detect (B2) newly-eligible trials and (B4) overall_status
+    transitions before we upsert the freshly-computed records. On any error
+    we fail SOFT: an empty dict means "no prior knowledge", which makes the
+    very first automated run treat everything as known-baseline-only (the
+    Phase A seed already populated the table), avoiding notification spam.
+    """
+    try:
+        url, key = _supabase_creds()
+        r = httpx.get(
+            f"{url}/rest/v1/clinical_trials",
+            params={
+                "select": "nct_id,aleksandra_status,overall_status",
+                "limit": "10000",
+            },
+            headers=_supabase_headers(key, prefer="count=none"),
+            timeout=30,
+        )
+        if r.status_code != 200:
+            print(
+                f"  [warn] fetch_prior_state HTTP {r.status_code}; "
+                "treating as no prior knowledge"
+            )
+            return {}
+        out: dict[str, dict[str, Any]] = {}
+        for row in r.json():
+            nct = (row.get("nct_id") or "").strip()
+            if not nct:
+                continue
+            out[nct] = {
+                "aleksandra_status": row.get("aleksandra_status"),
+                "overall_status": row.get("overall_status"),
+            }
+        return out
+    except Exception as e:  # noqa: BLE001 — best-effort diff source
+        print(f"  [warn] fetch_prior_state failed ({type(e).__name__}: {e}); no prior")
+        return {}
+
+
+# ---------------------------------------------------------------------------
+# Telegram (best-effort) — mirrors perception_tick._telegram
+# ---------------------------------------------------------------------------
+def _telegram(msg: str) -> bool:
+    """Send a Telegram message best-effort. Never raises.
+
+    Reads TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID from the environment and
+    POSTs to sendMessage. Returns True if the request was made and accepted,
+    False otherwise (missing creds / network error / non-2xx). Trials are
+    public data, so messages contain NO PHI.
+    """
+    load_env()
+    token = os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
+    chat_id = os.environ.get("TELEGRAM_CHAT_ID", "").strip()
+    if not token or not chat_id:
+        print("  [warn] Telegram creds missing — alert not sent")
+        return False
+    try:
+        r = httpx.post(
+            f"https://api.telegram.org/bot{token}/sendMessage",
+            json={"chat_id": chat_id, "text": msg, "disable_web_page_preview": True},
+            timeout=10,
+        )
+        return r.status_code in (200, 201)
+    except Exception as e:  # noqa: BLE001 — alerts must never crash the matcher
+        print(f"  [warn] Telegram send failed ({type(e).__name__}: {e})")
+        return False
+
+
+def build_notification(
+    newly_eligible: list[dict[str, Any]],
+    status_changes: list[dict[str, Any]],
+) -> str | None:
+    """Build a concise, PHI-free, family-friendly Georgian Telegram message.
+
+    Returns None when there is nothing worth pinging about: no new leads AND
+    no previously-eligible trial that has since closed. The caller treats
+    None as "send NOTHING" (no spam).
+    """
+    # "No longer open" = a trial that WAS identified and is now ineligible.
+    closed_leads = [
+        c for c in status_changes if c.get("was_eligible") and c.get("now_ineligible")
+    ]
+
+    if not newly_eligible and not closed_leads:
+        return None
+
+    lines: list[str] = []
+    if newly_eligible:
+        lines.append(
+            f"🔬 ახალი შესაფერისი კლინიკური კვლევა ალექსანდრასთვის: {len(newly_eligible)}"
+        )
+        for t in newly_eligible[:5]:
+            title = (t.get("title") or "").strip() or "(უსათაურო კვლევა)"
+            nct = (t.get("nct_id") or "").strip()
+            lines.append(f"• {title} ({nct})" if nct else f"• {title}")
+        if len(newly_eligible) > 5:
+            lines.append(f"…და კიდევ {len(newly_eligible) - 5}")
+
+    if closed_leads:
+        if lines:
+            lines.append("")
+        lines.append(f"⚠️ აღარ მონაბირებს: {len(closed_leads)}")
+        for t in closed_leads[:5]:
+            title = (t.get("title") or "").strip() or "(უსათაურო კვლევა)"
+            nct = (t.get("nct_id") or "").strip()
+            lines.append(f"• {title} ({nct})" if nct else f"• {title}")
+
+    lines.append("")
+    lines.append(VIEWER_TRIALS_URL)
+    return "\n".join(lines)
+
+
 # ---------------------------------------------------------------------------
 # Summary
 # ---------------------------------------------------------------------------
@@ -342,16 +479,44 @@ def _print_summary(summary: dict[str, Any], *, dry_run: bool, written: int) -> N
 # ---------------------------------------------------------------------------
 # Run
 # ---------------------------------------------------------------------------
-def run(*, dry_run: bool = False, limit: int = 0) -> dict[str, Any]:
+def run(
+    *,
+    dry_run: bool = False,
+    limit: int | None = None,
+    notify: bool = False,
+    notify_dry: bool = False,
+) -> dict[str, Any]:
+    """Sync ctgov → clinical_trials, detect new/closed leads, optionally alert.
+
+    Parameters
+    ----------
+    dry_run     : compute + print, do NOT write to the DB.
+    limit       : process only the first N ledger rows (None/0 = all).
+    notify      : send a Telegram alert when there is something new/closed.
+    notify_dry  : build + print the alert text but DO NOT send (testing).
+
+    Returns a summary dict::
+
+        {"processed": N, "identified": X, "evaluating": Y, "ineligible": Z,
+         "newly_eligible": [{"nct_id","title"}, ...],
+         "status_changes": [{"nct_id","title","old_status","new_status",...}, ...],
+         "written": int, "notified": bool}
+    """
     load_env()
     age_months = aleksandra_age_months()
     now_iso = datetime.now(timezone.utc).isoformat()
+
+    # B2/B4: snapshot the existing table BEFORE upserting so we can diff.
+    prior = fetch_prior_state()
 
     rows = fetch_ctgov_rows()
     if limit and limit > 0:
         rows = rows[:limit]
 
     records: list[dict[str, Any]] = []
+    newly_eligible: list[dict[str, Any]] = []
+    status_changes: list[dict[str, Any]] = []
+
     for row in rows:
         rec = map_and_evaluate(
             source_id=row.get("source_id", ""),
@@ -359,6 +524,52 @@ def run(*, dry_run: bool = False, limit: int = 0) -> dict[str, Any]:
             age_months=age_months,
             now_iso=now_iso,
         )
+
+        nct = rec["nct_id"]
+        new_status = rec["aleksandra_status"]
+        new_overall = (rec.get("overall_status") or "").strip().upper() or None
+        prev = prior.get(nct)
+        prev_alek = prev.get("aleksandra_status") if prev else None
+        prev_overall = (
+            ((prev.get("overall_status") or "").strip().upper() or None)
+            if prev
+            else None
+        )
+
+        # --- B2: newly-eligible detection ---
+        # A trial is a fresh lead if it is NOW 'identified' and either we have
+        # never seen it, or it was something other than 'identified' before.
+        if new_status == "identified" and prev_alek != "identified":
+            newly_eligible.append({"nct_id": nct, "title": rec["title"]})
+
+        # --- B4: overall_status monitoring ---
+        # Only known trials can have a *change*; a brand-new row is not a
+        # "change" (it is captured by newly_eligible above).
+        #
+        # LIMITATION (B4): the matcher only sees trials the ctgov fetcher
+        # re-surfaces. The fetcher queries recruiting-style statuses, so a
+        # trial that fully closes may stop being returned — in which case its
+        # clinical_trials row RETAINS its last-known overall_status and is
+        # NOT re-checked here (no transition is detected for it). Full
+        # per-trial re-verification against ClinicalTrials.gov (a direct
+        # GET /studies/{nct} for every known nct_id) is deferred to avoid the
+        # extra API calls; it is the correct future fix for silent closures.
+        changed = bool(prev) and (new_overall != prev_overall)
+        rec["status_changed"] = changed
+        if changed:
+            status_changes.append(
+                {
+                    "nct_id": nct,
+                    "title": rec["title"],
+                    "old_status": prev_overall,
+                    "new_status": new_overall,
+                    # A previously-eligible trial that is now ineligible is a
+                    # "no longer open" lead — surfaced prominently in alerts.
+                    "was_eligible": prev_alek == "identified",
+                    "now_ineligible": new_status == "ineligible",
+                }
+            )
+
         records.append(rec)
 
     summary = summarize(records)
@@ -368,7 +579,38 @@ def run(*, dry_run: bool = False, limit: int = 0) -> dict[str, Any]:
 
     print(f"Aleksandra age at run: ~{age_months} months (DOB {DOB.isoformat()})")
     _print_summary(summary, dry_run=dry_run, written=written)
-    return {"summary": summary, "written": written, "records": records}
+    print(f"  newly eligible     {len(newly_eligible)}")
+    print(f"  status changes     {len(status_changes)}")
+
+    # --- Telegram notify (B2/B4) ---
+    notified = False
+    if notify or notify_dry:
+        message = build_notification(newly_eligible, status_changes)
+        if notify_dry:
+            print()
+            print("=== Telegram (DRY — not sent) ===")
+            print(message if message else "(no notification — nothing new)")
+        elif notify:
+            if message:
+                notified = _telegram(message)
+                print(f"  telegram sent      {notified}")
+            else:
+                print("  telegram           skipped (nothing new)")
+
+    bs = summary["by_status"]
+    return {
+        "processed": summary["total"],
+        "identified": bs.get("identified", 0),
+        "evaluating": bs.get("evaluating", 0),
+        "ineligible": bs.get("ineligible", 0),
+        "newly_eligible": newly_eligible,
+        "status_changes": status_changes,
+        "written": written,
+        "notified": notified,
+        # kept for backwards-compat with any Phase A caller
+        "summary": summary,
+        "records": records,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -394,6 +636,50 @@ def _self_test() -> int:
     assert (not us) and intl, (us, intl)
     us, intl = location_flags(["A (United States)", "B (Canada)"])
     assert us and intl, (us, intl)
+
+    # --- build_notification (B2/B4) ---
+    # nothing new → no message (no spam)
+    assert build_notification([], []) is None
+    # a status change that is NOT an eligible→closed transition → still silent
+    assert (
+        build_notification(
+            [],
+            [
+                {
+                    "nct_id": "NCT1",
+                    "title": "X",
+                    "old_status": "RECRUITING",
+                    "new_status": "ACTIVE_NOT_RECRUITING",
+                    "was_eligible": True,
+                    "now_ineligible": False,
+                }
+            ],
+        )
+        is None
+    )
+    # a new lead → message contains the headline, the NCT, and the viewer link
+    msg = build_notification([{"nct_id": "NCT2", "title": "Cord Blood for HIE"}], [])
+    assert msg is not None
+    assert "NCT2" in msg and "Cord Blood for HIE" in msg
+    assert VIEWER_TRIALS_URL in msg
+    assert "1" in msg.splitlines()[0]
+    # an eligible→closed transition → "no longer open" block present
+    closed = build_notification(
+        [],
+        [
+            {
+                "nct_id": "NCT3",
+                "title": "Closed Study",
+                "old_status": "RECRUITING",
+                "new_status": "TERMINATED",
+                "was_eligible": True,
+                "now_ineligible": True,
+            }
+        ],
+    )
+    assert closed is not None
+    assert "NCT3" in closed and "აღარ მონაბირებს" in closed
+
     print("[OK] self-test passed")
     return 0
 
@@ -419,12 +705,27 @@ def main() -> int:
         action="store_true",
         help="Run the pure-function assertions and exit (no DB access).",
     )
+    ap.add_argument(
+        "--notify",
+        action="store_true",
+        help="Send a Telegram alert when there is ≥1 new/closed lead.",
+    )
+    ap.add_argument(
+        "--notify-dry",
+        action="store_true",
+        help="Build + print the would-be Telegram alert WITHOUT sending it.",
+    )
     args = ap.parse_args()
 
     if args.self_test:
         return _self_test()
 
-    run(dry_run=args.dry_run, limit=args.limit)
+    run(
+        dry_run=args.dry_run,
+        limit=args.limit,
+        notify=args.notify,
+        notify_dry=args.notify_dry,
+    )
     return 0
 
 
