@@ -920,6 +920,118 @@ export async function fetchSystemLifeline(): Promise<LifelineView> {
   };
 }
 
+// --- Lifecycle Stage Counts --------------------------------------------------
+// Computes per-stage live counts for the Lifecycle Cycle explainer on /activity.
+
+export interface LifecycleStages {
+  configured: boolean;
+  /** Stage 1 + 2: total trials ingested */
+  totalTrials: number;
+  /** Stage 3 eligibility breakdown */
+  identified: number;
+  evaluating: number;
+  ineligible: number;
+  /** Stage 4: translated (identified+evaluating rows where title ka is non-empty) */
+  translated: number;
+  /** Stage 5: published on site (identified + evaluating) */
+  published: number;
+  /** Stage 6: decision reached (applied/enrolled/declined/waitlisted/completed) */
+  decided: number;
+  /** Distinct registry sources active in Discovery */
+  registrySources: string[];
+  /** ISO timestamp of the latest perception_tick run; null if none */
+  lastCycleAt: string | null;
+}
+
+interface TrialStatusRow {
+  aleksandra_status?: string;
+  title?: unknown;
+  registry?: string;
+}
+
+interface RunTimeRow {
+  start_time?: string;
+}
+
+export async function fetchLifecycleStages(): Promise<LifecycleStages> {
+  const empty: LifecycleStages = {
+    configured: false,
+    totalTrials: 0,
+    identified: 0,
+    evaluating: 0,
+    ineligible: 0,
+    translated: 0,
+    published: 0,
+    decided: 0,
+    registrySources: [],
+    lastCycleAt: null,
+  };
+
+  // Use getCount to get the total via Content-Range header (exact count).
+  const [totalResult, statusRows, lastRunResult] = await Promise.all([
+    getCount("clinical_trials"),
+    getRows<TrialStatusRow>("clinical_trials", {
+      select: "aleksandra_status,title,registry",
+      limit: 1000,
+    }),
+    getRows<RunTimeRow>("runs", {
+      select: "start_time",
+      kind: "in.(perception_tick,perception_tick_fallback)",
+      order: "start_time.desc",
+      limit: 1,
+    }),
+  ]);
+
+  const configured =
+    totalResult.configured || statusRows.configured || lastRunResult.configured;
+  if (!configured) return empty;
+
+  let identified = 0;
+  let evaluating = 0;
+  let ineligible = 0;
+  let decided = 0;
+  let translated = 0;
+  const registrySet = new Set<string>();
+
+  for (const row of statusRows.rows) {
+    const st = row.aleksandra_status ?? "";
+    if (st === "identified") identified++;
+    else if (st === "evaluating") evaluating++;
+    else if (st === "ineligible") ineligible++;
+    else if (["applied", "enrolled", "declined", "waitlisted", "completed"].includes(st)) decided++;
+
+    if (row.registry) registrySet.add(row.registry);
+
+    // Count as translated if status is identified/evaluating and title has a ka field
+    if (st === "identified" || st === "evaluating") {
+      const title = row.title;
+      if (title && typeof title === "object" && !Array.isArray(title)) {
+        const obj = title as Record<string, unknown>;
+        const kaVal = typeof obj.ka === "string" ? obj.ka.trim() : "";
+        if (kaVal) translated++;
+      }
+    }
+  }
+
+  const published = identified + evaluating;
+
+  const lastCycleAt =
+    lastRunResult.rows[0]?.start_time ?? null;
+
+  return {
+    configured,
+    totalTrials: totalResult.count,
+    identified,
+    evaluating,
+    ineligible,
+    translated,
+    published,
+    decided,
+    registrySources: Array.from(registrySet).sort(),
+    lastCycleAt,
+  };
+}
+
 export interface TodayView {
   status: WorkingStatus;
   attention: ResearchItem[];

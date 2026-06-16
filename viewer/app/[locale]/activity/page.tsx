@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { buildCustomMetadata, type Locale } from "@/lib/seo";
-import { fetchSystemLifeline } from "@/lib/data";
+import { fetchSystemLifeline, fetchLifecycleStages } from "@/lib/data";
 import LifelineRail from "@/components/activity/LifelineRail";
+import LifecycleCycle from "@/components/activity/LifecycleCycle";
 import LiveRefresher from "@/components/activity/LiveRefresher";
 
 export async function generateMetadata({
@@ -15,11 +16,11 @@ export async function generateMetadata({
     locale,
     "/activity",
     locale === "ka"
-      ? "სიცოცხლის ხაზი | ALEKSANDRA_BRAIN"
-      : "System Lifeline | ALEKSANDRA_BRAIN",
+      ? "ციკლი | ALEKSANDRA_BRAIN"
+      : "Lifecycle | ALEKSANDRA_BRAIN",
     locale === "ka"
-      ? "ყოველი ინფორმაცია, რომელიც სისტემამ შემოიტანა — როდის შემოვიდა და საიდან."
-      : "Every piece of information the system has added — when it arrived and where it came from.",
+      ? "თითოეული კვლევა გადის ამ ციკლს — მოძიებიდან ექიმის გადაწყვეტილებამდე."
+      : "Every trial passes through this cycle — from initial scan to a doctor's decision.",
   );
 }
 
@@ -58,90 +59,112 @@ export default async function ActivityPage({
   setRequestLocale(locale);
   const t = await getTranslations("Activity");
 
-  const lifeline = await fetchSystemLifeline();
+  // Fetch both datasets in parallel
+  const [lifeline, stageData] = await Promise.all([
+    fetchSystemLifeline(),
+    fetchLifecycleStages(),
+  ]);
 
-  const updatedLabel = lifeline.lastUpdated
-    ? t("lastUpdated", { time: relativeUpdated(lifeline.lastUpdated, locale) })
-    : "";
-
-  const totalsLabel =
-    lifeline.days.length > 0
-      ? t("totals", {
-          items: lifeline.totalItems.toLocaleString(locale === "ka" ? "ka-GE" : "en-US"),
-          days: lifeline.days.length,
-        })
-      : "";
-
-  const nowLabel = t("liveNow");
+  const isKa = locale === "ka";
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-12">
       {/* Auto-refresh: silently calls router.refresh() every 90s */}
       <LiveRefresher />
 
-      {/* Page header */}
-      <header className="u-rise max-w-2xl">
-        <div className="flex items-center gap-3 flex-wrap">
-          <h1 className="font-serif text-[1.9rem] leading-tight tracking-tight text-ink">
-            {t("title")}
-          </h1>
-          {lifeline.configured && lifeline.lastUpdated ? (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-signal-soft px-3 py-1 text-xs font-medium text-signal">
-              {/* Live dot */}
-              <span
-                aria-hidden
-                className="relative flex h-2 w-2 items-center justify-center"
-              >
-                <span className="dot-breathe absolute h-2 w-2 rounded-full bg-signal" />
+      {/* ── PRIMARY: Lifecycle Cycle Explainer ── */}
+      <section aria-labelledby="lifecycle-heading">
+        <header className="u-rise mb-6 max-w-2xl">
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1
+              id="lifecycle-heading"
+              className="font-serif text-[1.9rem] leading-tight tracking-tight text-ink"
+            >
+              {t("title")}
+            </h1>
+            {stageData.configured ? (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-signal-soft px-3 py-1 text-xs font-medium text-signal">
+                <span aria-hidden className="relative flex h-2 w-2 items-center justify-center">
+                  <span className="dot-breathe absolute h-2 w-2 rounded-full bg-signal" />
+                </span>
+                {t("liveNow")}
               </span>
-              {t("liveNow")}
-            </span>
-          ) : null}
+            ) : null}
+          </div>
+          <p className="mt-3 text-[0.98rem] leading-relaxed text-muted">
+            {t("subtitle")}
+          </p>
+        </header>
+
+        <div className="u-rise u-rise-1">
+          <LifecycleCycle data={stageData} locale={locale} />
         </div>
+      </section>
 
-        <p className="mt-3 text-[0.98rem] leading-relaxed text-muted">
-          {t("subtitle")}
-        </p>
+      {/* ── SECONDARY: Recent cycle runs ── */}
+      <section aria-labelledby="recent-runs-heading">
+        <h2
+          id="recent-runs-heading"
+          className="mb-4 text-[1rem] font-semibold text-ink"
+        >
+          {isKa ? "ბოლო ციკლები" : "Recent cycle runs"}
+        </h2>
 
-        {/* Last updated + totals */}
-        <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-faint">
-          {updatedLabel ? <span>{updatedLabel}</span> : null}
-          {totalsLabel ? (
+        <div className="u-rise u-rise-1">
+          {!lifeline.configured ? (
+            <div className="rounded-xl border border-line bg-surface px-5 py-8 text-center">
+              <p className="text-sm text-muted">{t("notConfigured")}</p>
+              <p className="mx-auto mt-1 max-w-sm text-xs leading-relaxed text-faint">
+                {t("notConfiguredNote")}
+              </p>
+            </div>
+          ) : lifeline.days.length === 0 && lifeline.milestones.length === 0 ? (
+            <div className="rounded-xl border border-line bg-surface px-5 py-8 text-center">
+              <p className="text-sm text-muted">{t("noData")}</p>
+              <p className="mx-auto mt-1 max-w-sm text-xs leading-relaxed text-faint">
+                {t("noDataNote")}
+              </p>
+            </div>
+          ) : (
             <>
-              {updatedLabel ? <span aria-hidden>·</span> : null}
-              <span>{totalsLabel}</span>
-            </>
-          ) : null}
-        </div>
-      </header>
+              {/* Compact metadata line */}
+              {(lifeline.lastUpdated || lifeline.days.length > 0) && (
+                <div className="mb-3 flex flex-wrap items-center gap-3 text-xs text-faint">
+                  {lifeline.lastUpdated && (
+                    <span>
+                      {t("lastUpdated", {
+                        time: relativeUpdated(lifeline.lastUpdated, locale),
+                      })}
+                    </span>
+                  )}
+                  {lifeline.days.length > 0 && (
+                    <>
+                      {lifeline.lastUpdated && <span aria-hidden>·</span>}
+                      <span>
+                        {t("totals", {
+                          items: lifeline.totalItems.toLocaleString(
+                            isKa ? "ka-GE" : "en-US"
+                          ),
+                          days: lifeline.days.length,
+                        })}
+                      </span>
+                    </>
+                  )}
+                </div>
+              )}
 
-      {/* Body */}
-      <div className="u-rise u-rise-1">
-        {!lifeline.configured ? (
-          <div className="rounded-xl border border-line bg-surface px-5 py-12 text-center">
-            <p className="text-sm text-muted">{t("notConfigured")}</p>
-            <p className="mx-auto mt-1 max-w-sm text-xs leading-relaxed text-faint">
-              {t("notConfiguredNote")}
-            </p>
-          </div>
-        ) : lifeline.days.length === 0 && lifeline.milestones.length === 0 ? (
-          <div className="rounded-xl border border-line bg-surface px-5 py-12 text-center">
-            <p className="text-sm text-muted">{t("noData")}</p>
-            <p className="mx-auto mt-1 max-w-sm text-xs leading-relaxed text-faint">
-              {t("noDataNote")}
-            </p>
-          </div>
-        ) : (
-          <div className="max-w-lg">
-            <LifelineRail
-              days={lifeline.days}
-              milestones={lifeline.milestones}
-              locale={locale}
-              nowLabel={nowLabel}
-            />
-          </div>
-        )}
-      </div>
+              <div className="max-w-lg">
+                <LifelineRail
+                  days={lifeline.days}
+                  milestones={lifeline.milestones}
+                  locale={locale}
+                  nowLabel={t("liveNow")}
+                />
+              </div>
+            </>
+          )}
+        </div>
+      </section>
     </div>
   );
 }
