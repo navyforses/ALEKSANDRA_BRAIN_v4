@@ -39,6 +39,7 @@ import os
 import sys
 import traceback
 from datetime import datetime, timezone
+from importlib import import_module
 
 import httpx
 
@@ -158,6 +159,11 @@ def _safe_run(label: str, fn, **kwargs):
         return {"error": f"{type(e).__name__}: {e}"}
 
 
+def _run_trials_match(*, notify: bool = True):
+    trials_match_run = import_module("scripts.trials.eligibility_matcher").run
+    return trials_match_run(notify=notify)
+
+
 def run(*, small: bool = False, no_gap: bool = False) -> dict:
     load_env()
     start = datetime.now(timezone.utc)
@@ -254,10 +260,8 @@ def run(*, small: bool = False, no_gap: bool = False) -> dict:
     # a matcher failure must never kill the tick. notify=True emits a family
     # alert only when there is something genuinely new (the Phase A seed of 59
     # trials is already the baseline, so the first automated run stays quiet).
-    from scripts.trials.eligibility_matcher import run as trials_match_run
-
     counts["trials_match"] = _safe_run(
-        "Trials eligibility match (Phase B)", trials_match_run, notify=True
+        "Trials eligibility match (Phase B)", _run_trials_match, notify=True
     )
 
     end = datetime.now(timezone.utc)
