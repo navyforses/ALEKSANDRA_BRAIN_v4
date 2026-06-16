@@ -7,7 +7,7 @@
 import { useMemo, useState } from "react";
 import { Link } from "@/i18n/navigation";
 import type { TrialItem } from "@/lib/data";
-import { localizeCountry, sortCountries } from "@/lib/countries";
+import { localizeCountry } from "@/lib/countries";
 import { registryLabel, registryUrl, registryDisplayId } from "@/lib/registries";
 import type { Locale } from "@/lib/seo";
 
@@ -268,8 +268,6 @@ function TrialCard({
 // ---------------------------------------------------------------------------
 // Filter + sort logic
 
-const US_CANONICAL = "United States";
-
 function sortItems(items: TrialItem[], key: SortKey): TrialItem[] {
   const copy = [...items];
   switch (key) {
@@ -326,57 +324,41 @@ export default function TrialsBrowser({
 }) {
   const allItems = useMemo(() => [...eligible, ...needsReview], [eligible, needsReview]);
 
-  // Build the union of all unique countries, US first then A–Z.
-  const allCountries = useMemo(() => {
-    const seen = new Set<string>();
-    for (const item of allItems) {
-      for (const c of item.countries) {
-        if (c) seen.add(c);
-      }
-    }
-    return sortCountries(Array.from(seen), locale);
-  }, [allItems, locale]);
-
-  // Country counts (for the chip labels).
-  const countryCounts = useMemo(() => {
+  // Build country options sorted by count DESC, ties alpha by localized name.
+  // Each canonical country appears exactly once with the correct summed count.
+  const countryOptions = useMemo(() => {
     const map = new Map<string, number>();
     for (const item of allItems) {
       for (const c of item.countries) {
         if (c) map.set(c, (map.get(c) ?? 0) + 1);
       }
     }
-    return map;
-  }, [allItems]);
+    return Array.from(map.entries())
+      .sort(([aKey, aCount], [bKey, bCount]) => {
+        if (bCount !== aCount) return bCount - aCount;
+        return localizeCountry(aKey, locale).localeCompare(
+          localizeCountry(bKey, locale),
+          locale === "ka" ? "ka-GE" : "en-US",
+        );
+      })
+      .map(([key, count]) => ({ key, count }));
+  }, [allItems, locale]);
 
-  const [selectedCountries, setSelectedCountries] = useState<Set<string>>(
-    new Set(["__all__"]),
-  );
+  const [selectedCountry, setSelectedCountry] = useState<string>("__all__");
   const [sortKey, setSortKey] = useState<SortKey>("us-first");
 
-  function toggleCountry(country: string) {
-    setSelectedCountries((prev) => {
-      const next = new Set(prev);
-      if (country === "__all__") {
-        return new Set(["__all__"]);
-      }
-      next.delete("__all__");
-      if (next.has(country)) {
-        next.delete(country);
-        if (next.size === 0) return new Set(["__all__"]);
-      } else {
-        next.add(country);
-      }
-      return next;
-    });
-  }
+  const selectedSet = useMemo<Set<string>>(() => {
+    if (selectedCountry === "__all__") return new Set(["__all__"]);
+    return new Set([selectedCountry]);
+  }, [selectedCountry]);
 
   const filteredEligible = useMemo(
-    () => sortItems(filterByCountry(eligible, selectedCountries), sortKey),
-    [eligible, selectedCountries, sortKey],
+    () => sortItems(filterByCountry(eligible, selectedSet), sortKey),
+    [eligible, selectedSet, sortKey],
   );
   const filteredNeedsReview = useMemo(
-    () => sortItems(filterByCountry(needsReview, selectedCountries), sortKey),
-    [needsReview, selectedCountries, sortKey],
+    () => sortItems(filterByCountry(needsReview, selectedSet), sortKey),
+    [needsReview, selectedSet, sortKey],
   );
 
   const sortOptions: { key: SortKey; label: string }[] = [
@@ -389,55 +371,32 @@ export default function TrialsBrowser({
   return (
     <div className="space-y-8">
       {/* Controls bar */}
-      {allCountries.length > 0 ? (
-        <div className="space-y-4">
-          {/* Country filter */}
-          <fieldset>
-            <legend className="mb-2 text-sm font-medium text-ink">
+      {countryOptions.length > 0 ? (
+        <div className="flex flex-wrap items-center gap-4">
+          {/* Country filter dropdown */}
+          <div className="flex items-center gap-3">
+            <label
+              htmlFor="trials-country"
+              className="whitespace-nowrap text-sm text-muted"
+            >
               {labels.filterCountry}
-            </legend>
-            <div className="flex flex-wrap gap-2">
-              {/* All chip */}
-              <button
-                type="button"
-                aria-pressed={selectedCountries.has("__all__")}
-                onClick={() => toggleCountry("__all__")}
-                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm transition-colors ${
-                  selectedCountries.has("__all__")
-                    ? "bg-ink text-paper"
-                    : "border border-line text-muted hover:text-ink"
-                }`}
-              >
-                {labels.allCountries}
-              </button>
-              {allCountries.map((country) => {
-                const active = selectedCountries.has(country);
-                const count = countryCounts.get(country) ?? 0;
-                const label = localizeCountry(country, locale);
-                return (
-                  <button
-                    key={country}
-                    type="button"
-                    aria-pressed={active}
-                    onClick={() => toggleCountry(country)}
-                    className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm transition-colors ${
-                      active
-                        ? "bg-ink text-paper"
-                        : "border border-line text-muted hover:text-ink"
-                    }`}
-                  >
-                    {country.toLowerCase() === "united states" ||
-                    country.toLowerCase() === "usa"
-                      ? `\u{1F1FA}\u{1F1F8} ${label}`
-                      : label}
-                    <span className={active ? "text-paper/70" : "text-faint"}>
-                      {count}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </fieldset>
+            </label>
+            <select
+              id="trials-country"
+              value={selectedCountry}
+              onChange={(e) => setSelectedCountry(e.target.value)}
+              className="rounded-lg border border-line bg-surface px-3 py-1.5 text-sm text-ink focus:border-accent-line focus:outline-none"
+            >
+              <option value="__all__">
+                {labels.allCountries} ({allItems.length})
+              </option>
+              {countryOptions.map(({ key, count }) => (
+                <option key={key} value={key}>
+                  {localizeCountry(key, locale)} ({count})
+                </option>
+              ))}
+            </select>
+          </div>
 
           {/* Sort control */}
           <div className="flex items-center gap-3">
@@ -474,7 +433,7 @@ export default function TrialsBrowser({
         {filteredEligible.length === 0 ? (
           <div className="rounded-xl border border-line bg-surface px-5 py-8 text-center">
             <p className="text-sm text-muted">
-              {selectedCountries.has("__all__")
+              {selectedCountry === "__all__"
                 ? labels.emptyEligible
                 : labels.noMatches}
             </p>
@@ -508,7 +467,7 @@ export default function TrialsBrowser({
         {filteredNeedsReview.length === 0 ? (
           <div className="rounded-xl border border-line bg-surface px-5 py-6 text-center">
             <p className="text-sm text-faint">
-              {selectedCountries.has("__all__")
+              {selectedCountry === "__all__"
                 ? labels.emptyNeedsReview
                 : labels.noMatches}
             </p>

@@ -12,6 +12,7 @@
 import type { BilingualField } from "@/lib/i18n";
 import type { Locale } from "@/lib/seo";
 import { getCount, getRows } from "@/lib/supabase";
+import { canonicalCountry } from "@/lib/countries";
 
 export type ResearchKind = "paper" | "hypothesis" | "therapy";
 
@@ -538,9 +539,15 @@ function mapTrial(row: TrialRow, locale: Locale): TrialItem {
   // Parse JSONB locations array (may be structured objects or legacy strings).
   const structs = parseLocations(row.locations);
 
-  // Unique non-empty country strings — used for the filter chips.
+  // Unique canonical country names per trial — one entry per canonical country
+  // regardless of how many sites that country has (dedup within the trial).
   const countries = Array.from(
-    new Set(structs.map((l) => l.country).filter(Boolean)),
+    new Set(
+      structs
+        .map((l) => l.country)
+        .filter(Boolean)
+        .map((c) => canonicalCountry(c)),
+    ),
   );
 
   // Legacy flat string array for the existing LocationLine component.
@@ -570,6 +577,10 @@ function mapTrial(row: TrialRow, locale: Locale): TrialItem {
   );
   const firstSite = structs[0] ?? null;
   const primary = usSite ?? firstSite;
+  // Canonicalize the primary location's country so localizeCountry() works correctly.
+  const primaryCanonical = primary
+    ? { city: primary.city, country: canonicalCountry(primary.country) }
+    : null;
 
   // Phase E: resolve registry fields.
   // registry_id is the canonical per-registry id. For ctgov rows written before
@@ -591,7 +602,7 @@ function mapTrial(row: TrialRow, locale: Locale): TrialItem {
     locations: allFlat,
     locationStructs: structs,
     countries,
-    primaryLocation: primary ? { city: primary.city, country: primary.country } : null,
+    primaryLocation: primaryCanonical,
     isUs: hasUs,
     isInternational: hasIntl || (!hasUs && (structs.length > 0 || allFlat.length > 0)),
     issues: Array.isArray(row.eligibility_issues) ? row.eligibility_issues : [],
