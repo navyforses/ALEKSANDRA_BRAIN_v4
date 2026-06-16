@@ -39,6 +39,16 @@ from scripts.ledger import _supabase_creds, _supabase_headers, load_env
 ACTIVE_STATUSES = ("receiving", "planned", "evaluating")
 
 
+def _therapy_name(value: object) -> str:
+    if isinstance(value, str):
+        return value.strip()
+    if isinstance(value, dict):
+        en = str(value.get("en") or "").strip()
+        ka = str(value.get("ka") or "").strip()
+        return en or ka
+    return ""
+
+
 def _list_active_therapies() -> list[str]:
     url, key = _supabase_creds()
     r = httpx.get(
@@ -57,7 +67,7 @@ def _list_active_therapies() -> list[str]:
     rows = r.json()
     names: list[str] = []
     for row in rows:
-        name = (row.get("name") or "").strip()
+        name = _therapy_name(row.get("name"))
         if name:
             names.append(name)
     return names
