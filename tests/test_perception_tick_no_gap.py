@@ -9,6 +9,7 @@ network/DB: every fetcher + ledger writer + Telegram is mocked.
 from __future__ import annotations
 
 import sys
+from types import ModuleType
 from unittest.mock import MagicMock
 
 import scripts.fetch_ctgov
@@ -19,7 +20,14 @@ import scripts.gap_filler
 import scripts.perception_tick as pt
 
 
-def _mock_pipeline(monkeypatch):
+def _mock_registry_module(monkeypatch, dotted: str):
+    mod = ModuleType(dotted)
+    mod.run = MagicMock(return_value={"ledger_inserted": 0})
+    monkeypatch.setitem(sys.modules, dotted, mod)
+    return mod.run
+
+
+def _mock_pipeline(monkeypatch, *, mock_trials: bool = True):
     monkeypatch.setattr(pt, "_budget_locked", lambda: False)
     monkeypatch.setattr(pt, "_write_run", lambda **k: "run-1")
     monkeypatch.setattr(pt, "_telegram", lambda msg: None)
@@ -37,6 +45,14 @@ def _mock_pipeline(monkeypatch):
     )
     gap = MagicMock(return_value={"ledger_inserted": 5})
     monkeypatch.setattr(scripts.gap_filler, "run", gap)
+    _mock_registry_module(monkeypatch, "scripts.perception.sources.ctis")
+    _mock_registry_module(monkeypatch, "scripts.perception.sources.isrctn")
+    if mock_trials:
+        monkeypatch.setattr(
+            pt,
+            "_run_trials_match",
+            lambda notify=True: {"newly_eligible": [], "status_changes": []},
+        )
     return gap
 
 
@@ -66,7 +82,7 @@ def test_cli_threads_no_gap(monkeypatch):
 
 
 def test_trials_match_import_failure_isolated(monkeypatch):
-    _mock_pipeline(monkeypatch)
+    _mock_pipeline(monkeypatch, mock_trials=False)
 
     def _boom(_name: str):
         raise ModuleNotFoundError("No module named 'anthropic'")
