@@ -247,7 +247,7 @@ def check_i18n_01(report: Report) -> None:
 # I18N-02 — Locale-segmented App Router structure  (Wave 1 / 06-03a/b)
 # ---------------------------------------------------------------------------
 def check_i18n_02(report: Report) -> None:
-    """Verify the 7 family-facing routes live under viewer/app/[locale]/*."""
+    """Verify the current family-facing routes live under viewer/app/[locale]/*."""
     locale_root = VIEWER / "app" / "[locale]"
     if not locale_root.exists():
         report.add(
@@ -259,16 +259,16 @@ def check_i18n_02(report: Report) -> None:
         )
         return
 
-    routes = (
-        "dashboard",
-        "timeline",
-        "papers",
-        "therapies",
-        "hypotheses",
-        "today",
-        "knowledge",
-    )
-    found = {r: (locale_root / r / "page.tsx").exists() for r in routes}
+    routes = {
+        "home": "page.tsx",
+        "activity": "activity/page.tsx",
+        "brain": "brain/page.tsx",
+        "brief": "brief/page.tsx",
+        "history": "history/page.tsx",
+        "research": "research/page.tsx",
+        "trials": "research/trials/page.tsx",
+    }
+    found = {name: (locale_root / rel).exists() for name, rel in routes.items()}
     missing = [r for r, ok in found.items() if not ok]
 
     if MODE == "code-complete":
@@ -276,7 +276,7 @@ def check_i18n_02(report: Report) -> None:
         report.add(
             Check(
                 "I18N-02",
-                "7 family-facing routes mounted under app/[locale]/*",
+                "current family-facing routes mounted under app/[locale]/*",
                 ok,
                 f"present={[r for r in routes if found[r]]} missing={missing} "
                 f"mode=code-complete",
@@ -382,15 +382,16 @@ def check_i18n_03(report: Report) -> None:
 # I18N-04 — Language switcher mounted in layout header  (Wave 1 / 06-04)
 # ---------------------------------------------------------------------------
 def check_i18n_04(report: Report) -> None:
-    """Verify LanguageSwitcher is imported by viewer/app/[locale]/layout.tsx."""
-    switcher_path = VIEWER / "components" / "LanguageSwitcher.tsx"
+    """Verify the locale switcher is mounted through the app shell."""
+    switcher_path = VIEWER / "components" / "shell" / "LanguageToggle.tsx"
     layout_path = VIEWER / "app" / "[locale]" / "layout.tsx"
+    shell_path = VIEWER / "components" / "shell" / "AppShell.tsx"
 
     if not switcher_path.exists():
         report.add(
             _pending(
                 "I18N-04",
-                "LanguageSwitcher mounted in viewer/app/[locale]/layout.tsx",
+                "LanguageToggle mounted in the locale app shell",
                 "Wave 1 / plan 06-04",
             )
         )
@@ -400,28 +401,27 @@ def check_i18n_04(report: Report) -> None:
         report.add(
             _pending(
                 "I18N-04",
-                "LanguageSwitcher mounted in viewer/app/[locale]/layout.tsx",
+                "LanguageToggle mounted in the locale app shell",
                 "Wave 1 / plan 06-03b (layout) + 06-04 (mount)",
             )
         )
         return
 
     layout_src = _read_text("viewer/app/[locale]/layout.tsx")
-    imports_switcher = (
-        "LanguageSwitcher" in layout_src
-        and "from" in layout_src
-        and "LanguageSwitcher" in layout_src.split("export default", 1)[0]
-    )
-    mounts_switcher = "<LanguageSwitcher" in layout_src
+    shell_src = shell_path.read_text(encoding="utf-8") if shell_path.exists() else ""
+    imports_switcher = "LanguageToggle" in shell_src and "from" in shell_src
+    mounts_switcher = "<LanguageToggle" in shell_src
+    layout_mounts_shell = "AppShell" in layout_src and "<AppShell" in layout_src
 
-    ok = imports_switcher and mounts_switcher
+    ok = imports_switcher and mounts_switcher and layout_mounts_shell
     report.add(
         Check(
             "I18N-04",
-            "LanguageSwitcher mounted in viewer/app/[locale]/layout.tsx",
+            "LanguageToggle mounted in the locale app shell",
             ok,
-            f"switcher.tsx={switcher_path.exists()} layout.tsx={layout_path.exists()} "
-            f"imports={imports_switcher} mounts={mounts_switcher}",
+            f"toggle.tsx={switcher_path.exists()} layout.tsx={layout_path.exists()} "
+            f"shell.tsx={shell_path.exists()} imports={imports_switcher} "
+            f"mounts={mounts_switcher} layout_mounts_shell={layout_mounts_shell}",
             "I18N-04",
         )
     )

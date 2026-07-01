@@ -57,7 +57,9 @@ ROOT = Path(__file__).resolve().parent.parent
 # module/env scaffolding is in place. Code-complete is the engineering
 # sprint exit; production is the operator-activation exit.
 #
-# OBS-02 and OBS-03 are always asserted (they do not depend on Step B).
+# OBS-03 is always asserted. OBS-02 has the same split as delivery gates:
+# code-complete checks schema + writer wiring; production requires a recent
+# linked delivery row.
 MODE = "production"
 
 
@@ -643,6 +645,17 @@ def check_obs_02(report: Report) -> None:
             )
         )
         return
+    try:
+        delivery_cols = _pg_query(
+            """
+            SELECT table_name FROM information_schema.columns
+            WHERE table_schema='public'
+              AND table_name IN ('alerts_log', 'outreach_log', 'briefs')
+              AND column_name='originating_run_id'
+            """
+        )
+    except Exception:
+        delivery_cols = []
     # Once the column is present, count recent delivered digests that link back.
     linked = _pg_query(
         """
@@ -659,6 +672,34 @@ def check_obs_02(report: Report) -> None:
         """
     )
     n_linked = int(linked[0][0]) if linked else 0
+    if MODE == "code-complete":
+        migration_ok = (
+            ROOT / "scripts" / "migrations" / "009_runs_digest_id.sql"
+        ).is_file() and (
+            ROOT / "scripts" / "migrations" / "010_delivery_originating_run_id.sql"
+        ).is_file()
+        wired_files = [
+            ROOT / "scripts" / "communicator" / "telegram_sender.py",
+            ROOT / "scripts" / "communicator" / "outreach_drafter.py",
+            ROOT / "scripts" / "communicator" / "gmail_digest.py",
+        ]
+        wiring_ok = all(
+            path.is_file() and "originating_run_id" in path.read_text(encoding="utf-8")
+            for path in wired_files
+        )
+        ok = migration_ok and len(delivery_cols) == 3 and wiring_ok
+        report.add(
+            Check(
+                "OBS-02",
+                "Digest→run linkage schema + writer wiring present",
+                ok,
+                f"runs.digest_id=yes delivery_cols={len(delivery_cols)}/3 "
+                f"migrations={migration_ok} writers={wiring_ok} "
+                f"recent_linked_digests={n_linked} mode=code-complete",
+                "OBS-02",
+            )
+        )
+        return
     ok = n_linked >= 1
     report.add(
         Check(

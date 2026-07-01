@@ -118,52 +118,50 @@ def _file_present(rel: str) -> bool:
 # MNG-01 — BRAIN panel renders on all 5 main routes
 # ---------------------------------------------------------------------------
 def check_mng_01(report: Report) -> None:
-    """BRAIN panel mounts via root layout → appears on every route."""
+    """BRAIN intake shell mounts via locale layout → appears on every route."""
     layout = VIEWER / "app" / "layout.tsx"
-    brain = VIEWER / "components" / "layout" / "BrainPanel.tsx"
-    topnav = VIEWER / "components" / "layout" / "TopNav.tsx"
+    locale_layout = VIEWER / "app" / "[locale]" / "layout.tsx"
+    app_shell = VIEWER / "components" / "shell" / "AppShell.tsx"
+    intake_overlay = VIEWER / "components" / "intake" / "IntakeOverlay.tsx"
+    intake_console = VIEWER / "components" / "intake" / "IntakeConsole.tsx"
 
-    if not layout.exists() or not brain.exists() or not topnav.exists():
+    if not layout.exists() or not locale_layout.exists() or not app_shell.exists():
         report.add(
             Check(
                 "MNG-01",
-                "BRAIN panel renders on all 5 main routes",
+                "BRAIN intake shell renders on all main routes",
                 False,
-                "layout.tsx + BrainPanel + TopNav missing — Day 0 cleanup did not land",
+                "root layout + locale layout + AppShell missing",
                 "MNG-01",
             )
         )
         return
 
-    layout_src = layout.read_text(encoding="utf-8")
-    # Post-Phase-6 (06-03b): root layout is a children pass-through; the BrainPanel
-    # mount lives in viewer/app/[locale]/layout.tsx. Accept either location.
-    locale_layout = VIEWER / "app" / "[locale]" / "layout.tsx"
-    locale_layout_src = (
-        locale_layout.read_text(encoding="utf-8") if locale_layout.exists() else ""
+    locale_layout_src = locale_layout.read_text(encoding="utf-8")
+    app_shell_src = app_shell.read_text(encoding="utf-8")
+    mounts = "AppShell" in locale_layout_src and "<AppShell" in locale_layout_src
+    intake_ui = (
+        intake_overlay.exists()
+        and intake_console.exists()
+        and "IntakeOverlay" in app_shell_src
     )
-    mounts = ("BrainPanel" in layout_src and "<BrainPanel" in layout_src) or (
-        "BrainPanel" in locale_layout_src and "<BrainPanel" in locale_layout_src
+    locale_root = VIEWER / "app" / "[locale]"
+    routes = (
+        "page.tsx",
+        "research/page.tsx",
+        "brain/page.tsx",
+        "brief/page.tsx",
+        "history/page.tsx",
     )
-    # Post-Phase-6 (06-03a): family-facing routes live under app/[locale]/.
-    # Post-viewer-refactor c38c856: brain joined the [locale]/ tree alongside today/knowledge.
-    today = (VIEWER / "app" / "today" / "page.tsx").exists() or (
-        VIEWER / "app" / "[locale]" / "today" / "page.tsx"
-    ).exists()
-    brain_route = (VIEWER / "app" / "brain" / "page.tsx").exists() or (
-        VIEWER / "app" / "[locale]" / "brain" / "page.tsx"
-    ).exists()
-    know = (VIEWER / "app" / "knowledge" / "page.tsx").exists() or (
-        VIEWER / "app" / "[locale]" / "knowledge" / "page.tsx"
-    ).exists()
+    route_ok = all((locale_root / r).exists() for r in routes)
 
-    ok = mounts and today and brain_route and know
+    ok = mounts and intake_ui and route_ok
     report.add(
         Check(
             "MNG-01",
-            "BRAIN panel renders on all 5 main routes",
+            "BRAIN intake shell renders on all main routes",
             ok,
-            f"mounts={mounts} today={today} brain={brain_route} knowledge={know}",
+            f"mounts={mounts} intake_ui={intake_ui} route_ok={route_ok}",
             "MNG-01",
         )
     )
@@ -311,19 +309,20 @@ def check_mng_04(report: Report) -> None:
         return
 
     # Browser-side artifacts must exist for the end-to-end loop.
-    recorder = VIEWER / "components" / "BrainPanel" / "VoiceRecorder.tsx"
+    recorder = VIEWER / "components" / "intake" / "VoiceButton.tsx"
+    console = VIEWER / "components" / "intake" / "IntakeConsole.tsx"
     route = VIEWER / "app" / "api" / "manager" / "voice" / "route.ts"
-    voice_lib = VIEWER / "lib" / "brain" / "voice.ts"
 
     if MODE == "code-complete":
-        ok = recorder.exists() and route.exists() and voice_lib.exists()
+        console_src = console.read_text(encoding="utf-8") if console.exists() else ""
+        ok = recorder.exists() and route.exists() and "VoiceButton" in console_src
         report.add(
             Check(
                 "MNG-04",
                 "Voice 5s → transcribed <2s with ≥90% accuracy",
                 ok,
-                f"module=ok recorder={recorder.exists()} route={route.exists()} "
-                f"lib={voice_lib.exists()} mode=code-complete",
+                f"module=ok voice_button={recorder.exists()} route={route.exists()} "
+                f"console_wires_voice={'VoiceButton' in console_src} mode=code-complete",
                 "MNG-04",
             )
         )
@@ -500,7 +499,7 @@ def check_mng_07(report: Report) -> None:
 # ---------------------------------------------------------------------------
 def check_mng_08(report: Report) -> None:
     has_lib = (VIEWER / "lib" / "realtime.ts").exists()
-    has_ui = (VIEWER / "components" / "BrainPanel" / "ActivityFeed.tsx").exists()
+    has_ui = (VIEWER / "components" / "history" / "HistoryFeed.tsx").exists()
     has_route = (VIEWER / "app" / "api" / "manager" / "audit" / "route.ts").exists()
     has_audit_module = _module_present("scripts.manager.activity.audit_query")
 
@@ -510,7 +509,7 @@ def check_mng_08(report: Report) -> None:
             "MNG-08",
             "Activity feed updates in realtime",
             ok,
-            f"realtime.ts={has_lib} ActivityFeed.tsx={has_ui} "
+            f"realtime.ts={has_lib} HistoryFeed.tsx={has_ui} "
             f"audit_route={has_route} audit_query={has_audit_module}",
             "MNG-08",
         )
@@ -522,15 +521,20 @@ def check_mng_08(report: Report) -> None:
 # ---------------------------------------------------------------------------
 def check_mng_09(report: Report) -> None:
     has_undo = _module_present("scripts.manager.activity.undo")
-    has_button = (VIEWER / "components" / "AuditLog" / "UndoButton.tsx").exists()
+    history_feed = VIEWER / "components" / "history" / "HistoryFeed.tsx"
+    history_src = (
+        history_feed.read_text(encoding="utf-8") if history_feed.exists() else ""
+    )
+    has_button = "postUndo" in history_src and "IconUndo" in history_src
     has_route = (
         VIEWER / "app" / "api" / "manager" / "undo" / "[id]" / "route.ts"
     ).exists()
-    # Post-Phase-6: audit surface lives at viewer/app/audit/page.tsx (sibling root layout
-    # outside the [locale]/ tree, per 06-03b deviation). Accept legacy 'audit-log' path too.
-    has_audit_page = (VIEWER / "app" / "audit-log" / "page.tsx").exists() or (
-        VIEWER / "app" / "audit" / "page.tsx"
-    ).exists()
+    # Post-site-refactor: undo is surfaced through /[locale]/history.
+    has_audit_page = (
+        (VIEWER / "app" / "audit-log" / "page.tsx").exists()
+        or (VIEWER / "app" / "audit" / "page.tsx").exists()
+        or (VIEWER / "app" / "[locale]" / "history" / "page.tsx").exists()
+    )
 
     if not has_undo:
         report.add(
@@ -630,7 +634,11 @@ def check_mng_10(report: Report) -> None:
 def check_mng_11(report: Report) -> None:
     has_module = _module_present("scripts.manager.email_draft")
     has_route = (VIEWER / "app" / "api" / "manager" / "email" / "route.ts").exists()
-    has_ui = (VIEWER / "components" / "BrainPanel" / "EmailIntent.tsx").exists()
+    intake_console = VIEWER / "components" / "intake" / "IntakeConsole.tsx"
+    console_src = (
+        intake_console.read_text(encoding="utf-8") if intake_console.exists() else ""
+    )
+    has_ui = intake_console.exists() and "/api/manager/email" in console_src
     if not has_module:
         report.add(
             Check(

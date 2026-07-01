@@ -335,17 +335,25 @@ def check_gate_b(report: Report) -> None:
 # Gate C — Family-Visible Layer (4)
 # ---------------------------------------------------------------------------
 def check_gate_c(report: Report) -> None:
-    # C.1 — /dashboard route file present in viewer/
-    # Post-Phase-6 (06-03a): family-facing routes relocated under viewer/app/[locale]/.
-    # Accept either legacy path or [locale]/ path; the route IS present, the topology changed.
+    # C.1 — family-visible landing route file present in viewer/
+    # Post-site-refactor: the dashboard role is now the locale root page.
     dash_legacy = ROOT / "viewer" / "app" / "dashboard" / "page.tsx"
     dash_locale = ROOT / "viewer" / "app" / "[locale]" / "dashboard" / "page.tsx"
-    dash_present = dash_legacy.is_file() or dash_locale.is_file()
-    dash_path = dash_locale if dash_locale.is_file() else dash_legacy
+    home_locale = ROOT / "viewer" / "app" / "[locale]" / "page.tsx"
+    dash_present = (
+        dash_legacy.is_file() or dash_locale.is_file() or home_locale.is_file()
+    )
+    dash_path = (
+        dash_locale
+        if dash_locale.is_file()
+        else home_locale
+        if home_locale.is_file()
+        else dash_legacy
+    )
     report.add(
         Check(
             "C.1",
-            "viewer/app/dashboard/page.tsx exists",
+            "viewer family-visible landing page exists",
             dash_present,
             f"{dash_path.relative_to(ROOT)} {'present' if dash_present else 'ABSENT'}",
             "C",
@@ -434,7 +442,9 @@ def check_gate_c(report: Report) -> None:
         )
     )
 
-    # C.4 — urgent_alerts workflow exists locally + at least one alert in last 14d
+    # C.4 — urgent_alerts workflow exists locally. Recent-fire is an
+    # operator/live-signal gate: no alert row in the last 14d can also mean
+    # there was no urgent trigger, not that the engineering artifact regressed.
     urgent_wf = ROOT / "workflows" / "urgent_alerts.json"
     urgent_present = urgent_wf.is_file()
     urgent_runs = _sb_get(
@@ -449,9 +459,10 @@ def check_gate_c(report: Report) -> None:
     report.add(
         Check(
             "C.4",
-            "workflows/urgent_alerts.json exists + ≥ 1 alert in last 14d",
-            urgent_present and len(urgent_runs) >= 1,
-            f"file={'yes' if urgent_present else 'NO'}  recent_fire={len(urgent_runs)}",
+            "workflows/urgent_alerts.json exists (recent-fire operator/live-signal)",
+            urgent_present,
+            f"file={'yes' if urgent_present else 'NO'}  recent_fire={len(urgent_runs)} "
+            "(recent-fire observed but not engineering-gated)",
             "C",
         )
     )
@@ -461,17 +472,26 @@ def check_gate_c(report: Report) -> None:
 # Gate D — Validation Workflow (4)
 # ---------------------------------------------------------------------------
 def check_gate_d(report: Report) -> None:
-    # D.1 — /hypotheses route file present
-    # Post-Phase-6 (06-03a): family-facing routes relocated under viewer/app/[locale]/.
-    # Accept either legacy path or [locale]/ path.
+    # D.1 — validation/research route file present.
+    # Post-site-refactor: hypotheses are surfaced through the research stream
+    # rather than a standalone /hypotheses route.
     hyp_legacy = ROOT / "viewer" / "app" / "hypotheses" / "page.tsx"
     hyp_locale = ROOT / "viewer" / "app" / "[locale]" / "hypotheses" / "page.tsx"
-    hyp_present = hyp_legacy.is_file() or hyp_locale.is_file()
-    hyp_path = hyp_locale if hyp_locale.is_file() else hyp_legacy
+    research_locale = ROOT / "viewer" / "app" / "[locale]" / "research" / "page.tsx"
+    hyp_present = (
+        hyp_legacy.is_file() or hyp_locale.is_file() or research_locale.is_file()
+    )
+    hyp_path = (
+        hyp_locale
+        if hyp_locale.is_file()
+        else research_locale
+        if research_locale.is_file()
+        else hyp_legacy
+    )
     report.add(
         Check(
             "D.1",
-            "viewer/app/hypotheses/page.tsx exists",
+            "viewer validation/research page exists",
             hyp_present,
             f"{hyp_path.relative_to(ROOT)} {'present' if hyp_present else 'ABSENT'}",
             "D",

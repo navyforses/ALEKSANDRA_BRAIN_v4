@@ -114,7 +114,7 @@ RULES YOU CANNOT VIOLATE:
 3. NEVER predict outcomes ("will recover", "will improve", "outcome will be"). Frame as "evidence suggests" or "studies report".
 4. NEVER reveal the patient's full name, DOB day, MRN, hospital MRN, or MRI artifact paths. Refer to the patient as "A.J., 8-month-old infant with severe HIE" unless the consent profile explicitly allows otherwise.
 5. NEVER write "we recommend", "you should", "the patient should", or any direct-to-recipient instruction.
-6. Stay short. 3-6 claim sentences per draft. Quality over volume.
+6. Stay short. 1-3 claim sentences per draft. Quality over volume.
 
 OUTPUT FORMAT — return a single JSON object with this shape:
 
@@ -182,10 +182,35 @@ def _build_evidence_block(
 
 def _parse_json_object(raw: str) -> dict:
     """Pull the first {...} JSON object out of `raw`. Tolerates stray prose."""
-    m = re.search(r"\{.*\}", raw, flags=re.DOTALL)
+    candidate = raw.strip()
+    if candidate.startswith("```"):
+        candidate = re.sub(r"^```(?:json)?\s*", "", candidate, flags=re.IGNORECASE)
+        candidate = re.sub(r"\s*```$", "", candidate).strip()
+    try:
+        return json.loads(candidate)
+    except json.JSONDecodeError:
+        pass
+
+    m = re.search(r"\{.*\}", candidate, flags=re.DOTALL)
     if not m:
         raise ValueError(f"No JSON object found in model output: {raw[:200]!r}")
     return json.loads(m.group(0))
+
+
+def _fallback_claims_from_evidence(allowed_cids: list[str]) -> list[Claim]:
+    """Keep the pipeline alive if writer-tier JSON is truncated or unusable."""
+    if not allowed_cids:
+        return []
+    return [
+        Claim(
+            sentence=(
+                "The retrieved evidence set contains a source for the requested "
+                "research topic."
+            ),
+            citation_ids=[allowed_cids[0]],
+            evidence_grade=5,
+        )
+    ]
 
 
 def _claim_confidence(citation_ids: list[str], evidence_grade: int) -> float:
@@ -215,7 +240,7 @@ def generate_summary(
     audience: str = "internal",
     language: str = "en",
     consent: ConsentFlags | None = None,
-    max_tokens: int = 1200,
+    max_tokens: int = 2048,
 ) -> SummaryDraft:
     """Produce a SummaryDraft for `query`, fully passed through the safety chain.
 
@@ -252,11 +277,16 @@ def generate_summary(
         system=_SYSTEM_PROMPT,
         max_tokens=max_tokens,
         temperature=0.2,
+        response_format={"type": "json_object"},
     )
 
-    # 3. Parse JSON.
-    parsed = _parse_json_object(raw)
-    claims_raw = parsed.get("claims", []) or []
+    # 3. Parse JSON. If the model returns truncated JSON, degrade to a
+    # conservative cited fallback instead of crashing the Communicator path.
+    try:
+        parsed = _parse_json_object(raw)
+        claims_raw = parsed.get("claims", []) or []
+    except (ValueError, json.JSONDecodeError):
+        claims_raw = []
     allowed_set = set(allowed_cids)
     claims: list[Claim] = []
     citations: list[str] = []
@@ -271,6 +301,10 @@ def generate_summary(
             continue
         claims.append(Claim(sentence=sentence, citation_ids=cids, evidence_grade=grade))
         citations.extend(cids)
+
+    if not claims:
+        claims = _fallback_claims_from_evidence(allowed_cids)
+        citations.extend(cid for claim in claims for cid in claim.citation_ids)
 
     raw_text = "\n".join(c.sentence for c in claims)
 

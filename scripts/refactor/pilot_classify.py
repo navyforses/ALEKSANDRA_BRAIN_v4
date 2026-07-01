@@ -61,7 +61,15 @@ LIMIT 10
 
 # Valid responses from the operator. SKIP = leave the legacy edge in place for
 # manual review later; DELETE = drop the edge (correlation-only, no mechanism).
-CAUSAL_TYPES = ["CAUSES", "INHIBITS", "MEDIATES", "CONFOUNDS", "MODERATES", "DELETE", "SKIP"]
+CAUSAL_TYPES = [
+    "CAUSES",
+    "INHIBITS",
+    "MEDIATES",
+    "CONFOUNDS",
+    "MODERATES",
+    "DELETE",
+    "SKIP",
+]
 
 
 # ---------------------------------------------------------------------------
@@ -70,17 +78,40 @@ CAUSAL_TYPES = ["CAUSES", "INHIBITS", "MEDIATES", "CONFOUNDS", "MODERATES", "DEL
 # Imported by classify_edges.py (Day 6) so the same rules govern pilot + bulk.
 
 INHIBIT_KEYWORDS = [
-    "inhibit", "block", "antagonize", "antagonise", "suppress",
-    "decrease", "reduce", "downregulate", "down-regulate",
+    "inhibit",
+    "block",
+    "antagonize",
+    "antagonise",
+    "suppress",
+    "decrease",
+    "reduce",
+    "downregulate",
+    "down-regulate",
 ]
 CAUSE_KEYWORDS = [
-    "cause", "produce", "induce", "result in", "lead to", "trigger",
-    "upregulate", "up-regulate", "elevate", "increase", "release",
+    "cause",
+    "produce",
+    "induce",
+    "result in",
+    "lead to",
+    "trigger",
+    "upregulate",
+    "up-regulate",
+    "elevate",
+    "increase",
+    "release",
 ]
 # Target-name patterns that strongly imply a downstream disease/injury outcome.
 DISEASE_OUTCOME_TARGETS = [
-    "encephalomalacia", "cyst", "atrophy", "damage", "injury", "lesion",
-    "necrosis", "apoptosis", "neuronal death",
+    "encephalomalacia",
+    "cyst",
+    "atrophy",
+    "damage",
+    "injury",
+    "lesion",
+    "necrosis",
+    "apoptosis",
+    "neuronal death",
 ]
 
 
@@ -108,7 +139,6 @@ def deterministic_suggest(
     `SKIP` is the deterministic fallback when no rule fires — Day 6
     escalates SKIP edges to the LLM fallback (budget-capped).
     """
-    src = source or ""
     tgt = target or ""
     mechanism_text = (props or {}).get("mechanism") or ""
     # Many Phase 2 facts kept the human-readable claim in `fact` or `summary`.
@@ -132,15 +162,22 @@ def deterministic_suggest(
     if legacy_type == "RELATED_TO":
         outcome_hits = [t for t in DISEASE_OUTCOME_TARGETS if t in tgt.lower()]
         if outcome_hits:
-            return "CAUSES", f"legacy RELATED_TO + disease-outcome target: {','.join(outcome_hits)}"
+            return (
+                "CAUSES",
+                f"legacy RELATED_TO + disease-outcome target: {','.join(outcome_hits)}",
+            )
 
     # No rule fired -> defer to manual / LLM fallback.
-    return "SKIP", "no deterministic rule matched (manual review / LLM fallback in bulk)"
+    return (
+        "SKIP",
+        "no deterministic rule matched (manual review / LLM fallback in bulk)",
+    )
 
 
 # ---------------------------------------------------------------------------
 # Interactive operator prompt
 # ---------------------------------------------------------------------------
+
 
 def prompt_user(edge: dict, suggestion: tuple[str, str]) -> tuple[str, str]:
     """Print one edge's details and read Shako's classification + rationale."""
@@ -151,13 +188,19 @@ def prompt_user(edge: dict, suggestion: tuple[str, str]) -> tuple[str, str]:
     print(f"  source: {edge['source_name']!r}  labels={edge['source_labels']}")
     print(f"    -[{edge['legacy_type']}]->")
     print(f"  target: {edge['target_name']!r}  labels={edge['target_labels']}")
-    print(f"  rel properties: {json.dumps(edge['rel_props'], default=str, ensure_ascii=False)}")
+    print(
+        f"  rel properties: {json.dumps(edge['rel_props'], default=str, ensure_ascii=False)}"
+    )
     print()
     print(f"Deterministic suggestion: {sugg_type}")
     print(f"  rationale: {sugg_rationale}")
     print(f"Options: {', '.join(CAUSAL_TYPES)}")
 
-    raw = input("Your call [Enter=accept suggestion, or type one of the options]: ").strip().upper()
+    raw = (
+        input("Your call [Enter=accept suggestion, or type one of the options]: ")
+        .strip()
+        .upper()
+    )
     if not raw:
         decision = sugg_type
     elif raw in CAUSAL_TYPES:
@@ -166,7 +209,9 @@ def prompt_user(edge: dict, suggestion: tuple[str, str]) -> tuple[str, str]:
         print(f"  invalid input {raw!r} — defaulting to SKIP")
         decision = "SKIP"
 
-    rationale = input("Brief rationale (optional, blank to reuse suggestion's): ").strip()
+    rationale = input(
+        "Brief rationale (optional, blank to reuse suggestion's): "
+    ).strip()
     if not rationale:
         rationale = sugg_rationale
     return decision, rationale
@@ -175,6 +220,7 @@ def prompt_user(edge: dict, suggestion: tuple[str, str]) -> tuple[str, str]:
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+
 
 def _env_or_fail(name: str, default: Optional[str] = None) -> str:
     val = os.environ.get(name, default)
@@ -190,7 +236,9 @@ def main() -> int:
 
     if GraphDatabase is None:
         print("[FAIL] neo4j driver not installed in .venv-v7", file=sys.stderr)
-        print("[fix]  .venv-v7/Scripts/python.exe -m pip install neo4j", file=sys.stderr)
+        print(
+            "[fix]  .venv-v7/Scripts/python.exe -m pip install neo4j", file=sys.stderr
+        )
         return 1
 
     uri = _env_or_fail("NEO4J_URI")
@@ -250,14 +298,15 @@ def main() -> int:
     # Summary — acceptance rate against deterministic suggestion is the gate
     # signal for Day 6. >= 70% = decision tree calibrated; < 70% = retune.
     matched = sum(
-        1 for r in audit_records
-        if r["final_decision"] == r["deterministic_suggestion"]
+        1 for r in audit_records if r["final_decision"] == r["deterministic_suggestion"]
     )
     acceptance = matched / len(audit_records) if audit_records else 0.0
     print()
     print("=" * 78)
     print(f"Pilot complete: {len(audit_records)} edges classified")
-    print(f"Deterministic-suggestion acceptance rate: {acceptance:.0%} ({matched}/{len(audit_records)})")
+    print(
+        f"Deterministic-suggestion acceptance rate: {acceptance:.0%} ({matched}/{len(audit_records)})"
+    )
     print(f"Audit JSONL: {OUTPUT_PATH}")
     print()
     if acceptance >= 0.70:

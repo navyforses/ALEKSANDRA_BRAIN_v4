@@ -55,8 +55,10 @@ def _check_env() -> tuple[str, str, str]:
     password = os.environ.get("NEO4J_PASSWORD")
     if not uri or not password:
         print("[FAIL] NEO4J_URI and NEO4J_PASSWORD env vars required", file=sys.stderr)
-        print("       Get them from https://console.neo4j.io/ -> your instance -> Connection details",
-              file=sys.stderr)
+        print(
+            "       Get them from https://console.neo4j.io/ -> your instance -> Connection details",
+            file=sys.stderr,
+        )
         sys.exit(1)
     return uri, user, password
 
@@ -67,14 +69,18 @@ def export_graph(driver) -> dict:
     rels = []
     with driver.session() as session:
         # Nodes
-        result = session.run("MATCH (n) RETURN n, id(n) AS internal_id, labels(n) AS labels")
+        result = session.run(
+            "MATCH (n) RETURN n, id(n) AS internal_id, labels(n) AS labels"
+        )
         for record in result:
             n = record["n"]
-            nodes.append({
-                "internal_id": record["internal_id"],
-                "labels": list(record["labels"]),
-                "properties": dict(n),
-            })
+            nodes.append(
+                {
+                    "internal_id": record["internal_id"],
+                    "labels": list(record["labels"]),
+                    "properties": dict(n),
+                }
+            )
         # Relationships
         result = session.run("""
             MATCH (s)-[r]->(t)
@@ -83,24 +89,35 @@ def export_graph(driver) -> dict:
                    id(r) AS internal_id
         """)
         for record in result:
-            rels.append({
-                "internal_id": record["internal_id"],
-                "source_internal_id": record["source_id"],
-                "target_internal_id": record["target_id"],
-                "type": record["rel_type"],
-                "properties": dict(record["rel_props"]),
-            })
+            rels.append(
+                {
+                    "internal_id": record["internal_id"],
+                    "source_internal_id": record["source_id"],
+                    "target_internal_id": record["target_id"],
+                    "type": record["rel_type"],
+                    "properties": dict(record["rel_props"]),
+                }
+            )
     return {"nodes": nodes, "relationships": rels}
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dry-run", action="store_true",
-                        help="connect + count only; no export written")
-    parser.add_argument("--min-nodes", type=int, default=100,
-                        help="abort if fewer nodes than this (sanity)")
-    parser.add_argument("--min-rels", type=int, default=50,
-                        help="abort if fewer relationships than this (sanity)")
+    parser.add_argument(
+        "--dry-run", action="store_true", help="connect + count only; no export written"
+    )
+    parser.add_argument(
+        "--min-nodes",
+        type=int,
+        default=100,
+        help="abort if fewer nodes than this (sanity)",
+    )
+    parser.add_argument(
+        "--min-rels",
+        type=int,
+        default=50,
+        help="abort if fewer relationships than this (sanity)",
+    )
     args = parser.parse_args()
 
     _utf8()
@@ -119,7 +136,9 @@ def main() -> int:
             rel_count = res["r"]
             res = session.run("CALL db.labels() YIELD label RETURN label").data()
             labels = sorted(set(row["label"] for row in res))
-            res = session.run("CALL db.relationshipTypes() YIELD relationshipType RETURN relationshipType").data()
+            res = session.run(
+                "CALL db.relationshipTypes() YIELD relationshipType RETURN relationshipType"
+            ).data()
             rel_types = sorted(set(row["relationshipType"] for row in res))
 
         print(f"\n[connected] {uri}")
@@ -129,14 +148,22 @@ def main() -> int:
         print(f"  Relationship types:{rel_types}")
 
         if node_count < args.min_nodes:
-            print(f"[FAIL] node count {node_count} < min {args.min_nodes}; aborting", file=sys.stderr)
+            print(
+                f"[FAIL] node count {node_count} < min {args.min_nodes}; aborting",
+                file=sys.stderr,
+            )
             return 1
         if rel_count < args.min_rels:
-            print(f"[FAIL] rel count {rel_count} < min {args.min_rels}; aborting", file=sys.stderr)
+            print(
+                f"[FAIL] rel count {rel_count} < min {args.min_rels}; aborting",
+                file=sys.stderr,
+            )
             return 1
 
         if args.dry_run:
-            print("\n[dry-run] connection + counts OK; skipping export (no file written)")
+            print(
+                "\n[dry-run] connection + counts OK; skipping export (no file written)"
+            )
             return 0
 
         # Full export
@@ -167,11 +194,11 @@ def main() -> int:
         )
         manifest_path.write_text(manifest_text, encoding="utf-8")
 
-        print(f"\n[ok] export complete")
+        print("\n[ok] export complete")
         print(f"  Snapshot:  {snapshot_path}  ({snapshot_path.stat().st_size} bytes)")
         print(f"  Manifest:  {manifest_path}")
-        print(f"\nNext: review counts above match expected Phase 2/2.5 state")
-        print(f"      then proceed to Phase 7.1 Day 3 (apply migration 017)")
+        print("\nNext: review counts above match expected Phase 2/2.5 state")
+        print("      then proceed to Phase 7.1 Day 3 (apply migration 017)")
         return 0
     except Exception as e:
         print(f"[FAIL] {type(e).__name__}: {e}", file=sys.stderr)
