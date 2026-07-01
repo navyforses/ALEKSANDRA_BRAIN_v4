@@ -15,6 +15,7 @@ from typing import Any
 
 import httpx
 
+from scripts.communicator._bilingual_read import display_field_py
 from scripts.ledger import _supabase_creds, _supabase_headers, load_env
 
 
@@ -66,6 +67,11 @@ def _send_telegram(text: str) -> None:
     r.raise_for_status()
 
 
+def _short_field(field: Any, *, locale: str = "ka", limit: int = 90) -> str:
+    text = display_field_py(field, locale).strip()
+    return text[:limit]
+
+
 def compose_daily_digest() -> str:
     since = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
     papers = _get(
@@ -87,7 +93,7 @@ def compose_daily_digest() -> str:
     )
     spend = sum(float(r.get("token_cost") or 0) for r in runs)
     top = "; ".join(
-        f"{p.get('relevance_score')}: {p.get('title', '')[:90]}" for p in papers
+        f"{p.get('relevance_score')}: {_short_field(p.get('title'))}" for p in papers
     )
     return (
         "ALEKSANDRA_BRAIN daily digest: "
@@ -117,7 +123,7 @@ def compose_urgent_alert() -> str:
         },
     )
     top = "; ".join(
-        f"{p.get('relevance_score')}: {p.get('title', '')[:90]}" for p in papers
+        f"{p.get('relevance_score')}: {_short_field(p.get('title'))}" for p in papers
     )
     return (
         "ALEKSANDRA_BRAIN urgent-alert check: "
