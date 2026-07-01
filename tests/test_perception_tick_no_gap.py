@@ -63,3 +63,15 @@ def test_cli_threads_no_gap(monkeypatch):
     monkeypatch.setattr(sys, "argv", ["perception_tick", "--no-gap", "--no-telegram"])
     assert pt.main() == 0
     assert captured.get("no_gap") is True
+
+
+def test_trials_match_import_failure_isolated(monkeypatch):
+    _mock_pipeline(monkeypatch)
+
+    def _boom(_name: str):
+        raise ModuleNotFoundError("No module named 'anthropic'")
+
+    monkeypatch.setattr(pt, "import_module", _boom)
+    result = pt.run(small=True, no_gap=True)
+    assert result["exit_status"] == "completed"
+    assert "ModuleNotFoundError" in result["counts"]["trials_match"]["error"]
